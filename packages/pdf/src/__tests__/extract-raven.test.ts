@@ -46,11 +46,11 @@ describe("raven.pdf extraction", () => {
     const imgs = result.pages[0].images;
     expect(imgs).toHaveLength(2);
     expect(imgs[0].imageId).toBe("pg001_im001");
-    expect(imgs[0].hash).toBe("cf76f48c781a311e");
-    expect(imgs[0].width).toBe(776);
+    expect(imgs[0].hash).toBe("eca4aa60337aa2e3");
+    expect(imgs[0].width).toBe(690);
     expect(imgs[0].height).toBe(776);
     expect(imgs[1].imageId).toBe("pg001_im002");
-    expect(imgs[1].hash).toBe("f8d248d4efca122e");
+    expect(imgs[1].hash).toBe("d5c49fb3178146a2");
   });
 
   // -- Page 2 --

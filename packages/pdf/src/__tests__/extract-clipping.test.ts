@@ -223,9 +223,9 @@ describe("Raster Image Extraction with Clipping", () => {
     expect(meta.hasAlpha).toBe(true);
   });
 
-  it("clipped raster image has both transparent and opaque pixels", async () => {
-    // Page 3: 200x200 image clipped to 100x100 rect
-    // The clipped area should have opaque pixels, the rest should be transparent
+  it("clipped raster image is auto-cropped to opaque bounds", async () => {
+    // Page 3: 200x200pt image clipped to 100x100pt rect
+    // Rendered at 2x → 400x400px, clip = 200x200px, then auto-cropped to 200x200
     const result = await extractPdf({ pdfBuffer, startPage: 3, endPage: 3 });
     const page = result.pages[0];
 
@@ -234,15 +234,20 @@ describe("Raster Image Extraction with Clipping", () => {
 
     const decoded = decodePng(rasterImages[0].pngBuffer);
 
-    let hasTransparent = false;
+    // After auto-crop, image should be smaller than the full 400px rendered size
+    expect(decoded.width).toBeLessThan(400);
+    expect(decoded.height).toBeLessThan(400);
+
+    // Should have only opaque pixels (transparent padding was cropped away)
     let hasOpaque = false;
+    let hasTransparent = false;
     for (let i = 3; i < decoded.data.length; i += 4) {
-      if (decoded.data[i] === 0) hasTransparent = true;
       if (decoded.data[i] === 255) hasOpaque = true;
-      if (hasTransparent && hasOpaque) break;
+      if (decoded.data[i] === 0) hasTransparent = true;
+      if (hasOpaque && hasTransparent) break;
     }
-    expect(hasTransparent).toBe(true);
     expect(hasOpaque).toBe(true);
+    expect(hasTransparent).toBe(false);
   });
 
   it("extracts all pages without errors", async () => {

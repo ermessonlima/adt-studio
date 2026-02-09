@@ -141,7 +141,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .ic{background:var(--sf);border:1px solid var(--bd);border-radius:8px;overflow:hidden}
 .ic:hover{border-color:var(--bl)}
 .ic .ip{background:repeating-conic-gradient(#222 0% 25%,#333 0% 50%) 50%/16px 16px;display:flex;align-items:center;justify-content:center;padding:8px;min-height:120px}
-.ic .ip img{max-width:100%;max-height:180px;display:block}
+.ic .ip img{max-width:100%;max-height:180px;display:block;outline:1px solid rgba(255,255,255,.35)}
 .ic .ii{padding:8px 10px;font-size:11px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:2px}
 .ic .ii .id{font-weight:600;color:var(--bl);font-family:monospace}
 .ic .ii .dm{color:var(--td)} .ic .ii .hs{color:var(--td);font-family:monospace;font-size:10px}

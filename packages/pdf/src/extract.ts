@@ -6,6 +6,7 @@
 
 import { createHash } from "crypto";
 import mupdf, { type Document as MupdfDocument } from "mupdf";
+import { cropPng, decodePng } from "./png-utils.js";
 import { renderSvgToPng } from "./svg-render.js";
 
 // ============================================================================
@@ -119,6 +120,40 @@ export async function extractPdf(
 
 function hashBuffer(buf: Buffer): string {
   return createHash("sha256").update(buf).digest("hex").slice(0, 16);
+}
+
+/** Returns true if every pixel in the RGBA PNG is fully transparent (alpha === 0). */
+function isFullyTransparent(pngBuffer: Buffer): boolean {
+  const { data } = decodePng(pngBuffer);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] !== 0) return false;
+  }
+  return true;
+}
+
+/** Crop a PNG to the tight bounding box of non-transparent pixels. Returns original if no crop needed. */
+function autoCropPng(pngBuffer: Buffer): Buffer {
+  const { data, width, height } = decodePng(pngBuffer);
+  let top = height, left = width, bottom = 0, right = 0;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] !== 0) {
+        if (y < top) top = y;
+        if (y > bottom) bottom = y;
+        if (x < left) left = x;
+        if (x > right) right = x;
+      }
+    }
+  }
+
+  // No visible pixels or already tight
+  if (bottom < top) return pngBuffer;
+  const cropW = right - left + 1;
+  const cropH = bottom - top + 1;
+  if (cropW === width && cropH === height) return pngBuffer;
+
+  return cropPng(pngBuffer, { left, top, width: cropW, height: cropH });
 }
 
 // Ref-counted stderr suppressor — safe for overlapping extractPdf() calls.
@@ -349,7 +384,9 @@ async function extractRasterImages(
     const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${minX} ${minY} ${vbW} ${vbH}">\n${defsStr}\n${imageContent}\n</svg>`;
 
     try {
-      const pngBuf = await renderSvgToPng(svgStr);
+      const rawPng = await renderSvgToPng(svgStr);
+      if (isFullyTransparent(rawPng)) continue;
+      const pngBuf = autoCropPng(rawPng);
 
       imgIndex++;
       const imgId = pageId + "_im" + String(imgIndex).padStart(3, "0");
@@ -1304,7 +1341,9 @@ ${shapeElements}
 
   try {
     // Render to PNG with transparency (144 DPI = 2x scale)
-    const pngBuf = await renderSvgToPng(shapeSvg);
+    const rawPng = await renderSvgToPng(shapeSvg);
+    if (isFullyTransparent(rawPng)) return null;
+    const pngBuf = autoCropPng(rawPng);
 
     const imgId = pageId + "_im" + String(imgIndex).padStart(3, "0");
 
