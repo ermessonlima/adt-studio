@@ -11,7 +11,7 @@ This document records all significant technology and architecture decisions made
 3. [HTTP Server: Hono](#003-hono-over-express-and-fastify)
 4. [Frontend Framework: React + Vite (not Next.js)](#004-react--vite-over-nextjs)
 5. [Frontend Ecosystem: TanStack (Router, Query, Table, Form)](#005-tanstack-ecosystem-over-mixed-libraries)
-6. [Desktop Runtime: Tauri](#006-tauri-over-electron)
+6. [Desktop Runtime: Tauri or Electron (TBD)](#006-desktop-runtime-tauri-or-electron)
 7. [Styling: Tailwind CSS](#007-tailwind-css-over-css-modules-and-css-in-js)
 8. [Validation: Zod](#008-zod-over-io-ts-yup-and-joi)
 9. [Database: node-sqlite3-wasm](#009-node-sqlite3-wasm-over-better-sqlite3)
@@ -31,10 +31,10 @@ Always prefer pure JavaScript/TypeScript or WASM-compiled libraries over native 
 
 ### Context
 
-ADT Studio is a desktop app built with Tauri that needs to run on Windows, macOS, and Linux. Native Node.js bindings (packages using `node-gyp`, `prebuild`, or N-API with compiled C/C++) create significant problems:
+ADT Studio is a desktop app that needs to run on Windows, macOS, and Linux. Native Node.js bindings (packages using `node-gyp`, `prebuild`, or N-API with compiled C/C++) create significant problems:
 
 - **Cross-platform build failures**: Native modules must be compiled per-platform and per-Node-version. `node-gyp` requires Python, C++ compilers, and platform-specific toolchains — a constant source of CI/CD failures.
-- **Tauri sidecar packaging**: When bundling a Node.js sidecar in Tauri, native bindings add complexity to the build pipeline and increase binary size.
+- **Desktop packaging**: Whether using Tauri or Electron, native bindings add complexity to the build pipeline and increase binary size.
 - **Contributor friction**: New developers must install platform-specific build tools before they can `pnpm install`.
 - **WASM has matured**: WebAssembly alternatives for performance-critical libraries (SQLite, image processing) now match or exceed the DX of native bindings, with zero compilation step.
 
@@ -85,7 +85,7 @@ Use Hono as the HTTP server framework for the API.
 
 ### Reasoning
 
-- **Tiny footprint (~14KB)**: Critical for Tauri sidecar — we want the API process to be lightweight.
+- **Tiny footprint (~14KB)**: Critical for desktop sidecar — we want the API process to be lightweight.
 - **TypeScript-first**: Typed routes, typed middleware, typed context — no `@types/express` needed.
 - **Faster benchmarks**: Outperforms Express on request throughput.
 - **Edge-portable**: Runs on Node.js, Deno, Bun, Cloudflare Workers — future-proof if we ever move the API.
@@ -112,9 +112,9 @@ Use React with Vite as a pure SPA, not Next.js.
 
 ### Reasoning
 
-ADT Studio is a **desktop-first application** embedded in Tauri's webview. This changes the entire calculus:
+ADT Studio is a **desktop-first application** embedded in a desktop webview (Tauri or Electron). This changes the entire calculus:
 
-1. **No server needed in the frontend**: Next.js brings SSR, server components, API routes, and a Node.js server — none of which apply. Tauri serves static HTML/JS/CSS from disk, not from a Next.js server.
+1. **No server needed in the frontend**: Next.js brings SSR, server components, API routes, and a Node.js server — none of which apply. The desktop shell serves static HTML/JS/CSS, not from a Next.js server.
 2. **SPA is the right model**: The app runs locally, talks to a local Hono API via HTTP. There's no SEO, no initial page load from a remote server, no need for streaming SSR.
 3. **Vite is faster for development**: Near-instant HMR via native ES modules vs. Next.js's webpack/turbopack compilation.
 4. **Simpler build output**: Vite produces a static `dist/` folder. Next.js produces a `.next/` directory that expects a Node.js runtime to serve it.
@@ -136,7 +136,7 @@ ADT Studio is a **desktop-first application** embedded in Tauri's webview. This 
 
 | Framework | Why Not |
 |-----------|---------|
-| Next.js | Overkill — SSR/SSG/server components not needed, adds complexity to Tauri embedding |
+| Next.js | Overkill — SSR/SSG/server components not needed, adds complexity to desktop embedding |
 | Create React App | Deprecated, slow, ejection required for customization |
 | Remix | Server-focused like Next.js, same issues for a desktop SPA |
 | SvelteKit | Would require the team to learn Svelte, React ecosystem is more mature |
@@ -169,7 +169,7 @@ TanStack eliminates this by providing a unified ecosystem where type safety flow
 - **Type-safe routes**: Route params, search params, and loaders are all typed at compile time. A typo in a route path or param name is a TS error, not a runtime 404.
 - **Search params as state**: URL search params are treated as first-class typed state — like `useState` but synced to the URL. Perfect for filters, pagination, sorting.
 - **Integrated data loading**: Route loaders integrate with TanStack Query, so data prefetching happens at the routing level.
-- **React Router v7 caveat**: React Router v7 added type safety, but only in "framework mode" (Remix-style). In SPA mode (which we need for Tauri), you don't get the enhanced features. TanStack Router is type-safe in all modes.
+- **React Router v7 caveat**: React Router v7 added type safety, but only in "framework mode" (Remix-style). In SPA mode (which we need for desktop embedding), you don't get the enhanced features. TanStack Router is type-safe in all modes.
 
 #### TanStack Query (over manual useEffect/fetch)
 
@@ -196,7 +196,7 @@ TanStack eliminates this by providing a unified ecosystem where type safety flow
 
 | Library | Why Not |
 |---------|---------|
-| React Router | Type safety only in framework mode; we need SPA mode for Tauri |
+| React Router | Type safety only in framework mode; we need SPA mode for desktop embedding |
 | SWR | Less features than TanStack Query, no mutation support built-in |
 | react-hook-form | Good library but separate ecosystem, TanStack Form integrates better with our Zod-first approach |
 | AG Grid / DataGrid | Heavy, opinionated UI — we want headless + Tailwind |
@@ -204,30 +204,40 @@ TanStack eliminates this by providing a unified ecosystem where type safety flow
 
 ---
 
-## 006: Tauri Over Electron
+## 006: Desktop Runtime — Tauri or Electron
 
-**Status**: Decided
+**Status**: Pending
 **Date**: 2026-02-09
 
 ### Decision
 
-Use Tauri as the desktop runtime.
+Desktop runtime is **TBD**. The two candidates are Tauri and Electron. This decision will be made when desktop packaging work begins.
 
-### Reasoning
+### Candidates
 
-- **~10x smaller bundle**: Tauri uses the system webview (WebKit on macOS, WebView2 on Windows, WebKitGTK on Linux) instead of bundling Chromium.
-- **Lower memory**: No separate Chromium process eating 200MB+ RAM.
-- **Rust backend**: Performance-critical operations (file I/O, process management) can be written in Rust.
-- **Security model**: Allowlist-based permissions — the frontend can only call explicitly allowed Tauri commands.
-- **Cross-platform**: Windows, macOS, Linux from a single codebase.
+#### Tauri
 
-### Alternatives Considered
+| Aspect | Details |
+|--------|---------|
+| Bundle size | ~10x smaller (uses system webview) |
+| Memory | Lower footprint, no bundled Chromium |
+| Backend | Rust — performance for file I/O, process management |
+| Security | Allowlist-based permissions |
+| Trade-off | Requires Rust toolchain, webview inconsistencies across platforms |
 
-| Runtime | Why Not |
-|---------|---------|
-| Electron | Bundles Chromium (~150MB), high memory usage, larger attack surface |
-| Neutralinojs | Less mature, smaller ecosystem, weaker TypeScript support |
-| Wails (Go) | Would require Go knowledge, smaller community than Tauri |
+#### Electron
+
+| Aspect | Details |
+|--------|---------|
+| Bundle size | Larger (~150MB, bundles Chromium) |
+| Memory | Higher (separate Chromium process) |
+| Backend | Node.js — same language as the rest of the stack |
+| Security | Full Chromium sandboxing, well-understood model |
+| Trade-off | Heavier, but consistent rendering across platforms, mature ecosystem |
+
+### Architecture Note
+
+The `apps/desktop/` wrapper is designed to be runtime-agnostic. The Studio SPA communicates with the API over HTTP regardless of which desktop shell is used. This means the choice can be deferred without blocking other work.
 
 ---
 
@@ -301,7 +311,7 @@ Use `node-sqlite3-wasm` (pure WASM SQLite) instead of `better-sqlite3` (native C
 This directly follows from [Decision 001: Pure JS/TS Over Native](#001-pure-jsts-over-native-bindings).
 
 - **No native compilation**: `better-sqlite3` requires `node-gyp` and a C++ compiler. `node-sqlite3-wasm` is a WASM binary that works everywhere Node.js runs.
-- **Cross-platform by default**: No platform-specific prebuilds, no Electron/Tauri rebuild steps.
+- **Cross-platform by default**: No platform-specific prebuilds, no desktop runtime rebuild steps.
 - **File system persistence**: Unlike `sql.js` (in-memory only without manual serialization) or `@sqlite.org/sqlite-wasm` (browser-only), `node-sqlite3-wasm` has a VFS that maps SQLite file operations to Node.js's `fs` API.
 - **Based on SQLite 3.51.1**: Current SQLite version, actively maintained.
 - **Synchronous API**: Same synchronous query pattern as `better-sqlite3`.
@@ -386,7 +396,7 @@ Use clsx for conditional CSS class composition.
 | 003 | HTTP server | Hono | Express, Fastify |
 | 004 | Frontend build | React + Vite (SPA) | Next.js, CRA |
 | 005 | Frontend ecosystem | TanStack (Router, Query, Table, Form) | React Router, SWR, react-hook-form |
-| 006 | Desktop runtime | Tauri | Electron |
+| 006 | Desktop runtime | Tauri or Electron (TBD) | — |
 | 007 | Styling | Tailwind CSS | CSS Modules, styled-components |
 | 008 | Validation | Zod | io-ts, Yup, Joi |
 | 009 | Database | node-sqlite3-wasm | better-sqlite3, sql.js |

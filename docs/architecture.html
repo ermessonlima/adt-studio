@@ -438,7 +438,7 @@
         </div>
         <div class="arch-box">
           apps/desktop
-          <div class="tooltip">Tauri wrapper<br>Native OS integration<br>Embeds studio webview</div>
+          <div class="tooltip">Desktop wrapper (Tauri or Electron — TBD)<br>Native OS integration<br>Embeds studio webview</div>
         </div>
       </div>
     </div>
@@ -617,7 +617,7 @@
           <li>Faster request handling benchmarks vs Express</li>
           <li>Edge-ready (works on Cloudflare Workers, Deno, Bun)</li>
           <li>Middleware ecosystem: CORS, body parsing, error handling built-in</li>
-          <li>Perfect for embedding in Tauri sidecar (minimal footprint)</li>
+          <li>Perfect for embedding in desktop sidecar (minimal footprint)</li>
         </ul>
       </div>
     </div>
@@ -632,7 +632,7 @@
       <div class="lib-details">
         <strong style="color: var(--text); display: block; margin-bottom: 0.5rem;">Why NOT Next.js:</strong>
         <ul>
-          <li>ADT Studio is a <strong>desktop app in Tauri</strong> — Tauri serves static files from disk, not from a Node.js server</li>
+          <li>ADT Studio is a <strong>desktop app</strong> — the shell serves static files from disk, not from a Node.js server</li>
           <li>Next.js brings SSR, server components, API routes — none apply to a local desktop SPA</li>
           <li>Next.js output (<code>.next/</code>) expects a Node.js runtime to serve it; Vite outputs a static <code>dist/</code></li>
           <li>Next.js in a monorepo requires <code>transpilePackages</code>, <code>serverComponentsExternalPackages</code> config</li>
@@ -650,19 +650,18 @@
 
     <div class="lib-card" onclick="this.classList.toggle('expanded')">
       <div class="lib-header">
-        <span class="lib-name">Tauri</span>
-        <span class="lib-category">Desktop</span>
+        <span class="lib-name">Tauri or Electron</span>
+        <span class="lib-category">Desktop (TBD)</span>
       </div>
-      <div class="lib-why">Lightweight, secure native desktop wrapper</div>
-      <div class="lib-over"><strong>Over:</strong> Electron</div>
+      <div class="lib-why">Desktop runtime decision deferred — architecture is shell-agnostic</div>
+      <div class="lib-over"><strong>Candidates:</strong> Tauri, Electron</div>
       <div class="lib-details">
+        <strong style="color: var(--text);">Tauri</strong> — ~10x smaller bundle (system webview), Rust backend, allowlist security, lower memory<br><br>
+        <strong style="color: var(--text);">Electron</strong> — Bundles Chromium (consistent rendering), Node.js backend (same language), mature ecosystem<br><br>
         <ul>
-          <li>~10x smaller bundle than Electron (uses system webview)</li>
-          <li>Rust backend for performance-critical operations</li>
-          <li>Better security model with allowlist-based permissions</li>
-          <li>Lower memory footprint — no bundled Chromium</li>
-          <li>Cross-platform: Windows, macOS, Linux</li>
-          <li>Can run the Hono API as a sidecar process</li>
+          <li>Decision deferred until desktop packaging work begins</li>
+          <li>Studio SPA talks to API over HTTP — agnostic to which shell wraps it</li>
+          <li><code>apps/desktop/</code> is isolated so the choice doesn't affect other packages</li>
         </ul>
       </div>
     </div>

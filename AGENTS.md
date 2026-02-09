@@ -10,10 +10,10 @@ All agents must follow the project guidelines in [`docs/GUIDELINES.md`](docs/GUI
 
 **Responsibilities**:
 - Verify code is placed in the correct package/app per the architecture (see Guidelines: Code Organization)
-- Check that the 5 core principles are respected (book-level storage, entity versioning, LLM caching, transparency, minimize deps)
+- Check that the 6 core principles are respected (book-level storage, entity versioning, LLM caching, transparency, minimize deps, pure JS/TS over native)
 - Enforce security requirements: Zod validation on all inputs, no API key leaks, path traversal prevention, parameterized SQL
 - Flag anti-patterns: code duplication, global state, hardcoded values, silent error swallowing, unnecessary abstraction
-- Verify frontend rules: Tailwind-only styling, API client usage, no direct package imports, no state management libraries
+- Verify frontend rules: Tailwind-only styling, TanStack ecosystem usage, API client usage, no direct package imports, no state management libraries, pure JS/TS deps only
 - Run the submission checklist from Guidelines: Checklist Before Submitting
 
 **Key sections**: Core Principles, Security Requirements, Anti-Patterns to Avoid, Checklist Before Submitting
@@ -42,16 +42,18 @@ All agents must follow the project guidelines in [`docs/GUIDELINES.md`](docs/GUI
 **Role**: Builds and maintains the React SPA in `apps/studio/`.
 
 **Responsibilities**:
-- Follow the standard component structure (hooks → state → effects → callbacks → handlers → early returns → render)
+- Follow the standard component structure (hooks → query → mutations → handlers → render)
+- Use **TanStack Query** for all server state — no raw `useEffect` for data fetching
+- Use **TanStack Router** for type-safe navigation (`useNavigate`, `Link`, typed params/search)
+- Use **TanStack Table** for data tables (headless + Tailwind UI)
+- Use **TanStack Form** with Zod adapter for form validation
 - Use Tailwind utility classes exclusively — no CSS modules, styled-components, or custom CSS files
-- All API calls through `apps/studio/src/api/client.ts` — never use `fetch()` directly in components
-- State management: local `useState` only — no Redux, Zustand, Context for shared state, or useReducer for simple state
-- Implement loading states, error states, and optimistic updates
-- Use polling (5s intervals) for real-time data, with proper cleanup in useEffect
+- All API calls through `apps/studio/src/api/client.ts` + TanStack Query — never use `fetch()` directly
+- UI-only state via `useState`; server state via TanStack Query — no Redux, Zustand, or global stores
+- Implement loading states, error states, and optimistic updates via Query mutations
 - Check for existing reusable components before creating new ones
-- Use React Router for navigation (`useNavigate`, `Link`)
 
-**Key sections**: Frontend Development, Component Structure, State Management Rules, Styling with Tailwind, API Client Usage, Error Handling in UI
+**Key sections**: Frontend Development, Component Structure, State Management Rules, Styling with Tailwind, API Client Usage, Navigation, Forms, Tables
 
 ---
 

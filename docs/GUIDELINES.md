@@ -37,7 +37,7 @@ These principles are non-negotiable and must guide every decision:
 
 5. **Minimize Dependencies**: If you can avoid adding a new dependency, do so. Flat files > database when sufficient. In-memory queues > external queue services.
 
-6. **Pure JS/TS Over Native**: Always prefer pure JavaScript/TypeScript or WASM-based libraries over native C/C++ bindings. Native bindings break cross-platform builds, complicate CI, and conflict with Tauri packaging. If a native binding is the only option, document why.
+6. **Pure JS/TS Over Native**: Always prefer pure JavaScript/TypeScript or WASM-based libraries over native C/C++ bindings. Native bindings break cross-platform builds, complicate CI, and conflict with desktop packaging. If a native binding is the only option, document why.
 
 ---
 
@@ -57,7 +57,7 @@ adt/
 ├── apps/              # Application tier
 │   ├── api/           # Hono HTTP server
 │   ├── studio/        # React SPA (Vite)
-│   └── desktop/       # Tauri wrapper
+│   └── desktop/       # Desktop wrapper (Tauri or Electron — TBD)
 │
 ├── templates/         # Layout templates
 ├── config/            # Global configuration
@@ -69,7 +69,7 @@ adt/
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    apps/studio (React)                   │
-│                    apps/desktop (Tauri)                  │
+│                    apps/desktop (TBD)                    │
 └─────────────────────────┬───────────────────────────────┘
                           │ HTTP only
                           ▼
@@ -154,7 +154,7 @@ import { localHelper } from "./helpers.js"
 // Correct: Header-based authentication
 const key = c.req.header("X-OpenAI-Key")
 
-// Correct: Environment variable (Tauri sidecar)
+// Correct: Environment variable (desktop sidecar)
 const key = process.env["OPENAI_API_KEY"]
 
 // Correct: Validate before use
@@ -889,13 +889,17 @@ async function runPipeline(jobId: string, onProgress: (p: Progress) => void) {
 ### Platform Detection
 
 ```typescript
-// Detect Tauri vs Web environment
-export function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
+// Detect desktop vs Web environment
+export function isDesktop(): boolean {
+  // Tauri
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) return true
+  // Electron
+  if (typeof window !== "undefined" && "electronAPI" in window) return true
+  return false
 }
 
 // Use for platform-specific behavior
-const apiBase = isTauri() ? "http://localhost:3000/api" : "/api"
+const apiBase = isDesktop() ? "http://localhost:3000/api" : "/api"
 ```
 
 ---

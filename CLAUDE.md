@@ -7,7 +7,7 @@ ADT Studio is a desktop-first application for automated book production — extr
 - **Monorepo**: pnpm workspaces
 - **Backend**: Hono (HTTP server), node-sqlite3-wasm (pure WASM SQLite), Zod
 - **Frontend**: React + Vite SPA, TanStack (Router, Query, Table, Form), Tailwind CSS
-- **Desktop**: Tauri (Rust wrapper)
+- **Desktop**: Tauri or Electron (TBD)
 - **Language**: TypeScript (strict mode)
 - **Testing**: Vitest
 
@@ -33,7 +33,7 @@ packages/          # Shared libraries (@adt/* workspace packages)
 apps/              # Application tier
   api/             # Hono HTTP server
   studio/          # React SPA (Vite)
-  desktop/         # Tauri wrapper
+  desktop/         # Desktop wrapper (Tauri or Electron — TBD)
 
 templates/         # Layout templates
 config/            # Global configuration
