@@ -118,7 +118,7 @@ export async function extractPdf(
 // ============================================================================
 
 function hashBuffer(buf: Buffer): string {
-  return createHash("sha256").update(buf.toString("base64")).digest("hex").slice(0, 16);
+  return createHash("sha256").update(buf).digest("hex").slice(0, 16);
 }
 
 function openPdfFromBuffer(buffer: Buffer): MupdfDocument {
@@ -215,31 +215,6 @@ async function extractRasterImages(
 ): Promise<ExtractedImage[]> {
   const images: ExtractedImage[] = [];
   const { contentWithoutDefs, svgDefs, pageWidth, pageHeight } = svg;
-
-  // Build clip ranges for position-based clip lookup
-  interface ClipRange { clipId: string; start: number; end: number; }
-  const clipRanges: ClipRange[] = [];
-
-  const clipOpenRegex = /<g[^>]*clip-path="url\(#([^"]+)\)"[^>]*>/gi;
-  let openMatch;
-  while ((openMatch = clipOpenRegex.exec(contentWithoutDefs)) !== null) {
-    const clipId = openMatch[1];
-    const start = openMatch.index;
-    let depth = 1;
-    let pos = start + openMatch[0].length;
-    while (depth > 0 && pos < contentWithoutDefs.length) {
-      if (contentWithoutDefs.slice(pos, pos + 2) === "<g") {
-        depth++;
-        pos += 2;
-      } else if (contentWithoutDefs.slice(pos, pos + 4) === "</g>") {
-        depth--;
-        if (depth > 0) pos += 4;
-      } else {
-        pos++;
-      }
-    }
-    clipRanges.push({ clipId, start, end: pos + 4 });
-  }
 
   // Find <image> elements
   const imageRegex = /<image[^>]*\/?>/gi;

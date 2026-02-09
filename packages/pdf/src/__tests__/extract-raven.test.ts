@@ -31,7 +31,7 @@ describe("raven.pdf extraction", () => {
   it("page 1 — correct page image hash and dimensions", () => {
     const p = result.pages[0];
     expect(p.pageId).toBe("pg001");
-    expect(p.pageImage.hash).toBe("60cf1328f9e00c43");
+    expect(p.pageImage.hash).toBe("de4641ff75b91c8f");
     expect(p.pageImage.width).toBe(1190);
     expect(p.pageImage.height).toBe(840);
   });
@@ -46,17 +46,17 @@ describe("raven.pdf extraction", () => {
     const imgs = result.pages[0].images;
     expect(imgs).toHaveLength(2);
     expect(imgs[0].imageId).toBe("pg001_im001");
-    expect(imgs[0].hash).toBe("6a81773d0ee11909");
+    expect(imgs[0].hash).toBe("cf76f48c781a311e");
     expect(imgs[0].width).toBe(776);
     expect(imgs[0].height).toBe(776);
     expect(imgs[1].imageId).toBe("pg001_im002");
-    expect(imgs[1].hash).toBe("62e3220cce2c9111");
+    expect(imgs[1].hash).toBe("f8d248d4efca122e");
   });
 
   // -- Page 2 --
 
   it("page 2 — correct page image hash", () => {
-    expect(result.pages[1].pageImage.hash).toBe("4934db2120500e6d");
+    expect(result.pages[1].pageImage.hash).toBe("adf24fa292e84cb4");
   });
 
   it("page 2 — extracts story text", () => {
@@ -69,14 +69,14 @@ describe("raven.pdf extraction", () => {
   it("page 2 — extracts 2 images with correct hashes", () => {
     const imgs = result.pages[1].images;
     expect(imgs).toHaveLength(2);
-    expect(imgs[0].hash).toBe("46d1a129b569bbc2");
-    expect(imgs[1].hash).toBe("2a686276c5f3ab6a");
+    expect(imgs[0].hash).toBe("c810060db433effd");
+    expect(imgs[1].hash).toBe("a82bbfd79d7dafb0");
   });
 
   // -- Page 3 --
 
   it("page 3 — correct page image hash", () => {
-    expect(result.pages[2].pageImage.hash).toBe("8374a374170f5812");
+    expect(result.pages[2].pageImage.hash).toBe("b4e15507c1191d6e");
   });
 
   it("page 3 — extracts story text", () => {
@@ -88,7 +88,7 @@ describe("raven.pdf extraction", () => {
   it("page 3 — extracts 2 images with correct hashes", () => {
     const imgs = result.pages[2].images;
     expect(imgs).toHaveLength(2);
-    expect(imgs[0].hash).toBe("af1a9d1d1f6501ed");
-    expect(imgs[1].hash).toBe("ff402ed698ee7af8");
+    expect(imgs[0].hash).toBe("1b02ce7a7e7ce4c0");
+    expect(imgs[1].hash).toBe("d563dfc326d3fa2f");
   });
 });

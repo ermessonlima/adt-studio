@@ -158,7 +158,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 <div class="nv"><button id="pb" onclick="nav(-1)">\u2190 Prev</button><span class="pi" id="pin">\u2014</span><button id="nb" onclick="nav(1)">Next \u2192</button></div></div>
 <div class="mn"><div class="sb" id="sb"></div><div class="ct" id="ct"></div></div>
 <script>
-const D=${JSON.stringify(data)};
+const D=${JSON.stringify(data).replace(/</g, '\\u003c')};
 let cur=0;
 function esc(s){const e=document.createElement('span');e.textContent=s;return e.innerHTML}
 function init(){

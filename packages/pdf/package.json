@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
   "bin": {
-    "pdf-extract": "./src/cli.ts"
+    "pdf-extract": "./dist/cli.js"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
