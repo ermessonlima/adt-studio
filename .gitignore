@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 books/
+.cache/
 .DS_Store
 
 # Reference project

@@ -18,6 +18,7 @@
   "references": [
     { "path": "packages/types" },
     { "path": "packages/pdf" },
+    { "path": "packages/llm" },
     { "path": "packages/storage" },
     { "path": "packages/pipeline" }
   ]

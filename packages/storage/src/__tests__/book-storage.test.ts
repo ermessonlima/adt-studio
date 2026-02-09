@@ -215,3 +215,112 @@ describe("createBookStorage", () => {
     )
   })
 })
+
+describe("getPages", () => {
+  it("returns pages ordered by page number", () => {
+    const { storage } = createTempStorage()
+
+    storage.putExtractedPage(makePage(3))
+    storage.putExtractedPage(makePage(1))
+    storage.putExtractedPage(makePage(2))
+
+    const pages = storage.getPages()
+    expect(pages).toHaveLength(3)
+    expect(pages[0].pageId).toBe("pg001")
+    expect(pages[0].pageNumber).toBe(1)
+    expect(pages[0].text).toBe("Text for page 1")
+    expect(pages[1].pageNumber).toBe(2)
+    expect(pages[2].pageNumber).toBe(3)
+
+    storage.close()
+  })
+
+  it("returns empty array when no pages", () => {
+    const { storage } = createTempStorage()
+    expect(storage.getPages()).toEqual([])
+    storage.close()
+  })
+})
+
+describe("getPageImageBase64", () => {
+  it("returns page image as base64", () => {
+    const { storage } = createTempStorage()
+
+    storage.putExtractedPage(makePage(1))
+    const base64 = storage.getPageImageBase64("pg001")
+    const decoded = Buffer.from(base64, "base64").toString()
+    expect(decoded).toBe("fake-png-800x1200")
+
+    storage.close()
+  })
+
+  it("throws for missing page image", () => {
+    const { storage } = createTempStorage()
+    expect(() => storage.getPageImageBase64("pg999")).toThrow(
+      "No page image found"
+    )
+    storage.close()
+  })
+})
+
+describe("putNodeData / getLatestNodeData", () => {
+  it("stores and retrieves versioned data", () => {
+    const { storage } = createTempStorage()
+
+    const v1 = storage.putNodeData("text-classification", "pg001", { reasoning: "v1" })
+    expect(v1).toBe(1)
+
+    const v2 = storage.putNodeData("text-classification", "pg001", { reasoning: "v2" })
+    expect(v2).toBe(2)
+
+    const latest = storage.getLatestNodeData("text-classification", "pg001")
+    expect(latest).not.toBeNull()
+    expect(latest!.version).toBe(2)
+    expect(latest!.data).toEqual({ reasoning: "v2" })
+
+    storage.close()
+  })
+
+  it("returns null for missing node data", () => {
+    const { storage } = createTempStorage()
+    expect(storage.getLatestNodeData("text-classification", "pg999")).toBeNull()
+    storage.close()
+  })
+
+  it("handles different nodes independently", () => {
+    const { storage } = createTempStorage()
+
+    storage.putNodeData("text-classification", "pg001", { a: 1 })
+    storage.putNodeData("page-sectioning", "pg001", { b: 2 })
+
+    const tc = storage.getLatestNodeData("text-classification", "pg001")
+    const ps = storage.getLatestNodeData("page-sectioning", "pg001")
+    expect(tc!.data).toEqual({ a: 1 })
+    expect(ps!.data).toEqual({ b: 2 })
+
+    storage.close()
+  })
+})
+
+describe("appendLlmLog", () => {
+  it("appends log entries", () => {
+    const { storage, paths } = createTempStorage()
+
+    storage.appendLlmLog({ taskType: "test", modelId: "gpt-4o" })
+    storage.appendLlmLog({ taskType: "test2", modelId: "gpt-4o" })
+
+    const db = openBookDb(paths.dbPath)
+    const rows = db.all("SELECT * FROM llm_log ORDER BY id") as Array<{
+      id: number
+      timestamp: string
+      data: string
+    }>
+    expect(rows).toHaveLength(2)
+    expect(JSON.parse(rows[0].data).taskType).toBe("test")
+    expect(JSON.parse(rows[1].data).taskType).toBe("test2")
+    expect(rows[0].timestamp).toBeTruthy()
+    db.close()
+
+    storage.close()
+  })
+})

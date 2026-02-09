@@ -9,3 +9,16 @@ export {
 export { StepName, ProgressEvent } from "./progress.js"
 
 export { BookLabel } from "./book.js"
+
+export {
+  StepConfig,
+  AppConfig,
+  type TypeDef,
+} from "./config.js"
+
+export {
+  TextEntry,
+  TextGroup,
+  TextClassificationOutput,
+  buildTextClassificationLLMSchema,
+} from "./text-classification.js"

@@ -9,10 +9,11 @@ Arguments:
   pdf-file    Path to PDF file
 
 Options:
-  --start-page <n>  Start at page N (1-indexed)
-  --end-page <n>    End at page N (inclusive)
-  --books-dir <dir> Books root directory (default: books)
-  -h, --help        Show this help`
+  --start-page <n>    Start at page N (1-indexed)
+  --end-page <n>      End at page N (inclusive)
+  --books-dir <dir>   Books root directory (default: books)
+  --concurrency <n>   Max parallel LLM calls (default: from config or 5)
+  -h, --help          Show this help`
 
 const ParsedCliArgsSchema = z
   .object({
@@ -21,6 +22,7 @@ const ParsedCliArgsSchema = z
     startPage: z.coerce.number().int().positive().optional(),
     endPage: z.coerce.number().int().positive().optional(),
     booksDir: z.string().min(1).optional(),
+    concurrency: z.coerce.number().int().positive().optional(),
   })
   .refine(
     (value) =>
@@ -39,6 +41,7 @@ export interface ParsedCliArgs {
   startPage?: number
   endPage?: number
   booksRoot: string
+  concurrency?: number
 }
 
 export function parseCliArgs(args: string[]): ParsedCliArgs {
@@ -46,6 +49,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
   let startPageRaw: string | undefined
   let endPageRaw: string | undefined
   let booksDirRaw: string | undefined
+  let concurrencyRaw: string | undefined
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
@@ -70,6 +74,13 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
       booksDirRaw = args[++i]
       continue
     }
+    if (arg === "--concurrency") {
+      if (args[i + 1] === undefined) {
+        throw new Error("Missing value for --concurrency")
+      }
+      concurrencyRaw = args[++i]
+      continue
+    }
     if (arg.startsWith("-")) {
       throw new Error(`Unknown option: ${arg}`)
     }
@@ -86,6 +97,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     startPage: startPageRaw,
     endPage: endPageRaw,
     booksDir: booksDirRaw,
+    concurrency: concurrencyRaw,
   })
 
   if (!parsed.success) {
@@ -99,5 +111,6 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     startPage: parsed.data.startPage,
     endPage: parsed.data.endPage,
     booksRoot: path.resolve(parsed.data.booksDir ?? process.env.BOOKS_DIR ?? "books"),
+    concurrency: parsed.data.concurrency,
   }
 }

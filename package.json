@@ -14,6 +14,7 @@
     "pipeline": "tsx packages/pipeline/src/cli.ts"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
     "tsx": "^4.21.0",
     "typescript": "^5",

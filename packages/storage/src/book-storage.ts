@@ -3,7 +3,7 @@ import path from "node:path"
 import type sqlite from "node-sqlite3-wasm"
 import type { ExtractedPage, ExtractedImage, PdfMetadata } from "@adt/pdf"
 import { BookLabel } from "@adt/types"
-import type { Storage } from "./storage.js"
+import type { Storage, PageData, NodeDataRow } from "./storage.js"
 import { openBookDb } from "./db.js"
 
 export interface BookPaths {
@@ -78,6 +78,61 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
       for (const img of page.images) {
         writeImage(db, paths.imagesDir, img, page.pageId, "extract")
       }
+    },
+
+    getPages(): PageData[] {
+      const rows = db.all(
+        "SELECT page_id, page_number, text FROM pages ORDER BY page_number"
+      ) as Array<{ page_id: string; page_number: number; text: string }>
+      return rows.map((r) => ({
+        pageId: r.page_id,
+        pageNumber: r.page_number,
+        text: r.text,
+      }))
+    },
+
+    getPageImageBase64(pageId: string): string {
+      const rows = db.all(
+        "SELECT path FROM images WHERE image_id = ?",
+        [`${pageId}_page`]
+      ) as Array<{ path: string }>
+      if (rows.length === 0) {
+        throw new Error(`No page image found for ${pageId}`)
+      }
+      const filePath = path.join(paths.bookDir, rows[0].path)
+      return fs.readFileSync(filePath).toString("base64")
+    },
+
+    putNodeData(node: string, itemId: string, data: unknown): number {
+      const rows = db.all(
+        "SELECT MAX(version) as max_version FROM node_data WHERE node = ? AND item_id = ?",
+        [node, itemId]
+      ) as Array<{ max_version: number | null }>
+      const nextVersion = (rows[0]?.max_version ?? 0) + 1
+      db.run(
+        "INSERT INTO node_data (node, item_id, version, data) VALUES (?, ?, ?, ?)",
+        [node, itemId, nextVersion, JSON.stringify(data)]
+      )
+      return nextVersion
+    },
+
+    getLatestNodeData(node: string, itemId: string): NodeDataRow | null {
+      const rows = db.all(
+        "SELECT version, data FROM node_data WHERE node = ? AND item_id = ? ORDER BY version DESC LIMIT 1",
+        [node, itemId]
+      ) as Array<{ version: number; data: string }>
+      if (rows.length === 0) return null
+      return {
+        version: rows[0].version,
+        data: JSON.parse(rows[0].data),
+      }
+    },
+
+    appendLlmLog(entry: unknown): void {
+      db.run(
+        "INSERT INTO llm_log (timestamp, data) VALUES (?, ?)",
+        [new Date().toISOString(), JSON.stringify(entry)]
+      )
     },
 
     close(): void {
