@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADT Studio — Architecture</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-card-hover: #253348;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent2: #2dd4bf;
+    --accent3: #818cf8;
+    --accent4: #f472b6;
+    --accent5: #facc15;
+    --danger: #f87171;
+    --success: #4ade80;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+  }
+
+  .tab {
+    padding: 0.6rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { background: var(--bg-card); color: var(--text); }
+  .tab.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Tab Content */
+  .tab-content { display: none; animation: fadeIn 0.3s ease; }
+  .tab-content.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+  }
+  .card:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+
+  .card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card p { color: var(--text-muted); font-size: 0.9rem; }
+
+  /* Architecture Diagram */
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    padding: 2rem 0;
+  }
+
+  .arch-layer {
+    width: 100%;
+    max-width: 800px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    position: relative;
+    transition: all 0.3s;
+  }
+  .arch-layer:hover { border-color: var(--accent); transform: scale(1.01); }
+
+  .arch-layer .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .arch-boxes {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .arch-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: default;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .arch-box:hover {
+    border-color: var(--accent2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(45, 212, 191, 0.15);
+  }
+
+  .arch-box .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .arch-box:hover .tooltip { display: block; }
+
+  .arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .arrow svg { width: 24px; height: 24px; }
+  .arrow-label { font-style: italic; }
+
+  /* Data Flow */
+  .flow-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding: 2rem 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .flow-step {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    min-width: 160px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: default;
+  }
+  .flow-step:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.1);
+  }
+
+  .flow-step .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .flow-step .name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+  .flow-step .pkg { color: var(--accent2); font-size: 0.75rem; font-family: monospace; }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 1.5rem;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+
+  /* Library Grid */
+  .lib-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+  }
+
+  .lib-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .lib-card:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+
+  .lib-card .lib-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .lib-card .lib-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+
+  .lib-card .lib-category {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.1);
+    color: var(--accent);
+  }
+
+  .lib-card .lib-why { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+  .lib-card .lib-over {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+  }
+  .lib-card .lib-over strong { color: var(--text); }
+
+  .lib-card .lib-details {
+    display: none;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .lib-card .lib-details ul { padding-left: 1.2rem; }
+  .lib-card .lib-details li { margin-bottom: 0.25rem; }
+  .lib-card.expanded .lib-details { display: block; animation: fadeIn 0.2s ease; }
+
+  /* Principles */
+  .principles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .principle-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .principle-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.1);
+  }
+
+  .principle-card .p-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .principle-card .p-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .principle-card .p-desc { color: var(--text-muted); font-size: 0.8rem; }
+
+  .principle-card:nth-child(1) { border-color: var(--accent); }
+  .principle-card:nth-child(2) { border-color: var(--accent2); }
+  .principle-card:nth-child(3) { border-color: var(--accent3); }
+  .principle-card:nth-child(4) { border-color: var(--accent5); }
+  .principle-card:nth-child(5) { border-color: var(--accent4); }
+
+  /* Security */
+  .security-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .sec-layer {
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    position: relative;
+  }
+
+  .sec-layer .sec-label {
+    position: absolute;
+    top: -0.7rem;
+    left: 1rem;
+    background: var(--bg);
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .sec-items { display: flex; flex-direction: column; gap: 0.5rem; }
+  .sec-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+  }
+  .sec-icon { font-size: 1.2rem; flex-shrink: 0; }
+  .sec-check { color: var(--success); }
+  .sec-block { color: var(--danger); }
+
+  .sec-layer.boundary { border-color: var(--accent); }
+  .sec-layer.boundary .sec-label { color: var(--accent); }
+  .sec-layer.validation { border-color: var(--accent2); }
+  .sec-layer.validation .sec-label { color: var(--accent2); }
+  .sec-layer.storage { border-color: var(--accent3); }
+  .sec-layer.storage .sec-label { color: var(--accent3); }
+
+  /* Book Directory */
+  .book-tree {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    color: var(--text-muted);
+    margin-top: 1rem;
+  }
+  .book-tree .dir { color: var(--accent); }
+  .book-tree .file { color: var(--text); }
+  .book-tree .comment { color: #64748b; font-style: italic; }
+
+  /* Collapsible */
+  .collapsible-header {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+  }
+
+  .collapsible-header .chevron {
+    transition: transform 0.2s;
+    font-size: 1.2rem;
+  }
+  .collapsible-header.open .chevron { transform: rotate(90deg); }
+
+  .collapsible-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .collapsible-body.open { max-height: 2000px; }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .container { padding: 1rem; }
+    h1 { font-size: 1.8rem; }
+    .lib-grid { grid-template-columns: 1fr; }
+    .principles-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>ADT Studio</h1>
+<p class="subtitle">Automated book production — PDF extraction, LLM pipelines, formatted output</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('architecture')">Architecture</button>
+  <button class="tab" onclick="showTab('dataflow')">Data Flow</button>
+  <button class="tab" onclick="showTab('libraries')">Libraries</button>
+  <button class="tab" onclick="showTab('principles')">Core Principles</button>
+  <button class="tab" onclick="showTab('security')">Security</button>
+</div>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<div id="architecture" class="tab-content active">
+  <h2 style="margin-bottom: 1.5rem;">Monorepo Architecture</h2>
+
+  <div class="arch-diagram">
+    <div class="arch-layer" style="background: rgba(244, 114, 182, 0.05); border-color: var(--accent4);">
+      <div class="label" style="color: var(--accent4);">Presentation Layer</div>
+      <div class="arch-boxes">
+        <div class="arch-box">
+          apps/studio
+          <div class="tooltip">React SPA via Vite<br>Tailwind CSS, React Router<br>Communicates via HTTP only</div>
+        </div>
+        <div class="arch-box">
+          apps/desktop
+          <div class="tooltip">Tauri wrapper<br>Native OS integration<br>Embeds studio webview</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-label">HTTP only</div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </div>
+
+    <div class="arch-layer" style="background: rgba(56, 189, 248, 0.05); border-color: var(--accent);">
+      <div class="label">API Layer</div>
+      <div class="arch-boxes">
+        <div class="arch-box">
+          apps/api
+          <div class="tooltip">Hono HTTP server<br>Zod input validation<br>Routes to pipeline/llm/output</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <div class="arrow-label">Direct imports</div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </div>
+
+    <div class="arch-layer" style="background: rgba(45, 212, 191, 0.05); border-color: var(--accent2);">
+      <div class="label" style="color: var(--accent2);">Service Layer</div>
+      <div class="arch-boxes">
+        <div class="arch-box">
+          packages/pipeline
+          <div class="tooltip">Pure extraction & generation functions<br>No side effects<br>All deps passed as params</div>
+        </div>
+        <div class="arch-box">
+          packages/llm
+          <div class="tooltip">LLM client & caching<br>Cost tracking<br>Prompt management</div>
+        </div>
+        <div class="arch-box">
+          packages/output
+          <div class="tooltip">Bundle packaging<br>Archive creation<br>Template rendering</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </div>
+
+    <div class="arch-layer" style="background: rgba(129, 140, 248, 0.05); border-color: var(--accent3);">
+      <div class="label" style="color: var(--accent3);">Foundation Layer</div>
+      <div class="arch-boxes">
+        <div class="arch-box">
+          packages/types
+          <div class="tooltip">Zod schemas<br>ALL types defined here<br>Single source of truth for data shapes</div>
+        </div>
+        <div class="arch-box">
+          packages/pdf
+          <div class="tooltip">PDF extraction<br>Pure functions<br>Text + structure parsing</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-color: var(--danger); margin-top: 1rem;">
+    <h3 style="color: var(--danger);">Boundary Rule</h3>
+    <p>Frontend apps (studio, desktop) MUST NOT import directly from packages. All data flows through the API via HTTP. This ensures clean separation and allows the API to enforce validation, authentication, and business logic.</p>
+  </div>
+</div>
+
+<!-- ==================== DATA FLOW ==================== -->
+<div id="dataflow" class="tab-content">
+  <h2 style="margin-bottom: 1.5rem;">Pipeline Data Flow</h2>
+
+  <div class="flow-container">
+    <div class="flow-step" style="border-color: var(--accent4);">
+      <div class="icon">📄</div>
+      <div class="name">PDF Upload</div>
+      <div class="pkg">apps/studio</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--accent);">
+      <div class="icon">🔍</div>
+      <div class="name">PDF Extraction</div>
+      <div class="pkg">packages/pdf</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--accent2);">
+      <div class="icon">⚙️</div>
+      <div class="name">Pipeline Processing</div>
+      <div class="pkg">packages/pipeline</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--accent3);">
+      <div class="icon">🤖</div>
+      <div class="name">LLM Calls (cached)</div>
+      <div class="pkg">packages/llm</div>
+    </div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-step" style="border-color: var(--accent5);">
+      <div class="icon">📦</div>
+      <div class="name">Output Bundle</div>
+      <div class="pkg">packages/output</div>
+    </div>
+  </div>
+
+  <h3 style="margin: 2rem 0 1rem;">Book Directory Structure</h3>
+  <p style="color: var(--text-muted); margin-bottom: 1rem;">Each book is fully self-contained — zip it, share it, everything travels together.</p>
+
+  <div class="book-tree">
+    <span class="dir">my-book/</span><br>
+    ├── <span class="file">book.json</span> <span class="comment"># Book metadata &amp; config</span><br>
+    ├── <span class="dir">source/</span><br>
+    │   └── <span class="file">input.pdf</span> <span class="comment"># Original uploaded PDF</span><br>
+    ├── <span class="dir">entities/</span><br>
+    │   ├── <span class="dir">chapters/</span><br>
+    │   │   ├── <span class="file">ch-001.v1.json</span> <span class="comment"># Version 1</span><br>
+    │   │   ├── <span class="file">ch-001.v2.json</span> <span class="comment"># Version 2 (never overwrite!)</span><br>
+    │   │   └── <span class="file">ch-001.v3.json</span> <span class="comment"># Latest version</span><br>
+    │   ├── <span class="dir">characters/</span><br>
+    │   └── <span class="dir">scenes/</span><br>
+    ├── <span class="dir">.cache/</span> <span class="comment"># LLM call cache</span><br>
+    │   ├── <span class="file">a3f2e1...json</span> <span class="comment"># hash(model + prompt + params) → response</span><br>
+    │   └── <span class="file">b7c4d9...json</span><br>
+    ├── <span class="dir">.logs/</span> <span class="comment"># Full LLM call transparency</span><br>
+    │   ├── <span class="file">2025-02-04T10-30.json</span> <span class="comment"># Every prompt &amp; response logged</span><br>
+    │   └── <span class="file">cost-summary.json</span> <span class="comment"># Token usage &amp; cost tracking</span><br>
+    └── <span class="dir">output/</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="file">bundle.zip</span> <span class="comment"># Final packaged output</span>
+  </div>
+
+  <div class="card" style="margin-top: 1.5rem;">
+    <h3>Entity Versioning</h3>
+    <p>Entities are NEVER overwritten. Each modification creates a new version file (v1, v2, v3...) with an incremented version number. This enables full rollback capability and audit trails. The <code>inputVersions</code> field tracks which versions of upstream entities were used to generate each version.</p>
+  </div>
+
+  <div class="card">
+    <h3>LLM Caching</h3>
+    <p>Every LLM call is cached by hashing all ordered inputs (model, prompt, parameters). If a pipeline step is re-run with identical parameters, the cached response is returned instantly. Cache lives inside the book directory so it travels with the book.</p>
+  </div>
+</div>
+
+<!-- ==================== LIBRARIES ==================== -->
+<div id="libraries" class="tab-content">
+  <h2 style="margin-bottom: 1.5rem;">Technology Decisions</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Click any card to see detailed reasoning.</p>
+
+  <div class="lib-grid">
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">pnpm</span>
+        <span class="lib-category">Package Manager</span>
+      </div>
+      <div class="lib-why">Monorepo-first package manager with efficient disk usage</div>
+      <div class="lib-over"><strong>Over:</strong> npm, yarn</div>
+      <div class="lib-details">
+        <ul>
+          <li>Content-addressable storage via symlinks — saves significant disk space</li>
+          <li>Strict dependency resolution prevents phantom dependencies</li>
+          <li>First-class workspace support with filtering and topology-aware commands</li>
+          <li>Faster installs than npm/yarn in monorepo scenarios</li>
+          <li>Built-in support for <code>workspace:*</code> protocol</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">Hono</span>
+        <span class="lib-category">HTTP Server</span>
+      </div>
+      <div class="lib-why">Lightweight, fast web framework with native TypeScript</div>
+      <div class="lib-over"><strong>Over:</strong> Express, Fastify</div>
+      <div class="lib-details">
+        <ul>
+          <li>~14KB — significantly lighter than Express</li>
+          <li>Built-in TypeScript support with typed routes and middleware</li>
+          <li>Faster request handling benchmarks vs Express</li>
+          <li>Edge-ready (works on Cloudflare Workers, Deno, Bun)</li>
+          <li>Middleware ecosystem: CORS, body parsing, error handling built-in</li>
+          <li>Perfect for embedding in Tauri sidecar (minimal footprint)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">React + Vite</span>
+        <span class="lib-category">Frontend</span>
+      </div>
+      <div class="lib-why">SPA with lightning-fast dev server</div>
+      <div class="lib-over"><strong>Over:</strong> Next.js, Create React App</div>
+      <div class="lib-details">
+        <ul>
+          <li>SPA-only needed — no SSR/SSG, making Next.js overkill</li>
+          <li>Vite provides near-instant HMR via native ES modules</li>
+          <li>Simpler for desktop embedding in Tauri webview</li>
+          <li>Smaller bundle than Next.js runtime</li>
+          <li>First-class TypeScript and JSX support</li>
+          <li>Easy to configure for monorepo with workspace packages</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">Tauri</span>
+        <span class="lib-category">Desktop</span>
+      </div>
+      <div class="lib-why">Lightweight, secure native desktop wrapper</div>
+      <div class="lib-over"><strong>Over:</strong> Electron</div>
+      <div class="lib-details">
+        <ul>
+          <li>~10x smaller bundle than Electron (uses system webview)</li>
+          <li>Rust backend for performance-critical operations</li>
+          <li>Better security model with allowlist-based permissions</li>
+          <li>Lower memory footprint — no bundled Chromium</li>
+          <li>Cross-platform: Windows, macOS, Linux</li>
+          <li>Can run the Hono API as a sidecar process</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">Tailwind CSS</span>
+        <span class="lib-category">Styling</span>
+      </div>
+      <div class="lib-why">Utility-first CSS framework for consistent design</div>
+      <div class="lib-over"><strong>Over:</strong> CSS Modules, styled-components</div>
+      <div class="lib-details">
+        <ul>
+          <li>Eliminates CSS bloat — unused styles are purged</li>
+          <li>Consistent design system with spacing, color, and typography scales</li>
+          <li>No context switching between CSS and JSX files</li>
+          <li>Excellent IDE support with IntelliSense</li>
+          <li>Conditional classes via clsx — clean, readable</li>
+          <li>Aligns with "minimize dependencies" principle — no CSS-in-JS runtime</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">Zod</span>
+        <span class="lib-category">Validation</span>
+      </div>
+      <div class="lib-why">Schema-first validation with TypeScript inference</div>
+      <div class="lib-over"><strong>Over:</strong> io-ts, Yup, Joi</div>
+      <div class="lib-details">
+        <ul>
+          <li>Runtime + compile-time validation from a single schema</li>
+          <li><code>z.infer&lt;typeof Schema&gt;</code> — no duplicate type definitions</li>
+          <li>Excellent TypeScript integration and DX</li>
+          <li>Schema composition, transforms, and refinements</li>
+          <li>.safeParse() for non-throwing validation at API boundaries</li>
+          <li>Smaller and faster than Yup/Joi, better TS support than io-ts</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">Vitest</span>
+        <span class="lib-category">Testing</span>
+      </div>
+      <div class="lib-why">Vite-native test runner with Jest-compatible API</div>
+      <div class="lib-over"><strong>Over:</strong> Jest</div>
+      <div class="lib-details">
+        <ul>
+          <li>Native ESM support without configuration hacks</li>
+          <li>Reuses Vite's transform pipeline — consistent with dev</li>
+          <li>Faster execution via worker threads</li>
+          <li>Jest-compatible API (describe, it, expect, vi.mock)</li>
+          <li>Built-in coverage via c8/v8</li>
+          <li>Watch mode with instant re-runs</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">better-sqlite3</span>
+        <span class="lib-category">Database</span>
+      </div>
+      <div class="lib-why">Embedded, synchronous SQLite for desktop apps</div>
+      <div class="lib-over"><strong>Over:</strong> Prisma, TypeORM, Drizzle</div>
+      <div class="lib-details">
+        <ul>
+          <li>Synchronous API — simpler code, no async overhead</li>
+          <li>Embedded — no separate database server needed</li>
+          <li>File-based = portable (lives inside book directory)</li>
+          <li>Perfect for desktop apps with local data</li>
+          <li>Direct SQL control — no ORM abstraction overhead</li>
+          <li>Aligns with "minimize dependencies" and "book-level storage"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">React Router</span>
+        <span class="lib-category">Routing</span>
+      </div>
+      <div class="lib-why">Mature, well-documented SPA routing</div>
+      <div class="lib-over"><strong>Over:</strong> TanStack Router</div>
+      <div class="lib-details">
+        <ul>
+          <li>Mature ecosystem with extensive documentation</li>
+          <li>Simpler API for SPA routing use cases</li>
+          <li>Large community — easy to find solutions</li>
+          <li>useNavigate, useParams, Link — clean ergonomics</li>
+          <li>Nested routes and layouts support</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="lib-card" onclick="this.classList.toggle('expanded')">
+      <div class="lib-header">
+        <span class="lib-name">clsx</span>
+        <span class="lib-category">Utility</span>
+      </div>
+      <div class="lib-why">Tiny conditional className helper</div>
+      <div class="lib-over"><strong>Over:</strong> classnames</div>
+      <div class="lib-details">
+        <ul>
+          <li>~228 bytes — smaller than classnames</li>
+          <li>Same API — drop-in replacement</li>
+          <li>Better tree-shaking</li>
+          <li>Perfect for conditional Tailwind classes</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== PRINCIPLES ==================== -->
+<div id="principles" class="tab-content">
+  <h2 style="margin-bottom: 1.5rem;">5 Core Design Principles</h2>
+  <p style="color: var(--text-muted); margin-bottom: 1.5rem;">These are non-negotiable and must guide every architectural decision.</p>
+
+  <div class="principles-grid">
+
+    <div class="principle-card">
+      <div class="p-icon">📁</div>
+      <div class="p-title">Book-Level Storage</div>
+      <div class="p-desc">All book data lives in a single directory. Zip it, share it — everything travels together. Never store book data outside its directory.</div>
+    </div>
+
+    <div class="principle-card">
+      <div class="p-icon">🔄</div>
+      <div class="p-title">Entity Versioning</div>
+      <div class="p-desc">Never overwrite entities. Always create new versions (v1, v2, v3...). Users can roll back to any previous version at any time.</div>
+    </div>
+
+    <div class="principle-card">
+      <div class="p-icon">⚡</div>
+      <div class="p-title">LLM-Level Caching</div>
+      <div class="p-desc">Cache at the LLM call level by hashing inputs. Pipeline reruns are instant when parameters haven't changed. Cache lives in the book.</div>
+    </div>
+
+    <div class="principle-card">
+      <div class="p-icon">🔍</div>
+      <div class="p-title">Maximum Transparency</div>
+      <div class="p-desc">Every LLM call, prompt, and response is inspectable. No black boxes. Users see exactly what the AI was asked and what it answered.</div>
+    </div>
+
+    <div class="principle-card">
+      <div class="p-icon">🪶</div>
+      <div class="p-title">Minimize Dependencies</div>
+      <div class="p-desc">Avoid new deps when possible. Flat files over databases when sufficient. In-memory queues over external services. Keep it simple.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== SECURITY ==================== -->
+<div id="security" class="tab-content">
+  <h2 style="margin-bottom: 1.5rem;">Security Architecture</h2>
+
+  <div class="security-flow">
+
+    <div class="sec-layer boundary">
+      <div class="sec-label">Frontend Boundary</div>
+      <div class="sec-items">
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> API keys sent via <code>X-OpenAI-Key</code> header per request</div>
+        <div class="sec-item"><span class="sec-icon sec-block">✗</span> Keys never stored in localStorage or client bundle</div>
+        <div class="sec-item"><span class="sec-icon sec-block">✗</span> Keys never sent in URL parameters</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> All data access goes through API — no direct package imports</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; color: var(--text-muted);">
+      <svg width="24" height="32" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v28M5 23l7 7 7-7"/></svg>
+    </div>
+
+    <div class="sec-layer validation">
+      <div class="sec-label">API Validation Layer (Hono)</div>
+      <div class="sec-items">
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> ALL input validated with <strong>Zod schemas</strong> via .safeParse()</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> API key presence checked via <code>requireOpenAIKey()</code></div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> Path traversal prevention: <code>path.resolve()</code> + startsWith check</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> SQL: parameterized queries only (<code>db.prepare("...?").get(id)</code>)</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> CORS: explicit origin allowlist, no wildcards</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> HTTPException for structured error responses (400, 401, 404)</div>
+      </div>
+    </div>
+
+    <div style="text-align: center; color: var(--text-muted);">
+      <svg width="24" height="32" viewBox="0 0 24 32" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v28M5 23l7 7 7-7"/></svg>
+    </div>
+
+    <div class="sec-layer storage">
+      <div class="sec-label">Storage & Processing</div>
+      <div class="sec-items">
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> API keys: environment variables only, never logged or persisted</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> Atomic read-modify-write with file locking</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> XSS prevention: React auto-escaping + DOMPurify for HTML</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> No <code>dangerouslySetInnerHTML</code> without sanitization</div>
+        <div class="sec-item"><span class="sec-icon sec-check">✓</span> Error messages never expose API keys or internal details</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card" style="margin-top: 2rem;">
+    <div class="collapsible-header" onclick="toggleCollapsible(this)">
+      <h3>OWASP Top 10 Coverage</h3>
+      <span class="chevron">▶</span>
+    </div>
+    <div class="collapsible-body">
+      <table style="width: 100%; margin-top: 1rem; font-size: 0.85rem;">
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A01: Broken Access Control</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">API boundary enforcement, path traversal prevention</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A02: Cryptographic Failures</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">API keys never logged/stored insecurely</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A03: Injection</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Parameterized SQL, Zod validation, XSS prevention</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A04: Insecure Design</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Layer architecture, API-only data flow</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A05: Security Misconfiguration</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Explicit CORS origins, no default credentials</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A06: Vulnerable Components</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Minimize dependencies principle, justify additions</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A07: Auth Failures</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">requireOpenAIKey() validation on every request</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A08: Data Integrity</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Entity versioning, atomic storage operations</td>
+        </tr>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.5rem; color: var(--accent);">A09: Logging Failures</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Full LLM call logging, cost tracking</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.5rem; color: var(--accent);">A10: SSRF</td>
+          <td style="padding: 0.5rem; color: var(--text-muted);">Path validation, no user-controlled URLs to backend</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function toggleCollapsible(header) {
+  header.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
+}
+</script>
+</body>
+</html>
