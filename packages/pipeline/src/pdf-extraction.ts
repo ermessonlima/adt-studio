@@ -9,7 +9,7 @@ export interface ExtractOptions {
   endPage?: number
 }
 
-export async function runExtract(
+export async function extractPDF(
   options: ExtractOptions,
   storage: Storage,
   progress: Progress
@@ -35,7 +35,7 @@ export async function runExtract(
     )
 
     storage.clearExtractedData()
-    storage.putPdfMetadata(result.pdfMetadata)
+    storage.putNodeData("metadata", "book", result.pdfMetadata)
 
     for (const page of result.pages) {
       storage.putExtractedPage(page)
