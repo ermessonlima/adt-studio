@@ -163,6 +163,33 @@ describe("extractPdf", () => {
     expect(result.pages).toHaveLength(0);
   });
 
+  it("throws when startPage is not a finite integer", async () => {
+    const pdfBuffer = Buffer.from(MINIMAL_PDF);
+    await expect(extractPdf({ pdfBuffer, startPage: Number.NaN })).rejects.toThrow(
+      "startPage must be an integer >= 1"
+    );
+    await expect(extractPdf({ pdfBuffer, startPage: 1.5 })).rejects.toThrow(
+      "startPage must be an integer >= 1"
+    );
+  });
+
+  it("throws when endPage is not a finite integer", async () => {
+    const pdfBuffer = Buffer.from(MINIMAL_PDF);
+    await expect(extractPdf({ pdfBuffer, endPage: Number.NaN })).rejects.toThrow(
+      "endPage must be an integer >= 1"
+    );
+    await expect(extractPdf({ pdfBuffer, endPage: 0 })).rejects.toThrow(
+      "endPage must be an integer >= 1"
+    );
+  });
+
+  it("throws when endPage is less than startPage", async () => {
+    const pdfBuffer = Buffer.from(TWO_PAGE_PDF);
+    await expect(extractPdf({ pdfBuffer, startPage: 2, endPage: 1 })).rejects.toThrow(
+      "endPage must be greater than or equal to startPage"
+    );
+  });
+
   it("returns PDF metadata", async () => {
     const pdfBuffer = Buffer.from(MINIMAL_PDF);
     const result = await extractPdf({ pdfBuffer });

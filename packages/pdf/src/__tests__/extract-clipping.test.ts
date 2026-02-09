@@ -3,7 +3,13 @@ import { getPngMetadata, decodePng } from "../png-utils.js";
 import { extractPdf, _testing } from "../extract.js";
 import { createTestPdf, createSmallGroupTestPdf } from "./create-test-pdf.js";
 
-const { parseSvgPathBbox, applyMatrixTransformToBbox, parseClipPathBounds, isPageLevelClip } = _testing;
+const {
+  parseSvgPathBbox,
+  applyMatrixTransformToBbox,
+  parseClipPathBounds,
+  isPageLevelClip,
+  computeImageViewportBbox,
+} = _testing;
 
 describe("SVG Path Bbox Parsing", () => {
   it("parses simple M L path", () => {
@@ -44,6 +50,16 @@ describe("SVG Path Bbox Parsing", () => {
   it("returns null for invalid path", () => {
     expect(parseSvgPathBbox("not a path")).toBeNull();
   });
+
+  it("handles S command after non-cubic command per SVG spec", () => {
+    const bbox = parseSvgPathBbox("M500 500 S510 510 520 520");
+    expect(bbox).toEqual([500, 500, 520, 520]);
+  });
+
+  it("handles T command after non-quadratic command per SVG spec", () => {
+    const bbox = parseSvgPathBbox("M500 500 T520 520");
+    expect(bbox).toEqual([500, 500, 520, 520]);
+  });
 });
 
 describe("Matrix Transform Application", () => {
@@ -81,6 +97,21 @@ describe("Matrix Transform Application", () => {
     const bbox: [number, number, number, number] = [10, 20, 30, 40];
     const result = applyMatrixTransformToBbox(bbox, "rotate(45)");
     expect(result).toEqual([10, 20, 30, 40]);
+  });
+});
+
+describe("Raster Image Bbox Computation", () => {
+  it("respects x/y positioning on image elements", () => {
+    const elem = '<image x="100" y="50" width="20" height="10"/>';
+    const bbox = computeImageViewportBbox(elem, []);
+    expect(bbox).toEqual([100, 50, 120, 60]);
+  });
+
+  it("applies image-level transform before ancestor group transforms", () => {
+    const elem = '<image x="100" y="50" width="20" height="10" transform="matrix(1,0,0,1,10,20)"/>';
+    const stack = ['<g transform="matrix(2,0,0,2,0,0)">'];
+    const bbox = computeImageViewportBbox(elem, stack);
+    expect(bbox).toEqual([220, 140, 260, 160]);
   });
 });
 

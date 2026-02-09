@@ -78,6 +78,7 @@ export async function extractPdf(
   onProgress?: (progress: ExtractProgress) => void
 ): Promise<ExtractResult> {
   const { pdfBuffer, startPage = 1, endPage } = input;
+  validatePageRange(startPage, endPage);
 
   // Open PDF (suppressing mupdf stderr spam)
   const doc = openPdfFromBuffer(pdfBuffer);
@@ -112,6 +113,20 @@ export async function extractPdf(
     pdfMetadata,
     totalPagesInPdf,
   };
+}
+
+function validatePageRange(startPage: number, endPage?: number): void {
+  if (!Number.isFinite(startPage) || !Number.isInteger(startPage) || startPage < 1) {
+    throw new RangeError("startPage must be an integer >= 1");
+  }
+
+  if (endPage !== undefined && (!Number.isFinite(endPage) || !Number.isInteger(endPage) || endPage < 1)) {
+    throw new RangeError("endPage must be an integer >= 1");
+  }
+
+  if (endPage !== undefined && endPage < startPage) {
+    throw new RangeError("endPage must be greater than or equal to startPage");
+  }
 }
 
 // ============================================================================
@@ -258,6 +273,40 @@ interface PageSvgData {
   pageHeight: number;
 }
 
+function computeImageViewportBbox(elem: string, stack: string[]): BBox | null {
+  const widthM = /\swidth="([^"]+)"/.exec(elem);
+  const heightM = /\sheight="([^"]+)"/.exec(elem);
+  if (!widthM || !heightM) return null;
+
+  const imgW = parseFloat(widthM[1]);
+  const imgH = parseFloat(heightM[1]);
+  if (!Number.isFinite(imgW) || !Number.isFinite(imgH) || imgW <= 0 || imgH <= 0) return null;
+
+  const xM = /\sx="([^"]+)"/.exec(elem);
+  const yM = /\sy="([^"]+)"/.exec(elem);
+  const x = xM ? parseFloat(xM[1]) : 0;
+  const y = yM ? parseFloat(yM[1]) : 0;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+  // Start from image-local bounds positioned by x/y.
+  let bbox: BBox = [x, y, x + imgW, y + imgH];
+
+  // Apply image-level transform first, then ancestor groups from inner -> outer.
+  const imageTransform = /\stransform="([^"]+)"/.exec(elem);
+  if (imageTransform) {
+    bbox = applyMatrixTransformToBbox(bbox, imageTransform[1]);
+  }
+
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const t = /transform="([^"]+)"/.exec(stack[i]);
+    if (t) {
+      bbox = applyMatrixTransformToBbox(bbox, t[1]);
+    }
+  }
+
+  return bbox;
+}
+
 /**
  * Extract raster images from the SVG representation of a PDF page.
  * Renders <image> elements with their clip-paths and masks applied,
@@ -296,21 +345,8 @@ async function extractRasterImages(
   let imgIndex = 0;
 
   for (const { elem, stack } of imageHits) {
-    // Get image dimensions
-    const widthM = /\swidth="([^"]+)"/.exec(elem);
-    const heightM = /\sheight="([^"]+)"/.exec(elem);
-    if (!widthM || !heightM) continue;
-    const imgW = parseFloat(widthM[1]);
-    const imgH = parseFloat(heightM[1]);
-
-    // Compute bbox by applying transforms from innermost to outermost
-    let bbox: BBox = [0, 0, imgW, imgH];
-    for (let i = stack.length - 1; i >= 0; i--) {
-      const t = /transform="([^"]+)"/.exec(stack[i]);
-      if (t) {
-        bbox = applyMatrixTransformToBbox(bbox, t[1]);
-      }
-    }
+    const bbox = computeImageViewportBbox(elem, stack);
+    if (!bbox) continue;
 
     const [minX, minY, maxX, maxY] = bbox;
     const vbW = maxX - minX;
@@ -705,6 +741,7 @@ function parseSvgPathBbox(d: string): BBox | null {
     startY = 0; // For Z command
   let lastControlX = 0,
     lastControlY = 0; // For smooth curves
+  let prevCmd = "";
 
   const updateBounds = (x: number, y: number) => {
     minX = Math.min(minX, x);
@@ -724,14 +761,17 @@ function parseSvgPathBbox(d: string): BBox | null {
   const commands = d.match(/[MLHVCSQTAZ][^MLHVCSQTAZ]*/gi);
   if (!commands) return null;
 
-  for (const cmd of commands) {
+  for (let cmdIndex = 0; cmdIndex < commands.length; cmdIndex++) {
+    const cmd = commands[cmdIndex];
     const type = cmd[0];
+    const upperType = type.toUpperCase();
     const isRelative = type !== type.toUpperCase();
+    const prevUpper = prevCmd.toUpperCase();
     // Parse numbers properly - they can run together when separated by negative signs
     const argStr = cmd.slice(1).trim();
     const args = (argStr.match(/-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/g) || []).map(parseFloat);
 
-    switch (type.toUpperCase()) {
+    switch (upperType) {
       case "M": // moveto
         for (let i = 0; i < args.length; i += 2) {
           const x = isRelative ? currentX + args[i] : args[i];
@@ -793,9 +833,10 @@ function parseSvgPathBbox(d: string): BBox | null {
 
       case "S": // smooth cubic bezier
         for (let i = 0; i < args.length; i += 4) {
-          // First control point is reflection of last control point
-          const x1 = 2 * currentX - lastControlX;
-          const y1 = 2 * currentY - lastControlY;
+          // Reflect previous cubic control point only when previous segment was cubic.
+          const shouldReflect = i > 0 || prevUpper === "C" || prevUpper === "S";
+          const x1 = shouldReflect ? 2 * currentX - lastControlX : currentX;
+          const y1 = shouldReflect ? 2 * currentY - lastControlY : currentY;
           const x2 = isRelative ? currentX + args[i] : args[i];
           const y2 = isRelative ? currentY + args[i + 1] : args[i + 1];
           const x = isRelative ? currentX + args[i + 2] : args[i + 2];
@@ -830,9 +871,10 @@ function parseSvgPathBbox(d: string): BBox | null {
 
       case "T": // smooth quadratic bezier
         for (let i = 0; i < args.length; i += 2) {
-          // Control point is reflection of last control point
-          const x1 = 2 * currentX - lastControlX;
-          const y1 = 2 * currentY - lastControlY;
+          // Reflect previous quadratic control point only when previous segment was quadratic.
+          const shouldReflect = i > 0 || prevUpper === "Q" || prevUpper === "T";
+          const x1 = shouldReflect ? 2 * currentX - lastControlX : currentX;
+          const y1 = shouldReflect ? 2 * currentY - lastControlY : currentY;
           const x = isRelative ? currentX + args[i] : args[i];
           const y = isRelative ? currentY + args[i + 1] : args[i + 1];
 
@@ -869,6 +911,8 @@ function parseSvgPathBbox(d: string): BBox | null {
         currentY = startY;
         break;
     }
+
+    prevCmd = upperType;
   }
 
   if (minX === Infinity) return null;
@@ -1421,4 +1465,5 @@ export const _testing = {
   applyMatrixTransformToBbox,
   parseClipPathBounds,
   isPageLevelClip,
+  computeImageViewportBbox,
 };
