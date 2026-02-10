@@ -6,6 +6,7 @@ dist/
 .output/
 *.tsbuildinfo
 /books/
+apps/api/books/
 .cache/
 .DS_Store
 

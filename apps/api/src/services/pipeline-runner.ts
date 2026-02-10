@@ -20,6 +20,7 @@ import type {
   TextClassificationOutput,
   ImageClassificationOutput,
   PageSectioningOutput,
+  StepName,
 } from "@adt/types"
 import type { PageData } from "@adt/storage"
 import type {
@@ -96,12 +97,25 @@ export function createPipelineRunner(): PipelineRunner {
           modelId: metadataConfig.modelId,
           cacheDir,
           promptEngine,
-          onLog: (entry) =>
+          onLog: (entry) => {
             storage.appendLlmLog(
               entry.taskType,
               entry.pageId ?? "",
               entry
-            ),
+            )
+            progress.emit({
+              type: "llm-log",
+              step: "metadata",
+              itemId: entry.pageId ?? "",
+              promptName: entry.promptName,
+              modelId: entry.modelId,
+              cacheHit: entry.cacheHit,
+              durationMs: entry.durationMs,
+              inputTokens: entry.usage?.inputTokens,
+              outputTokens: entry.usage?.outputTokens,
+              validationErrors: entry.validationErrors,
+            })
+          },
         })
 
         const pages = storage.getPages()
@@ -131,12 +145,26 @@ export function createPipelineRunner(): PipelineRunner {
           modelId: textClassifyConfig.modelId,
           cacheDir,
           promptEngine,
-          onLog: (entry) =>
+          onLog: (entry) => {
             storage.appendLlmLog(
               entry.taskType,
               entry.pageId ?? "",
               entry
-            ),
+            )
+            const step = entry.taskType as StepName
+            progress.emit({
+              type: "llm-log",
+              step,
+              itemId: entry.pageId ?? "",
+              promptName: entry.promptName,
+              modelId: entry.modelId,
+              cacheHit: entry.cacheHit,
+              durationMs: entry.durationMs,
+              inputTokens: entry.usage?.inputTokens,
+              outputTokens: entry.usage?.outputTokens,
+              validationErrors: entry.validationErrors,
+            })
+          },
         })
 
         const effectiveConcurrency =

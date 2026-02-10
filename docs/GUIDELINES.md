@@ -360,6 +360,27 @@ const deleteMutation = useMutation({
 })
 ```
 
+### Layout & Visual Balance
+
+All screens must follow these layout principles:
+
+**Grid symmetry**: When using multi-column grids, cards in the same row MUST stretch to equal heights (`items-stretch`, the flexbox/grid default). Never leave one card short beside a tall one.
+
+**No orphan whitespace**: Every region of the viewport should be intentionally used. If a card has less content than its neighbor, either:
+- Merge the smaller content into the larger card as a section
+- Use a single-column layout instead
+- Redistribute content so columns are roughly balanced
+
+**Consistent spacing**: Use one spacing scale throughout a page — don't mix `gap-4` and `gap-6` on the same level. Standard gaps: `gap-4` between cards, `gap-6` for page-level sections, `p-4` inside cards, `p-6` for page padding.
+
+**Full-width by default**: Page content should use the full available width. Only constrain width (`max-w-*`) for text-heavy forms or reading content. Dashboard-style pages, detail pages with data panels, and grids should go edge-to-edge.
+
+**Balanced columns**: In a 2-column layout, prefer `grid-cols-2` (50/50) unless content clearly demands asymmetry. In a 3-column layout, use `grid-cols-3` (33/33/33). Avoid odd splits like 1/3 + 2/3 unless one column is a sidebar.
+
+**Card consistency**: Cards at the same hierarchy level should use the same padding, border radius, and header style. Don't mix `CardHeader` sizes or omit borders on some cards.
+
+**No scrolling when content fits**: If content can fit on screen by using available width, lay it out that way instead of stacking vertically and scrolling. Horizontal space is cheaper than vertical scroll.
+
 ### Styling with Tailwind
 
 **ALWAYS use Tailwind utility classes**:

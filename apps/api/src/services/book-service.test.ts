@@ -86,6 +86,8 @@ describe("listBooks", () => {
       label: "my-book",
       title: "Test Title",
       authors: ["Alice"],
+      publisher: null,
+      languageCode: "en",
       pageCount: 3,
       hasSourcePdf: true,
     })
@@ -100,6 +102,8 @@ describe("listBooks", () => {
       label: "empty-book",
       title: null,
       authors: [],
+      publisher: null,
+      languageCode: null,
       pageCount: 0,
       hasSourcePdf: false,
     })
@@ -116,6 +120,8 @@ describe("listBooks", () => {
       label: "no-db",
       title: null,
       authors: [],
+      publisher: null,
+      languageCode: null,
       pageCount: 0,
       hasSourcePdf: true,
     })

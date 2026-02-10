@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useState, useCallback, useEffect, useRef } from "react"
 import { ArrowLeft, ArrowRight, FileText, Image, Layers, Loader2, AlertCircle, ImageOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -147,12 +147,12 @@ function PageDetailPage() {
     false
 
   if (isLoading) {
-    return <div className="text-muted-foreground">Loading page...</div>
+    return <div className="p-4 text-muted-foreground">Loading page...</div>
   }
 
   if (error) {
     return (
-      <div className="text-destructive">
+      <div className="p-4 text-destructive">
         Failed to load page: {error.message}
       </div>
     )
@@ -174,24 +174,19 @@ function PageDetailPage() {
     .join("\n")
 
   return (
-    <div className="-m-6 flex h-[calc(100vh-3.5rem)] flex-col">
-      {/* Compact header: nav + title + toolbar in one row */}
-      <div className="flex shrink-0 items-center justify-between border-b px-4 py-2">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              navigate({
-                to: "/books/$label/storyboard",
-                params: { label },
-              })
-            }
-          >
-            <ArrowLeft className="mr-1 h-3 w-3" />
-            Back
-          </Button>
-          <h1 className="text-lg font-semibold">Page {page.pageNumber}</h1>
+    <div className="flex flex-1 min-h-0 flex-col">
+      {/* Compact header: breadcrumb + nav + toolbar in one row */}
+      <div className="flex shrink-0 items-center justify-between border-b px-4 py-1.5">
+        <div className="flex items-center gap-2">
+          <Link to="/" className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            ADT Studio
+          </Link>
+          <span className="text-muted-foreground/50 text-xs">/</span>
+          <Link to="/books/$label" params={{ label }} className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            {label}
+          </Link>
+          <span className="text-muted-foreground/50 text-xs">/</span>
+          <span className="text-sm font-semibold">Page {page.pageNumber}</span>
           <div className="flex gap-1">
             <Button
               variant="outline"

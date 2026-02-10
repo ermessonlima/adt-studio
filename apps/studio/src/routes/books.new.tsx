@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { Upload, ArrowLeft, FileText } from "lucide-react"
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
+import { Upload, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -62,17 +62,14 @@ function AddBookPage() {
   const isValid = !!file && !!label && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(label)
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => navigate({ to: "/" })}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Books
-      </Button>
-
-      <h1 className="mb-6 text-2xl font-bold">Add Book</h1>
+    <div className="mx-auto max-w-2xl p-4">
+      <div className="mb-4 flex items-center gap-2">
+        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          ADT Studio
+        </Link>
+        <span className="text-muted-foreground/50">/</span>
+        <h1 className="text-lg font-semibold">Add Book</h1>
+      </div>
 
       <div className="space-y-6">
         <Card>

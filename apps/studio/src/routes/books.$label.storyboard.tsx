@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { ArrowLeft, Grid, List } from "lucide-react"
+import { createFileRoute, Link } from "@tanstack/react-router"
+import { Grid, List } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useBook } from "@/hooks/use-books"
@@ -12,47 +12,39 @@ export const Route = createFileRoute("/books/$label/storyboard")({
 
 function StoryboardPage() {
   const { label } = Route.useParams()
-  const navigate = useNavigate()
   const { data: book } = useBook(label)
   const { data: pages, isLoading, error } = usePages(label)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
   if (isLoading) {
-    return <div className="text-muted-foreground">Loading pages...</div>
+    return <div className="p-4 text-muted-foreground">Loading pages...</div>
   }
 
   if (error) {
     return (
-      <div className="text-destructive">
+      <div className="p-4 text-destructive">
         Failed to load pages: {error.message}
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="mb-4 flex items-center gap-2">
-        <Button
-          variant="ghost"
-          onClick={() =>
-            navigate({ to: "/books/$label", params: { label } })
-          }
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Book
-        </Button>
-      </div>
-
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {book?.title ?? label} — Storyboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            ADT Studio
+          </Link>
+          <span className="text-muted-foreground/50">/</span>
+          <Link to="/books/$label" params={{ label }} className="text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
+            {book?.title ?? label}
+          </Link>
+          <span className="text-muted-foreground/50">/</span>
+          <h1 className="text-lg font-semibold">Storyboard</h1>
+          <span className="text-xs text-muted-foreground ml-1">
             {pages?.length ?? 0} pages
-            {pages &&
-              ` (${pages.filter((p) => p.hasRendering).length} rendered)`}
-          </p>
+            {pages && ` (${pages.filter((p) => p.hasRendering).length} rendered)`}
+          </span>
         </div>
         <div className="flex gap-1 rounded-md border p-0.5">
           <Button

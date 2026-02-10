@@ -8,6 +8,8 @@ export interface BookSummary {
   label: string
   title: string | null
   authors: string[]
+  publisher: string | null
+  languageCode: string | null
   pageCount: number
   hasSourcePdf: boolean
 }
@@ -34,6 +36,8 @@ export function listBooks(booksDir: string): BookSummary[] {
 
     let title: string | null = null
     let authors: string[] = []
+    let publisher: string | null = null
+    let languageCode: string | null = null
     let pageCount = 0
 
     if (fs.existsSync(dbPath)) {
@@ -54,6 +58,8 @@ export function listBooks(booksDir: string): BookSummary[] {
           if (parsed.success) {
             title = parsed.data.title
             authors = parsed.data.authors
+            publisher = parsed.data.publisher
+            languageCode = parsed.data.language_code
           }
         }
       } finally {
@@ -65,6 +71,8 @@ export function listBooks(booksDir: string): BookSummary[] {
       label,
       title,
       authors,
+      publisher,
+      languageCode,
       pageCount,
       hasSourcePdf: fs.existsSync(pdfPath),
     })
@@ -88,6 +96,8 @@ export function getBook(label: string, booksDir: string): BookDetail {
 
   let title: string | null = null
   let authors: string[] = []
+  let publisher: string | null = null
+  let languageCode: string | null = null
   let pageCount = 0
   let metadata: BookMetadata | null = null
 
@@ -110,6 +120,8 @@ export function getBook(label: string, booksDir: string): BookDetail {
           metadata = parsed.data
           title = parsed.data.title
           authors = parsed.data.authors
+          publisher = parsed.data.publisher
+          languageCode = parsed.data.language_code
         }
       }
     } finally {
@@ -121,6 +133,8 @@ export function getBook(label: string, booksDir: string): BookDetail {
     label: safeLabel,
     title,
     authors,
+    publisher,
+    languageCode,
     pageCount,
     hasSourcePdf: fs.existsSync(pdfPath),
     metadata,
@@ -155,6 +169,8 @@ export function createBook(
     label: safeLabel,
     title: null,
     authors: [],
+    publisher: null,
+    languageCode: null,
     pageCount: 0,
     hasSourcePdf: true,
   }
