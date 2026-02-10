@@ -1,7 +1,7 @@
 import path from "node:path"
 import { createBookStorage } from "@adt/storage"
 import type { Storage } from "@adt/storage"
-import { createLLMModel, createPromptEngine } from "@adt/llm"
+import { createLLMModel, createPromptEngine, createRateLimiter } from "@adt/llm"
 import {
   extractPDF,
   extractMetadata,
@@ -91,17 +91,16 @@ export function createPipelineRunner(): PipelineRunner {
         const metadataConfig = buildMetadataConfig(config)
         const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
         const promptEngine = createPromptEngine(promptsDir)
+        const rateLimiter = config.rate_limit
+          ? createRateLimiter(config.rate_limit.requests_per_minute)
+          : undefined
 
         const metadataModel = createLLMModel({
           modelId: metadataConfig.modelId,
           cacheDir,
           promptEngine,
-          onLog: (entry) =>
-            storage.appendLlmLog(
-              entry.taskType,
-              entry.pageId ?? "",
-              entry
-            ),
+          rateLimiter,
+          onLog: (entry) => storage.appendLlmLog(entry),
         })
 
         const pages = storage.getPages()
@@ -131,18 +130,12 @@ export function createPipelineRunner(): PipelineRunner {
           modelId: textClassifyConfig.modelId,
           cacheDir,
           promptEngine,
-          onLog: (entry) =>
-            storage.appendLlmLog(
-              entry.taskType,
-              entry.pageId ?? "",
-              entry
-            ),
+          rateLimiter,
+          onLog: (entry) => storage.appendLlmLog(entry),
         })
 
         const effectiveConcurrency =
-          options.concurrency ??
-          config.text_classification?.concurrency ??
-          16
+          options.concurrency ?? config.concurrency ?? 32
 
         const totalPages = pages.length
         let completedClassifyText = 0
@@ -158,6 +151,7 @@ export function createPipelineRunner(): PipelineRunner {
           async (page: PageData) => {
             try {
               await processPage(
+                label,
                 page,
                 storage,
                 {
@@ -269,6 +263,7 @@ interface PageCallbacks {
 }
 
 async function processPage(
+  label: string,
   page: PageData,
   storage: Storage,
   configs: StepConfigs,
@@ -355,6 +350,7 @@ async function processPage(
 
   const renderResult = await renderPage(
     {
+      label,
       pageId: page.pageId,
       pageImageBase64,
       sectioning,
