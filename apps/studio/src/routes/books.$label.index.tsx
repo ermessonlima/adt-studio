@@ -82,12 +82,28 @@ function BookDetailPage() {
             <p className="text-sm text-muted-foreground">{book.label}</p>
           )}
         </div>
-        <Badge variant={book.pageCount > 0 ? "default" : "secondary"}>
-          {book.pageCount > 0 ? `${book.pageCount} pages` : "New"}
-        </Badge>
+        {book.needsRebuild ? (
+          <Badge variant="destructive">Needs rebuild</Badge>
+        ) : (
+          <Badge variant={book.pageCount > 0 ? "default" : "secondary"}>
+            {book.pageCount > 0 ? `${book.pageCount} pages` : "New"}
+          </Badge>
+        )}
       </div>
 
       <div className="space-y-4">
+        {book.needsRebuild && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Rebuild Required</CardTitle>
+              <CardDescription>
+                {book.rebuildReason ??
+                  "This book was created with an older storage schema and must be rebuilt."}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
         {book.metadata && (
           <Card>
             <CardHeader>

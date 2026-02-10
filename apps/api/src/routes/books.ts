@@ -80,7 +80,13 @@ export function createBookRoutes(booksDir: string): Hono {
   // GET /books/:label/images/:imageId — Serve extracted image as PNG
   app.get("/books/:label/images/:imageId", (c) => {
     const { label, imageId } = c.req.param()
-    const safeLabel = parseBookLabel(label)
+    let safeLabel: string
+    try {
+      safeLabel = parseBookLabel(label)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      throw new HTTPException(400, { message })
+    }
     const resolvedDir = path.resolve(booksDir)
     const bookDir = path.join(resolvedDir, safeLabel)
     const dbPath = path.join(bookDir, `${safeLabel}.db`)
@@ -105,12 +111,19 @@ export function createBookRoutes(booksDir: string): Hono {
       }
 
       const imagePath = path.resolve(bookDir, rows[0].path)
-      // Verify path doesn't escape book directory
-      if (!imagePath.startsWith(bookDir + path.sep) && imagePath !== bookDir) {
+      // Verify path doesn't escape book directory and stays within a descendant path.
+      if (!imagePath.startsWith(bookDir + path.sep)) {
         throw new HTTPException(400, { message: "Invalid image path" })
       }
-
-      if (!fs.existsSync(imagePath)) {
+      let stat: fs.Stats
+      try {
+        stat = fs.statSync(imagePath)
+      } catch {
+        throw new HTTPException(404, {
+          message: `Image file not found: ${imageId}`,
+        })
+      }
+      if (!stat.isFile()) {
         throw new HTTPException(404, {
           message: `Image file not found: ${imageId}`,
         })

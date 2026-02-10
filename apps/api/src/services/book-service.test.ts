@@ -3,6 +3,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { openBookDb } from "@adt/storage"
+import { SCHEMA_VERSION } from "@adt/types"
 import { listBooks, getBook, createBook, deleteBook } from "./book-service.js"
 
 let tmpDir: string
@@ -65,6 +66,15 @@ function createTestPdf(label: string): void {
   )
 }
 
+function createLegacySchemaDb(label: string): void {
+  createTestDb(label)
+  const db = openBookDb(path.join(tmpDir, label, `${label}.db`))
+  db.run("UPDATE schema_version SET version = ? WHERE id = 1", [
+    SCHEMA_VERSION - 1,
+  ])
+  db.close()
+}
+
 describe("listBooks", () => {
   it("returns empty array for empty directory", () => {
     expect(listBooks(tmpDir)).toEqual([])
@@ -88,6 +98,8 @@ describe("listBooks", () => {
       authors: ["Alice"],
       pageCount: 3,
       hasSourcePdf: true,
+      needsRebuild: false,
+      rebuildReason: null,
     })
   })
 
@@ -102,6 +114,8 @@ describe("listBooks", () => {
       authors: [],
       pageCount: 0,
       hasSourcePdf: false,
+      needsRebuild: false,
+      rebuildReason: null,
     })
   })
 
@@ -118,6 +132,8 @@ describe("listBooks", () => {
       authors: [],
       pageCount: 0,
       hasSourcePdf: true,
+      needsRebuild: false,
+      rebuildReason: null,
     })
   })
 
@@ -140,6 +156,18 @@ describe("listBooks", () => {
     fs.mkdirSync(path.join(tmpDir, "-invalid"))
     expect(listBooks(tmpDir)).toEqual([])
   })
+
+  it("marks books with old schema as needing rebuild", () => {
+    createLegacySchemaDb("old-book")
+    createTestPdf("old-book")
+
+    const books = listBooks(tmpDir)
+    expect(books).toHaveLength(1)
+    expect(books[0].label).toBe("old-book")
+    expect(books[0].needsRebuild).toBe(true)
+    expect(books[0].rebuildReason).toContain("older storage schema")
+    expect(books[0].hasSourcePdf).toBe(true)
+  })
 })
 
 describe("getBook", () => {
@@ -158,6 +186,8 @@ describe("getBook", () => {
     expect(book.authors).toEqual(["Bob", "Carol"])
     expect(book.pageCount).toBe(5)
     expect(book.hasSourcePdf).toBe(true)
+    expect(book.needsRebuild).toBe(false)
+    expect(book.rebuildReason).toBeNull()
     expect(book.metadata).toEqual({
       title: "A Great Book",
       authors: ["Bob", "Carol"],
@@ -176,6 +206,20 @@ describe("getBook", () => {
     const book = getBook("new-book", tmpDir)
     expect(book.label).toBe("new-book")
     expect(book.title).toBeNull()
+    expect(book.metadata).toBeNull()
+    expect(book.pageCount).toBe(0)
+    expect(book.needsRebuild).toBe(false)
+    expect(book.rebuildReason).toBeNull()
+  })
+
+  it("returns a rebuild marker for old schema books", () => {
+    createLegacySchemaDb("old-book")
+    createTestPdf("old-book")
+
+    const book = getBook("old-book", tmpDir)
+    expect(book.label).toBe("old-book")
+    expect(book.needsRebuild).toBe(true)
+    expect(book.rebuildReason).toContain("older storage schema")
     expect(book.metadata).toBeNull()
     expect(book.pageCount).toBe(0)
   })
@@ -198,6 +242,8 @@ describe("createBook", () => {
     expect(book.hasSourcePdf).toBe(true)
     expect(book.pageCount).toBe(0)
     expect(book.title).toBeNull()
+    expect(book.needsRebuild).toBe(false)
+    expect(book.rebuildReason).toBeNull()
 
     const pdfPath = path.join(tmpDir, "new-book", "new-book.pdf")
     expect(fs.existsSync(pdfPath)).toBe(true)

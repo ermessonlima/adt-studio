@@ -26,6 +26,8 @@ export interface BookSummary {
   authors: string[]
   pageCount: number
   hasSourcePdf: boolean
+  needsRebuild: boolean
+  rebuildReason: string | null
 }
 
 export interface BookDetail extends BookSummary {

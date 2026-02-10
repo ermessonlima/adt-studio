@@ -30,15 +30,24 @@ export function BookCard({ book, onDelete }: BookCardProps) {
               <BookOpen className="h-5 w-5 text-muted-foreground" />
               <CardTitle className="text-base">{book.title ?? book.label}</CardTitle>
             </div>
-            <Badge variant={book.pageCount > 0 ? "default" : "secondary"}>
-              {book.pageCount > 0 ? `${book.pageCount} pages` : "New"}
-            </Badge>
+            {book.needsRebuild ? (
+              <Badge variant="destructive">Needs rebuild</Badge>
+            ) : (
+              <Badge variant={book.pageCount > 0 ? "default" : "secondary"}>
+                {book.pageCount > 0 ? `${book.pageCount} pages` : "New"}
+              </Badge>
+            )}
           </div>
           {book.title && (
             <CardDescription className="text-xs">{book.label}</CardDescription>
           )}
         </CardHeader>
         <CardContent className="pb-4">
+          {book.needsRebuild && (
+            <p className="mb-2 text-sm text-destructive">
+              {book.rebuildReason ?? "Book data is outdated and must be rebuilt."}
+            </p>
+          )}
           {book.authors.length > 0 && (
             <p className="text-sm text-muted-foreground">
               {book.authors.join(", ")}
