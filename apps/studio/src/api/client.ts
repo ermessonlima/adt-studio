@@ -39,6 +39,20 @@ export interface BookDetail extends BookSummary {
   } | null
 }
 
+export interface PipelineStatus {
+  label: string
+  status: "idle" | "running" | "completed" | "failed"
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
+export interface RunPipelineOptions {
+  startPage?: number
+  endPage?: number
+  concurrency?: number
+}
+
 export const api = {
   getBooks: () => request<BookSummary[]>("/books"),
 
@@ -59,4 +73,21 @@ export const api = {
 
   deleteBook: (label: string) =>
     request<{ ok: boolean }>(`/books/${label}`, { method: "DELETE" }),
+
+  runPipeline: (
+    label: string,
+    apiKey: string,
+    options?: RunPipelineOptions
+  ) =>
+    request<{ status: string; label: string }>(
+      `/books/${label}/pipeline/run`,
+      {
+        method: "POST",
+        headers: { "X-OpenAI-Key": apiKey },
+        body: options ? JSON.stringify(options) : undefined,
+      }
+    ),
+
+  getPipelineStatus: (label: string) =>
+    request<PipelineStatus>(`/books/${label}/pipeline/status`),
 }

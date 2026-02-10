@@ -1,7 +1,9 @@
+import { useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { ArrowLeft, BookOpen } from "lucide-react"
+import { ArrowLeft, BookOpen, Key } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -10,6 +12,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useBook } from "@/hooks/use-books"
+import { usePipelineSSE, useRunPipeline } from "@/hooks/use-pipeline"
+import { useApiKey } from "@/hooks/use-api-key"
+import { PipelineProgress } from "@/components/pipeline/PipelineProgress"
 
 export const Route = createFileRoute("/books/$label")({
   component: BookDetailPage,
@@ -19,6 +24,29 @@ function BookDetailPage() {
   const { label } = Route.useParams()
   const navigate = useNavigate()
   const { data: book, isLoading, error } = useBook(label)
+  const { apiKey, setApiKey, hasApiKey } = useApiKey()
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+
+  const runPipeline = useRunPipeline()
+  const [sseEnabled, setSseEnabled] = useState(false)
+  const { progress, reset } = usePipelineSSE(label, sseEnabled)
+
+  const handleRun = () => {
+    if (!hasApiKey) {
+      setShowApiKeyInput(true)
+      return
+    }
+    reset()
+    setSseEnabled(true)
+    runPipeline.mutate(
+      { label, apiKey },
+      {
+        onError: () => {
+          setSseEnabled(false)
+        },
+      }
+    )
+  }
 
   if (isLoading) {
     return <div className="text-muted-foreground">Loading book...</div>
@@ -99,24 +127,52 @@ function BookDetailPage() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline</CardTitle>
-            <CardDescription>
-              {book.pageCount > 0
-                ? "Pipeline has been run on this book."
-                : "Run the pipeline to extract and process this book."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button disabled>
-              Run Pipeline
-            </Button>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Pipeline execution will be available in the next update.
-            </p>
-          </CardContent>
-        </Card>
+        <PipelineProgress
+          progress={progress}
+          onRun={handleRun}
+          isStarting={runPipeline.isPending}
+          hasApiKey={hasApiKey}
+        />
+
+        {(showApiKeyInput || !hasApiKey) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API Key
+              </CardTitle>
+              <CardDescription>
+                Your OpenAI API key is stored in your browser only.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="max-w-md font-mono"
+                />
+                {apiKey && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowApiKeyInput(false)}
+                  >
+                    Done
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {runPipeline.isError && (
+          <p className="text-sm text-destructive">
+            Failed to start pipeline: {runPipeline.error.message}
+          </p>
+        )}
       </div>
     </div>
   )
