@@ -115,9 +115,12 @@ export function StepIndicator({
       {/* Status text */}
       <div className="mt-1.5 text-xs text-muted-foreground">
         {state === "active" && progress?.totalPages && (
-          <span>
-            {progress.page ?? 0} / {progress.totalPages} pages
-          </span>
+          <div className="flex justify-between">
+            <span>
+              {progress.page ?? 0} / {progress.totalPages} pages
+            </span>
+            <span>{pct}%</span>
+          </div>
         )}
         {state === "active" && !progress?.totalPages && (
           <span>Processing...</span>
@@ -126,33 +129,10 @@ export function StepIndicator({
         {state === "error" && <span>Failed</span>}
         {state === "pending" && <span>Waiting</span>}
       </div>
-      {state === "active" && progress?.totalPages && (
-        <div className="mt-2">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>
-              {progress.page ?? 0} / {progress.totalPages}
-            </span>
-            <span>
-              {Math.round(
-                ((progress.page ?? 0) / progress.totalPages) * 100
-              )}
-              %
-            </span>
-          </div>
-          <div className="mt-1 h-1.5 rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{
-                width: `${((progress.page ?? 0) / progress.totalPages) * 100}%`,
-              }}
-            />
-          </div>
-          {progress.page != null && progress.totalPages && progress.page < progress.totalPages && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Remaining pages may need multiple LLM attempts...
-            </p>
-          )}
-        </div>
+      {state === "active" && progress?.totalPages && progress.page != null && progress.page < progress.totalPages && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Remaining pages may need multiple LLM attempts...
+        </p>
       )}
     </div>
   )
