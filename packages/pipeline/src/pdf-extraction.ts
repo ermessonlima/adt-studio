@@ -2,6 +2,7 @@ import fs from "node:fs"
 import { extractPdf, type ExtractResult } from "@adt/pdf"
 import type { Storage } from "@adt/storage"
 import type { Progress } from "./progress.js"
+import { toBookMetadata } from "./metadata-model.js"
 
 export interface ExtractOptions {
   pdfPath: string
@@ -35,7 +36,7 @@ export async function extractPDF(
     )
 
     storage.clearExtractedData()
-    storage.putNodeData("metadata", "book", result.pdfMetadata)
+    storage.putNodeData("metadata", "book", toBookMetadata(result.pdfMetadata))
 
     for (const page of result.pages) {
       storage.putExtractedPage(page)

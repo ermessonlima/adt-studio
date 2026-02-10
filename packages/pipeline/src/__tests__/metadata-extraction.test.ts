@@ -23,7 +23,10 @@ const sampleMetadata: BookMetadata = {
 }
 
 describe("extractMetadata", () => {
-  const config: MetadataConfig = { promptName: "metadata_extraction" }
+  const config: MetadataConfig = {
+    promptName: "metadata_extraction",
+    modelId: "openai:gpt-4o",
+  }
 
   it("returns metadata from LLM", async () => {
     const pages: MetadataPageInput[] = [
@@ -107,14 +110,15 @@ describe("buildMetadataConfig", () => {
     const appConfig: AppConfig = {
       text_types: { heading: "Heading" },
       text_group_types: { paragraph: "Paragraph" },
-      metadata: { prompt: "custom_metadata" },
+      metadata: { prompt: "custom_metadata", model: "openai:gpt-4.1-mini" },
     }
 
     const config = buildMetadataConfig(appConfig)
     expect(config.promptName).toBe("custom_metadata")
+    expect(config.modelId).toBe("openai:gpt-4.1-mini")
   })
 
-  it("defaults to metadata_extraction prompt", () => {
+  it("defaults metadata prompt and model", () => {
     const appConfig: AppConfig = {
       text_types: { heading: "Heading" },
       text_group_types: { paragraph: "Paragraph" },
@@ -122,5 +126,6 @@ describe("buildMetadataConfig", () => {
 
     const config = buildMetadataConfig(appConfig)
     expect(config.promptName).toBe("metadata_extraction")
+    expect(config.modelId).toBe("openai:gpt-4o")
   })
 })

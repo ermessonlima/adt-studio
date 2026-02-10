@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from "vitest"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type { ProgressEvent } from "@adt/types"
+import { BookMetadata, type ProgressEvent } from "@adt/types"
 import { createBookStorage, resolveBookPaths, openBookDb } from "@adt/storage"
 import { extractPDF } from "../pdf-extraction.js"
 import type { Progress } from "../progress.js"
@@ -88,8 +88,8 @@ describe("extractPDF", () => {
           "SELECT data FROM node_data WHERE node = 'metadata' AND item_id = 'book'"
         ) as Array<{ data: string }>
         expect(metaRows).toHaveLength(1)
-        const pdfMeta = JSON.parse(metaRows[0].data)
-        expect(pdfMeta).toBeDefined()
+        const metadata = BookMetadata.parse(JSON.parse(metaRows[0].data))
+        expect(metadata.reasoning).toBe("Extracted from embedded PDF metadata.")
 
         // Verify image files exist on disk
         for (const row of imageRows) {

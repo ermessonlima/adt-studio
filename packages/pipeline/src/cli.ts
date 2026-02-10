@@ -7,7 +7,6 @@ import { createBookStorage } from "@adt/storage"
 import type { Storage } from "@adt/storage"
 import type { ExtractResult } from "@adt/pdf"
 import { createLLMModel, createPromptEngine } from "@adt/llm"
-import type { LLMModel } from "@adt/llm"
 import { parseCliArgs, USAGE } from "./cli-args.js"
 import { extractPDF } from "./pdf-extraction.js"
 import { extractMetadata, buildMetadataConfig } from "./metadata-extraction.js"
@@ -20,7 +19,6 @@ const DEFAULT_METADATA_PAGES = 3
 interface PipelineContext {
   storage?: Storage
   result?: ExtractResult
-  llmModel?: LLMModel
 }
 
 async function main(): Promise<void> {
@@ -75,14 +73,13 @@ async function main(): Promise<void> {
           const config = loadBookConfig(label, booksRoot)
           const metadataConfig = buildMetadataConfig(config)
 
-          const modelId = config.metadata?.model ?? "openai:gpt-4o"
           const cacheDir = path.join(booksRoot, label, ".cache")
 
           const promptsDir = path.resolve(process.cwd(), "prompts")
           const promptEngine = createPromptEngine(promptsDir)
 
-          ctx.llmModel = createLLMModel({
-            modelId,
+          const llmModel = createLLMModel({
+            modelId: metadataConfig.modelId,
             cacheDir,
             promptEngine,
             onLog: (entry) => storage.appendLlmLog(entry),
@@ -100,7 +97,7 @@ async function main(): Promise<void> {
           const result = await extractMetadata(
             pageInputs,
             metadataConfig,
-            ctx.llmModel
+            llmModel
           )
 
           storage.putNodeData("metadata", "book", result)
@@ -111,11 +108,19 @@ async function main(): Promise<void> {
         title: "Classify Pages",
         task: async (ctx, task) => {
           const storage = ctx.storage!
-          const llmModel = ctx.llmModel!
 
           const config = loadBookConfig(label, booksRoot)
           const textClassifyConfig = buildClassifyConfig(config)
           const imageClassifyConfig = buildImageClassifyConfig(config)
+          const cacheDir = path.join(booksRoot, label, ".cache")
+          const promptsDir = path.resolve(process.cwd(), "prompts")
+          const promptEngine = createPromptEngine(promptsDir)
+          const llmModel = createLLMModel({
+            modelId: textClassifyConfig.modelId,
+            cacheDir,
+            promptEngine,
+            onLog: (entry) => storage.appendLlmLog(entry),
+          })
 
           const pages = storage.getPages()
           const effectiveConcurrency =

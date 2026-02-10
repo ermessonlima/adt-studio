@@ -3,6 +3,7 @@ import type { LLMModel } from "@adt/llm"
 
 export interface MetadataConfig {
   promptName: string
+  modelId: string
 }
 
 export interface MetadataPageInput {
@@ -53,5 +54,6 @@ export async function extractMetadata(
 export function buildMetadataConfig(appConfig: AppConfig): MetadataConfig {
   return {
     promptName: appConfig.metadata?.prompt ?? "metadata_extraction",
+    modelId: appConfig.metadata?.model ?? "openai:gpt-4o",
   }
 }
