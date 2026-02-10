@@ -92,7 +92,7 @@ describe("Page routes", () => {
       storage.close()
     }
 
-    const routes = createPageRoutes(tmpDir)
+    const routes = createPageRoutes(tmpDir, tmpDir)
     app = new Hono()
     app.onError(errorHandler)
     app.route("/api", routes)
@@ -112,6 +112,7 @@ describe("Page routes", () => {
       expect(body[0].pageId).toBe(`${label}_p1`)
       expect(body[0].pageNumber).toBe(1)
       expect(body[0].hasRendering).toBe(true)
+      expect(body[0].textPreview).toBe("Page one text content")
       expect(body[1].pageId).toBe(`${label}_p2`)
       expect(body[1].pageNumber).toBe(2)
       expect(body[1].hasRendering).toBe(false)
@@ -183,6 +184,116 @@ describe("Page routes", () => {
         `/api/books/${label}/pages/fake-page/image`
       )
       expect(res.status).toBe(404)
+    })
+  })
+
+  describe("PUT /api/books/:label/pages/:pageId/text-classification", () => {
+    it("saves text classification and returns version", async () => {
+      const data = {
+        reasoning: "updated reasoning",
+        groups: [
+          {
+            groupId: "g1",
+            groupType: "body",
+            texts: [
+              { textType: "paragraph", text: "Updated text", isPruned: false },
+            ],
+          },
+        ],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/text-classification`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.version).toBe(2) // version 1 was set in beforeEach
+    })
+
+    it("returns 400 for invalid body", async () => {
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/text-classification`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bad: "data" }),
+        }
+      )
+
+      expect(res.status).toBe(400)
+    })
+
+    it("returns 404 for nonexistent page", async () => {
+      const data = {
+        reasoning: "test",
+        groups: [],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/fake-page/text-classification`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe("PUT /api/books/:label/pages/:pageId/image-classification", () => {
+    it("saves image classification and returns version", async () => {
+      const data = {
+        images: [
+          { imageId: "img1", isPruned: false, reason: "kept" },
+        ],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/image-classification`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.version).toBe(2) // version 1 was set in beforeEach
+    })
+
+    it("returns 400 for invalid body", async () => {
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/image-classification`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bad: "data" }),
+        }
+      )
+
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe("POST /api/books/:label/pages/:pageId/re-render", () => {
+    it("returns 400 when X-OpenAI-Key header is missing", async () => {
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/re-render`,
+        { method: "POST" }
+      )
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("X-OpenAI-Key")
     })
   })
 })

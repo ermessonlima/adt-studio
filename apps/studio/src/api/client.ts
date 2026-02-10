@@ -59,6 +59,7 @@ export interface PageSummaryItem {
   pageId: string
   pageNumber: number
   hasRendering: boolean
+  textPreview: string
 }
 
 export interface SectionRendering {
@@ -149,4 +150,26 @@ export const api = {
 
   getPageImage: (label: string, pageId: string) =>
     request<{ imageBase64: string }>(`/books/${label}/pages/${pageId}/image`),
+
+  updateTextClassification: (label: string, pageId: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/pages/${pageId}/text-classification`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  updateImageClassification: (label: string, pageId: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/pages/${pageId}/image-classification`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  reRenderPage: (label: string, pageId: string, apiKey: string) =>
+    request<{ version: number; rendering: { sections: SectionRendering[] } }>(
+      `/books/${label}/pages/${pageId}/re-render`,
+      {
+        method: "POST",
+        headers: { "X-OpenAI-Key": apiKey },
+        signal: AbortSignal.timeout(120_000),
+      }
+    ),
 }
