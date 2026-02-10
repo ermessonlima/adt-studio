@@ -24,6 +24,8 @@ export interface BookSummary {
   label: string
   title: string | null
   authors: string[]
+  publisher: string | null
+  languageCode: string | null
   pageCount: number
   hasSourcePdf: boolean
   needsRebuild: boolean
@@ -104,6 +106,86 @@ export interface PageDetail {
   } | null
 }
 
+// --- Debug types ---
+
+export interface LlmLogEntry {
+  id: number
+  timestamp: string
+  step: string
+  itemId: string
+  data: {
+    promptName: string
+    modelId: string
+    cacheHit: boolean
+    durationMs: number
+    usage?: { inputTokens: number; outputTokens: number }
+    validationErrors?: string[]
+    system?: string
+    messages: Array<{
+      role: string
+      content: Array<
+        | { type: "text"; text: string }
+        | { type: "image"; hash: string; byteLength: number; width: number; height: number }
+      >
+    }>
+  }
+}
+
+export interface LlmLogsResponse {
+  logs: LlmLogEntry[]
+  total: number
+}
+
+export interface StepStats {
+  step: string
+  calls: number
+  cacheHits: number
+  cacheMisses: number
+  inputTokens: number
+  outputTokens: number
+  avgDurationMs: number
+  errorCount: number
+}
+
+export interface PipelineStatsResponse {
+  steps: StepStats[]
+  totals: {
+    calls: number
+    cacheHits: number
+    cacheMisses: number
+    inputTokens: number
+    outputTokens: number
+    errorCount: number
+  }
+  pipelineRun: {
+    status: string
+    startedAt?: number
+    completedAt?: number
+    wallClockMs?: number
+  } | null
+}
+
+export interface ActiveConfigResponse {
+  merged: Record<string, unknown>
+  hasBookOverride: boolean
+}
+
+export interface VersionEntry {
+  version: number
+  data?: unknown
+}
+
+export interface VersionListResponse {
+  versions: VersionEntry[]
+}
+
+export interface LlmLogsParams {
+  step?: string
+  itemId?: string
+  limit?: number
+  offset?: number
+}
+
 export const api = {
   getBooks: () => request<BookSummary[]>("/books"),
 
@@ -171,5 +253,35 @@ export const api = {
         headers: { "X-OpenAI-Key": apiKey },
         signal: AbortSignal.timeout(120_000),
       }
+    ),
+
+  // --- Debug endpoints ---
+
+  getLlmLogs: (label: string, params?: LlmLogsParams) => {
+    const qs = new URLSearchParams()
+    if (params?.step) qs.set("step", params.step)
+    if (params?.itemId) qs.set("itemId", params.itemId)
+    if (params?.limit != null) qs.set("limit", String(params.limit))
+    if (params?.offset != null) qs.set("offset", String(params.offset))
+    const query = qs.toString()
+    return request<LlmLogsResponse>(
+      `/books/${label}/debug/llm-logs${query ? `?${query}` : ""}`
+    )
+  },
+
+  getPipelineStats: (label: string) =>
+    request<PipelineStatsResponse>(`/books/${label}/debug/stats`),
+
+  getActiveConfig: (label: string) =>
+    request<ActiveConfigResponse>(`/books/${label}/debug/config`),
+
+  getVersionHistory: (
+    label: string,
+    node: string,
+    itemId: string,
+    includeData?: boolean
+  ) =>
+    request<VersionListResponse>(
+      `/books/${label}/debug/versions/${node}/${itemId}${includeData ? "?includeData=true" : ""}`
     ),
 }

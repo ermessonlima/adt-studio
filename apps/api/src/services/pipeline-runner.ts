@@ -20,6 +20,7 @@ import type {
   TextClassificationOutput,
   ImageClassificationOutput,
   PageSectioningOutput,
+  StepName,
 } from "@adt/types"
 import type { PageData } from "@adt/storage"
 import type {
@@ -100,7 +101,21 @@ export function createPipelineRunner(): PipelineRunner {
           cacheDir,
           promptEngine,
           rateLimiter,
-          onLog: (entry) => storage.appendLlmLog(entry),
+          onLog: (entry) => {
+            storage.appendLlmLog(entry)
+            progress.emit({
+              type: "llm-log",
+              step: "metadata",
+              itemId: entry.pageId ?? "",
+              promptName: entry.promptName,
+              modelId: entry.modelId,
+              cacheHit: entry.cacheHit,
+              durationMs: entry.durationMs,
+              inputTokens: entry.usage?.inputTokens,
+              outputTokens: entry.usage?.outputTokens,
+              validationErrors: entry.validationErrors,
+            })
+          },
         })
 
         const pages = storage.getPages()
@@ -131,7 +146,22 @@ export function createPipelineRunner(): PipelineRunner {
           cacheDir,
           promptEngine,
           rateLimiter,
-          onLog: (entry) => storage.appendLlmLog(entry),
+          onLog: (entry) => {
+            storage.appendLlmLog(entry)
+            const step = entry.taskType as StepName
+            progress.emit({
+              type: "llm-log",
+              step,
+              itemId: entry.pageId ?? "",
+              promptName: entry.promptName,
+              modelId: entry.modelId,
+              cacheHit: entry.cacheHit,
+              durationMs: entry.durationMs,
+              inputTokens: entry.usage?.inputTokens,
+              outputTokens: entry.usage?.outputTokens,
+              validationErrors: entry.validationErrors,
+            })
+          },
         })
 
         const effectiveConcurrency =

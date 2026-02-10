@@ -17,6 +17,19 @@ export interface StepProgress {
   message?: string
 }
 
+export interface LlmLogSummary {
+  step: StepName
+  itemId: string
+  promptName: string
+  modelId: string
+  cacheHit: boolean
+  durationMs: number
+  inputTokens?: number
+  outputTokens?: number
+  validationErrors?: string[]
+  receivedAt: number
+}
+
 export interface PipelineProgress {
   isRunning: boolean
   isComplete: boolean
@@ -24,7 +37,10 @@ export interface PipelineProgress {
   currentStep: StepName | null
   completedSteps: Set<StepName>
   stepProgress: Map<StepName, StepProgress>
+  liveLlmLogs: LlmLogSummary[]
 }
+
+const MAX_LIVE_LOGS = 500
 
 const INITIAL_PROGRESS: PipelineProgress = {
   isRunning: false,
@@ -33,6 +49,7 @@ const INITIAL_PROGRESS: PipelineProgress = {
   currentStep: null,
   completedSteps: new Set(),
   stepProgress: new Map(),
+  liveLlmLogs: [],
 }
 
 /**
@@ -86,6 +103,21 @@ export function usePipelineSSE(label: string, enabled: boolean) {
           stepProgress.delete(data.step)
         } else if (data.type === "step-error") {
           next.error = `${data.step}: ${data.error}`
+        } else if (data.type === "llm-log") {
+          const entry: LlmLogSummary = {
+            step: data.step,
+            itemId: data.itemId,
+            promptName: data.promptName,
+            modelId: data.modelId,
+            cacheHit: data.cacheHit,
+            durationMs: data.durationMs,
+            inputTokens: data.inputTokens,
+            outputTokens: data.outputTokens,
+            validationErrors: data.validationErrors,
+            receivedAt: Date.now(),
+          }
+          const logs = [...prev.liveLlmLogs, entry]
+          next.liveLlmLogs = logs.length > MAX_LIVE_LOGS ? logs.slice(-MAX_LIVE_LOGS) : logs
         }
 
         next.stepProgress = stepProgress
@@ -103,6 +135,7 @@ export function usePipelineSSE(label: string, enabled: boolean) {
       }))
       queryClient.invalidateQueries({ queryKey: ["books", label] })
       queryClient.invalidateQueries({ queryKey: ["books"] })
+      queryClient.invalidateQueries({ queryKey: ["debug"] })
       es.close()
     })
 

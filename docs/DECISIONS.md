@@ -19,6 +19,9 @@ This document records all significant technology and architecture decisions made
 11. [Conditional Classes: clsx](#011-clsx-over-classnames)
 12. [UI Components: shadcn/ui](#012-shadcnui-for-ui-components)
 13. [Progress Streaming: SSE](#013-sse-for-pipeline-progress)
+14. [Developer Debug Panel](#014-developer-debug-panel-for-pipeline-observability)
+15. [Breadcrumb Navigation](#015-breadcrumb-navigation-over-global-header)
+16. [Home Page Split Layout](#016-home-page-split-layout)
 
 ---
 
@@ -442,6 +445,84 @@ Use Server-Sent Events (SSE) for streaming real-time pipeline progress from API 
 
 ---
 
+## 014: Developer Debug Panel for Pipeline Observability
+
+**Status**: Decided
+**Date**: 2026-02-10
+
+### Decision
+
+Add a browser-DevTools-style bottom drawer panel (toggled via `Cmd+Shift+D`) on all book routes for inspecting LLM logs, pipeline stats, active config, and entity version history.
+
+### Reasoning
+
+- **Iteration speed**: Pipeline development requires seeing exactly what's happening — prompts sent, cache hits, token usage, validation failures. This data exists in `llm_log` but was only accessible via raw SQL.
+- **Zero external tools**: No need to open a separate DB viewer or log aggregator. Everything is in the browser, colocated with the pipeline output.
+- **Live + historical**: SSE `llm-log` events stream during a run (summary only, no full prompts in SSE). Full prompt/response detail fetched on demand from REST endpoints.
+- **Cost awareness**: Token counts and estimated cost displayed per step, helping catch expensive prompts early.
+- **Config visibility**: Merged config (global + book override) displayed in a structured read-only view, clarifying which settings are active.
+- **Minimal footprint**: 4 REST endpoints, 1 SSE event type, 5 React components. No new dependencies.
+
+### Alternatives Considered
+
+| Option | Why Not |
+|--------|---------|
+| External log viewer | Requires switching context, additional setup, not integrated with pipeline UI |
+| Browser console logging | Unstructured, lost on page refresh, no filtering/aggregation |
+| Separate /debug page | Less discoverable, doesn't coexist with the main pipeline view |
+
+---
+
+## 015: Breadcrumb Navigation Over Global Header
+
+**Status**: Decided
+**Date**: 2026-02-10
+
+### Decision
+
+Remove the global header bar and use per-page breadcrumb navigation instead.
+
+### Reasoning
+
+- **Vertical space**: A persistent header with "ADT Studio" title consumed 36-56px on every page. On a desktop app where every pixel matters for pipeline output and storyboards, this is wasted space.
+- **Context-aware**: Breadcrumbs (e.g., `ADT Studio / Book Title / Storyboard`) provide navigation context that a static header doesn't — the user always knows where they are in the hierarchy.
+- **Consistency**: Every page follows the same pattern: breadcrumb trail at the top, then page content. The home page uses its title as the breadcrumb root.
+
+### Alternatives Considered
+
+| Option | Why Not |
+|--------|---------|
+| Slim header (36px) | Still wastes vertical space on every page for a static label |
+| Floating action button | Inconsistent with the rest of the navigation model |
+| Sidebar nav | Wastes horizontal space, overkill for a 4-level hierarchy |
+
+---
+
+## 016: Home Page Split Layout
+
+**Status**: Decided
+**Date**: 2026-02-10
+
+### Decision
+
+Home page uses a 30/70 vertical split: workflow guide on the left, books list on the right.
+
+### Reasoning
+
+- **No dead space**: With few books, a full-width grid leaves a massive void. The workflow column fills vertical space naturally with the 5-step timeline.
+- **Onboarding built-in**: New users see how the tool works without navigating to a separate help page.
+- **Book list as vertical cards**: Full-width horizontal cards in a single column show all metadata (title, label, authors, publisher, language, page count) with always-visible edit/delete actions — more information density than small grid cards.
+
+### Alternatives Considered
+
+| Option | Why Not |
+|--------|---------|
+| Full-width book grid | Massive empty space with 1-2 books, workflow hidden at bottom |
+| Centered content | Looks unfinished on wide screens, wastes horizontal space |
+| Workflow as horizontal strip | Compact but takes away from the books section, hard to show 5 steps with descriptions |
+
+---
+
 ## Decision Log Summary
 
 | # | Decision | Chosen | Over |
@@ -459,3 +540,6 @@ Use Server-Sent Events (SSE) for streaming real-time pipeline progress from API 
 | 011 | Class utility | clsx | classnames |
 | 012 | UI components | shadcn/ui | MUI, Headless UI, raw Tailwind |
 | 013 | Progress streaming | SSE | Polling, WebSocket |
+| 014 | Debug panel | Bottom drawer + REST + SSE | External viewer, console logs |
+| 015 | Navigation | Breadcrumb per page | Global header, sidebar |
+| 016 | Home layout | 30/70 split (guide + books) | Full-width grid, centered content |

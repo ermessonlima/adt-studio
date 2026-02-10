@@ -24,5 +24,17 @@ export const ProgressEvent = z.discriminatedUnion("type", [
     step: StepName,
     error: z.string(),
   }),
+  z.object({
+    type: z.literal("llm-log"),
+    step: StepName,
+    itemId: z.string(),
+    promptName: z.string(),
+    modelId: z.string(),
+    cacheHit: z.boolean(),
+    durationMs: z.number(),
+    inputTokens: z.number().optional(),
+    outputTokens: z.number().optional(),
+    validationErrors: z.array(z.string()).optional(),
+  }),
 ])
 export type ProgressEvent = z.infer<typeof ProgressEvent>
