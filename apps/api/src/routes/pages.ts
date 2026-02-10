@@ -2,9 +2,10 @@ import fs from "node:fs"
 import path from "node:path"
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { parseBookLabel } from "@adt/types"
+import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput } from "@adt/types"
 import { openBookDb } from "@adt/storage"
 import { createBookStorage } from "@adt/storage"
+import { reRenderPage } from "../services/page-edit-service.js"
 
 interface PageSummary {
   pageId: string
@@ -27,7 +28,11 @@ function getDbPath(label: string, booksDir: string): string {
   return path.join(path.resolve(booksDir), safeLabel, `${safeLabel}.db`)
 }
 
-export function createPageRoutes(booksDir: string): Hono {
+export function createPageRoutes(
+  booksDir: string,
+  promptsDir: string,
+  configPath?: string
+): Hono {
   const app = new Hono()
 
   // GET /books/:label/pages — List pages with pipeline status
@@ -164,6 +169,97 @@ export function createPageRoutes(booksDir: string): Hono {
     } finally {
       db.close()
     }
+  })
+
+  // PUT /books/:label/pages/:pageId/text-classification — Update text classification
+  app.put("/books/:label/pages/:pageId/text-classification", async (c) => {
+    const { label, pageId } = c.req.param()
+    const safeLabel = parseBookLabel(label)
+
+    const body = await c.req.json()
+    const parsed = TextClassificationOutput.safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid text-classification data: ${parsed.error.message}`,
+      })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      const pages = storage.getPages()
+      const page = pages.find((p) => p.pageId === pageId)
+      if (!page) {
+        throw new HTTPException(404, { message: `Page not found: ${pageId}` })
+      }
+
+      const version = storage.putNodeData("text-classification", pageId, parsed.data)
+      return c.json({ version })
+    } finally {
+      storage.close()
+    }
+  })
+
+  // PUT /books/:label/pages/:pageId/image-classification — Update image classification
+  app.put("/books/:label/pages/:pageId/image-classification", async (c) => {
+    const { label, pageId } = c.req.param()
+    const safeLabel = parseBookLabel(label)
+
+    const body = await c.req.json()
+    const parsed = ImageClassificationOutput.safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid image-classification data: ${parsed.error.message}`,
+      })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      const pages = storage.getPages()
+      const page = pages.find((p) => p.pageId === pageId)
+      if (!page) {
+        throw new HTTPException(404, { message: `Page not found: ${pageId}` })
+      }
+
+      const version = storage.putNodeData("image-classification", pageId, parsed.data)
+      return c.json({ version })
+    } finally {
+      storage.close()
+    }
+  })
+
+  // POST /books/:label/pages/:pageId/re-render — Re-render page with current pipeline data
+  app.post("/books/:label/pages/:pageId/re-render", async (c) => {
+    const { label, pageId } = c.req.param()
+    const safeLabel = parseBookLabel(label)
+
+    const apiKey = c.req.header("X-OpenAI-Key")
+    if (!apiKey) {
+      throw new HTTPException(400, {
+        message: "Missing X-OpenAI-Key header",
+      })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      const pages = storage.getPages()
+      const page = pages.find((p) => p.pageId === pageId)
+      if (!page) {
+        throw new HTTPException(404, { message: `Page not found: ${pageId}` })
+      }
+    } finally {
+      storage.close()
+    }
+
+    const result = await reRenderPage({
+      label: safeLabel,
+      pageId,
+      booksDir,
+      promptsDir,
+      configPath,
+      apiKey,
+    })
+
+    return c.json(result)
   })
 
   return app
