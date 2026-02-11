@@ -89,6 +89,30 @@ describe("buildRenderStrategyResolver", () => {
     expect(config.templateName).toBe("")
   })
 
+  it("falls back to default strategy when section strategy name is missing", () => {
+    const appConfig: AppConfig = {
+      text_types: { heading: "Heading" },
+      text_group_types: { paragraph: "Paragraph" },
+      default_render_strategy: "html_default",
+      render_strategies: {
+        html_default: {
+          render_type: "html",
+          config: { prompt: "default_prompt", model: "openai:gpt-5.2" },
+        },
+      },
+      section_render_strategies: {
+        front_cover: "missing_strategy",
+      },
+    }
+
+    const resolve = buildRenderStrategyResolver(appConfig)
+    const config = resolve("front_cover")
+
+    expect(config.renderType).toBe("html")
+    expect(config.promptName).toBe("default_prompt")
+    expect(config.modelId).toBe("openai:gpt-5.2")
+  })
+
   it("resolves template strategy with render type and template name", () => {
     const appConfig: AppConfig = {
       text_types: { heading: "Heading" },
@@ -635,5 +659,94 @@ describe("renderPage", () => {
         // no template engine passed
       )
     ).rejects.toThrow("Template engine required")
+  })
+
+  it("resolves LLM model per section render config", async () => {
+    const calls: string[] = []
+    const llmResolver = (modelId: string): LLMModel => ({
+      generateObject: async <T>() => {
+        calls.push(modelId)
+        const content =
+          modelId === "openai:model-a"
+            ? '<div id="content" class="container"><section role="article" data-section-type="text_only"><p data-id="pg001_gp001_tx001">First</p></section></div>'
+            : '<div id="content" class="container"><section role="article" data-section-type="text_only"><p data-id="pg001_gp002_tx001">Second</p></section></div>'
+        return {
+          object: { reasoning: "test", content } as T,
+        } as GenerateObjectResult<T>
+      },
+    })
+
+    const resolveConfig = (sectionType: string): RenderConfig =>
+      sectionType === "cover"
+        ? {
+            renderType: "html",
+            promptName: "prompt_a",
+            modelId: "openai:model-a",
+            maxRetries: 2,
+            timeoutMs: 180000,
+            templateName: "",
+          }
+        : {
+            renderType: "html",
+            promptName: "prompt_b",
+            modelId: "openai:model-b",
+            maxRetries: 2,
+            timeoutMs: 180000,
+            templateName: "",
+          }
+
+    const result = await renderPage(
+      {
+        label: "test-book",
+        pageId: "pg001",
+        pageImageBase64: "base64img",
+        sectioning: {
+          reasoning: "test",
+          sections: [
+            {
+              sectionType: "cover",
+              partIds: ["pg001_gp001"],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+            {
+              sectionType: "body",
+              partIds: ["pg001_gp002"],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+        textClassification: {
+          reasoning: "test",
+          groups: [
+            {
+              groupId: "pg001_gp001",
+              groupType: "paragraph",
+              texts: [
+                { textType: "section_text", text: "First", isPruned: false },
+              ],
+            },
+            {
+              groupId: "pg001_gp002",
+              groupType: "paragraph",
+              texts: [
+                { textType: "section_text", text: "Second", isPruned: false },
+              ],
+            },
+          ],
+        },
+        images: new Map(),
+      },
+      resolveConfig,
+      llmResolver
+    )
+
+    expect(result.sections).toHaveLength(2)
+    expect(calls).toEqual(["openai:model-a", "openai:model-b"])
   })
 })

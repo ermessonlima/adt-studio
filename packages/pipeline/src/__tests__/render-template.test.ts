@@ -263,4 +263,29 @@ describe("two_column_render.liquid", () => {
     expect(result.html).toContain('data-id="pg001_im002"')
     expect(result.html).toContain("lg:basis-1/2")
   })
+
+  it("escapes text content to prevent HTML injection", async () => {
+    const engine = createTemplateEngine(templatesDir)
+    const input = makeInput({
+      parts: [
+        {
+          type: "group",
+          groupId: "pg001_gp001",
+          groupType: "paragraph",
+          texts: [
+            {
+              textId: "pg001_gp001_tx001",
+              textType: "section_text",
+              text: '<img src=x onerror=alert("xss")>',
+            },
+          ],
+        },
+      ],
+    })
+    const config = { ...templateConfig, templateName: "two_column_render" }
+    const result = await renderSectionTemplate(input, config, engine)
+
+    expect(result.html).toContain("&lt;img src=x onerror=alert(&quot;xss&quot;)&gt;")
+    expect(result.html).not.toContain('<img src=x onerror=alert("xss")>')
+  })
 })

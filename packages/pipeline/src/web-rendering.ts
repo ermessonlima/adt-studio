@@ -55,6 +55,17 @@ export interface RenderPageInput {
   images: Map<string, string> // imageId → base64
 }
 
+export type ResolveLLMModel = LLMModel | ((modelId: string) => LLMModel)
+
+function getLLMModel(
+  resolver: ResolveLLMModel,
+  modelId: string
+): LLMModel {
+  return typeof resolver === "function"
+    ? resolver(modelId)
+    : resolver
+}
+
 /**
  * Resolve section part IDs to an ordered array of groups and images.
  * Groups are expanded to their non-pruned text entries.
@@ -107,7 +118,7 @@ function resolveParts(
 export async function renderPage(
   input: RenderPageInput,
   resolveConfig: (sectionType: string) => RenderConfig,
-  llmModel: LLMModel,
+  llmModel: ResolveLLMModel,
   templateEngine?: TemplateEngine
 ): Promise<WebRenderingOutput> {
   const sections: SectionRendering[] = []
@@ -154,7 +165,11 @@ export async function renderPage(
         templateEngine
       )
     } else {
-      rendering = await renderSectionHtml(sectionInput, config, llmModel)
+      rendering = await renderSectionHtml(
+        sectionInput,
+        config,
+        getLLMModel(llmModel, config.modelId)
+      )
     }
 
     sections.push(rendering)
@@ -186,8 +201,14 @@ export function buildRenderStrategyResolver(
   const defaultName = appConfig.default_render_strategy
 
   return (sectionType: string): RenderConfig => {
-    const strategyName = sectionMapping[sectionType] ?? defaultName
-    const strategy = strategyName ? strategies[strategyName] : undefined
+    const sectionStrategyName = sectionMapping[sectionType]
+    const sectionStrategy = sectionStrategyName
+      ? strategies[sectionStrategyName]
+      : undefined
+    const defaultStrategy = defaultName
+      ? strategies[defaultName]
+      : undefined
+    const strategy = sectionStrategy ?? defaultStrategy
     const cfg = strategy?.config
 
     return {

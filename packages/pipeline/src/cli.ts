@@ -6,6 +6,7 @@ import cliProgress from "cli-progress"
 import { createBookStorage } from "@adt/storage"
 import type { Storage } from "@adt/storage"
 import { createLLMModel, createPromptEngine, createRateLimiter } from "@adt/llm"
+import type { LLMModel } from "@adt/llm"
 import { parseCliArgs, USAGE } from "./cli-args.js"
 import { extractPDF } from "./pdf-extraction.js"
 import { extractMetadata, buildMetadataConfig } from "./metadata-extraction.js"
@@ -174,6 +175,20 @@ async function main(): Promise<void> {
       rateLimiter,
       onLog: (entry) => storage.appendLlmLog(entry),
     })
+    const renderModels = new Map<string, LLMModel>()
+    const resolveRenderModel = (modelId: string): LLMModel => {
+      const existing = renderModels.get(modelId)
+      if (existing) return existing
+      const model = createLLMModel({
+        modelId,
+        cacheDir,
+        promptEngine,
+        rateLimiter,
+        onLog: (entry) => storage.appendLlmLog(entry),
+      })
+      renderModels.set(modelId, model)
+      return model
+    }
 
     const effectiveConcurrency =
       concurrency ?? config.concurrency ?? 32
@@ -217,6 +232,7 @@ async function main(): Promise<void> {
               resolveRenderConfig,
             },
             llmModel,
+            resolveRenderModel,
             templateEngine
           )
         }
@@ -245,6 +261,7 @@ async function processPage(
   storage: Storage,
   configs: StepConfigs,
   llmModel: ReturnType<typeof createLLMModel>,
+  resolveRenderModel: (modelId: string) => LLMModel,
   templateEngine: TemplateEngine
 ): Promise<void> {
   const { textClassifyConfig, imageClassifyConfig, sectioningConfig, resolveRenderConfig } =
@@ -325,7 +342,7 @@ async function processPage(
       images: renderImages,
     },
     resolveRenderConfig,
-    llmModel,
+    resolveRenderModel,
     templateEngine
   )
   storage.putNodeData("web-rendering", page.pageId, renderResult)

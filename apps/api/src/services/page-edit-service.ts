@@ -1,6 +1,7 @@
 import path from "node:path"
 import { createBookStorage } from "@adt/storage"
 import { createLLMModel, createPromptEngine } from "@adt/llm"
+import type { LLMModel } from "@adt/llm"
 import { renderPage, buildRenderStrategyResolver, createTemplateEngine, loadBookConfig } from "@adt/pipeline"
 import type {
   TextClassificationOutput,
@@ -67,20 +68,24 @@ export async function reRenderPage(
     const config = loadBookConfig(label, booksDir, configPath)
     const resolveRenderConfig = buildRenderStrategyResolver(config)
 
-    // Use default strategy to determine model for LLM creation
-    const defaultRenderConfig = resolveRenderConfig("__default__")
-
-    // Create LLM model
+    // Create LLM model resolver (model-specific, cached)
     const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
     const promptEngine = createPromptEngine(promptsDir)
     const templatesDir = path.join(path.dirname(promptsDir), "templates")
     const templateEngine = createTemplateEngine(templatesDir)
-    const llmModel = createLLMModel({
-      modelId: defaultRenderConfig.modelId,
-      cacheDir,
-      promptEngine,
-      onLog: (entry) => storage.appendLlmLog(entry),
-    })
+    const renderModels = new Map<string, LLMModel>()
+    const resolveRenderModel = (modelId: string): LLMModel => {
+      const existing = renderModels.get(modelId)
+      if (existing) return existing
+      const model = createLLMModel({
+        modelId,
+        cacheDir,
+        promptEngine,
+        onLog: (entry) => storage.appendLlmLog(entry),
+      })
+      renderModels.set(modelId, model)
+      return model
+    }
 
     // Get page image
     const pageImageBase64 = storage.getPageImageBase64(pageId)
@@ -96,7 +101,7 @@ export async function reRenderPage(
         images: renderImages,
       },
       resolveRenderConfig,
-      llmModel,
+      resolveRenderModel,
       templateEngine
     )
 

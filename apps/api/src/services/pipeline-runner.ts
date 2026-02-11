@@ -2,6 +2,7 @@ import path from "node:path"
 import { createBookStorage } from "@adt/storage"
 import type { Storage } from "@adt/storage"
 import { createLLMModel, createPromptEngine, createRateLimiter } from "@adt/llm"
+import type { LLMModel, LlmLogEntry } from "@adt/llm"
 import {
   extractPDF,
   extractMetadata,
@@ -145,28 +146,44 @@ export function createPipelineRunner(): PipelineRunner {
         const sectioningConfig = buildSectioningConfig(config)
         const resolveRenderConfig = buildRenderStrategyResolver(config)
 
+        const onLlmLog = (entry: LlmLogEntry) => {
+          storage.appendLlmLog(entry)
+          const step = entry.taskType as StepName
+          progress.emit({
+            type: "llm-log",
+            step,
+            itemId: entry.pageId ?? "",
+            promptName: entry.promptName,
+            modelId: entry.modelId,
+            cacheHit: entry.cacheHit,
+            durationMs: entry.durationMs,
+            inputTokens: entry.usage?.inputTokens,
+            outputTokens: entry.usage?.outputTokens,
+            validationErrors: entry.validationErrors,
+          })
+        }
+
         const llmModel = createLLMModel({
           modelId: textClassifyConfig.modelId,
           cacheDir,
           promptEngine,
           rateLimiter,
-          onLog: (entry) => {
-            storage.appendLlmLog(entry)
-            const step = entry.taskType as StepName
-            progress.emit({
-              type: "llm-log",
-              step,
-              itemId: entry.pageId ?? "",
-              promptName: entry.promptName,
-              modelId: entry.modelId,
-              cacheHit: entry.cacheHit,
-              durationMs: entry.durationMs,
-              inputTokens: entry.usage?.inputTokens,
-              outputTokens: entry.usage?.outputTokens,
-              validationErrors: entry.validationErrors,
-            })
-          },
+          onLog: onLlmLog,
         })
+        const renderModels = new Map<string, LLMModel>()
+        const resolveRenderModel = (modelId: string): LLMModel => {
+          const existing = renderModels.get(modelId)
+          if (existing) return existing
+          const model = createLLMModel({
+            modelId,
+            cacheDir,
+            promptEngine,
+            rateLimiter,
+            onLog: onLlmLog,
+          })
+          renderModels.set(modelId, model)
+          return model
+        }
 
         const effectiveConcurrency =
           options.concurrency ?? config.concurrency ?? 32
@@ -195,6 +212,7 @@ export function createPipelineRunner(): PipelineRunner {
                   resolveRenderConfig,
                 },
                 llmModel,
+                resolveRenderModel,
                 templateEngine,
                 progress,
                 totalPages,
@@ -303,6 +321,7 @@ async function processPage(
   storage: Storage,
   configs: StepConfigs,
   llmModel: ReturnType<typeof createLLMModel>,
+  resolveRenderModel: (modelId: string) => LLMModel,
   templateEngine: TemplateEngine,
   _progress: PipelineProgress,
   _totalPages: number,
@@ -394,7 +413,7 @@ async function processPage(
       images: renderImages,
     },
     resolveRenderConfig,
-    llmModel,
+    resolveRenderModel,
     templateEngine
   )
   storage.putNodeData("web-rendering", page.pageId, renderResult)
