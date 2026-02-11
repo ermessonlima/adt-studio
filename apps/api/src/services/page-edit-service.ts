@@ -1,7 +1,7 @@
 import path from "node:path"
 import { createBookStorage } from "@adt/storage"
 import { createLLMModel, createPromptEngine } from "@adt/llm"
-import { renderPage, buildRenderConfig, loadBookConfig } from "@adt/pipeline"
+import { renderPage, buildRenderStrategyResolver, createTemplateEngine, loadBookConfig } from "@adt/pipeline"
 import type {
   TextClassificationOutput,
   ImageClassificationOutput,
@@ -63,15 +63,20 @@ export async function reRenderPage(
       }
     }
 
-    // Load config and build render config
+    // Load config and build render strategy resolver
     const config = loadBookConfig(label, booksDir, configPath)
-    const renderConfig = buildRenderConfig(config)
+    const resolveRenderConfig = buildRenderStrategyResolver(config)
+
+    // Use default strategy to determine model for LLM creation
+    const defaultRenderConfig = resolveRenderConfig("__default__")
 
     // Create LLM model
     const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
     const promptEngine = createPromptEngine(promptsDir)
+    const templatesDir = path.join(path.dirname(promptsDir), "templates")
+    const templateEngine = createTemplateEngine(templatesDir)
     const llmModel = createLLMModel({
-      modelId: renderConfig.modelId,
+      modelId: defaultRenderConfig.modelId,
       cacheDir,
       promptEngine,
       onLog: (entry) => storage.appendLlmLog(entry),
@@ -90,8 +95,9 @@ export async function reRenderPage(
         textClassification,
         images: renderImages,
       },
-      renderConfig,
-      llmModel
+      resolveRenderConfig,
+      llmModel,
+      templateEngine
     )
 
     // Store result

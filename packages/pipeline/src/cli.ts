@@ -12,7 +12,8 @@ import { extractMetadata, buildMetadataConfig } from "./metadata-extraction.js"
 import { classifyPageText, buildClassifyConfig } from "./text-classification.js"
 import { classifyPageImages, buildImageClassifyConfig } from "./image-classification.js"
 import { sectionPage, buildSectioningConfig } from "./page-sectioning.js"
-import { renderPage, buildRenderConfig } from "./web-rendering.js"
+import { renderPage, buildRenderStrategyResolver } from "./web-rendering.js"
+import { createTemplateEngine, type TemplateEngine } from "./render-template.js"
 import { loadBookConfig } from "./config.js"
 import type {
   TextClassificationOutput,
@@ -123,6 +124,8 @@ async function main(): Promise<void> {
     const metadataConfig = buildMetadataConfig(config)
     const cacheDir = path.join(booksRoot, label, ".cache")
     const promptsDir = path.resolve(process.cwd(), "prompts")
+    const templatesDir = path.resolve(process.cwd(), "templates")
+    const templateEngine = createTemplateEngine(templatesDir)
     const promptEngine = createPromptEngine(promptsDir)
     const rateLimiter = config.rate_limit
       ? createRateLimiter(config.rate_limit.requests_per_minute)
@@ -163,7 +166,7 @@ async function main(): Promise<void> {
     const textClassifyConfig = buildClassifyConfig(config)
     const imageClassifyConfig = buildImageClassifyConfig(config)
     const sectioningConfig = buildSectioningConfig(config)
-    const renderConfig = buildRenderConfig(config)
+    const resolveRenderConfig = buildRenderStrategyResolver(config)
     const llmModel = createLLMModel({
       modelId: textClassifyConfig.modelId,
       cacheDir,
@@ -211,9 +214,10 @@ async function main(): Promise<void> {
               textClassifyConfig,
               imageClassifyConfig,
               sectioningConfig,
-              renderConfig,
+              resolveRenderConfig,
             },
-            llmModel
+            llmModel,
+            templateEngine
           )
         }
       )
@@ -231,7 +235,7 @@ interface StepConfigs {
   textClassifyConfig: ReturnType<typeof buildClassifyConfig>
   imageClassifyConfig: ReturnType<typeof buildImageClassifyConfig>
   sectioningConfig: ReturnType<typeof buildSectioningConfig>
-  renderConfig: ReturnType<typeof buildRenderConfig>
+  resolveRenderConfig: ReturnType<typeof buildRenderStrategyResolver>
 }
 
 async function processPage(
@@ -240,9 +244,10 @@ async function processPage(
   bars: StepBars,
   storage: Storage,
   configs: StepConfigs,
-  llmModel: ReturnType<typeof createLLMModel>
+  llmModel: ReturnType<typeof createLLMModel>,
+  templateEngine: TemplateEngine
 ): Promise<void> {
-  const { textClassifyConfig, imageClassifyConfig, sectioningConfig, renderConfig } =
+  const { textClassifyConfig, imageClassifyConfig, sectioningConfig, resolveRenderConfig } =
     configs
 
   // --- Classify ---
@@ -319,8 +324,9 @@ async function processPage(
       textClassification,
       images: renderImages,
     },
-    renderConfig,
-    llmModel
+    resolveRenderConfig,
+    llmModel,
+    templateEngine
   )
   storage.putNodeData("web-rendering", page.pageId, renderResult)
   bars.render.increment()

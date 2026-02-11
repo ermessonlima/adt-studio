@@ -13,9 +13,11 @@ import {
   sectionPage,
   buildSectioningConfig,
   renderPage,
-  buildRenderConfig,
+  buildRenderStrategyResolver,
+  createTemplateEngine,
   loadBookConfig,
 } from "@adt/pipeline"
+import type { TemplateEngine } from "@adt/pipeline"
 import type {
   TextClassificationOutput,
   ImageClassificationOutput,
@@ -92,6 +94,8 @@ export function createPipelineRunner(): PipelineRunner {
         const metadataConfig = buildMetadataConfig(config)
         const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
         const promptEngine = createPromptEngine(promptsDir)
+        const templatesDir = path.join(path.dirname(promptsDir), "templates")
+        const templateEngine = createTemplateEngine(templatesDir)
         const rateLimiter = config.rate_limit
           ? createRateLimiter(config.rate_limit.requests_per_minute)
           : undefined
@@ -139,7 +143,7 @@ export function createPipelineRunner(): PipelineRunner {
         const textClassifyConfig = buildClassifyConfig(config)
         const imageClassifyConfig = buildImageClassifyConfig(config)
         const sectioningConfig = buildSectioningConfig(config)
-        const renderConfig = buildRenderConfig(config)
+        const resolveRenderConfig = buildRenderStrategyResolver(config)
 
         const llmModel = createLLMModel({
           modelId: textClassifyConfig.modelId,
@@ -188,9 +192,10 @@ export function createPipelineRunner(): PipelineRunner {
                   textClassifyConfig,
                   imageClassifyConfig,
                   sectioningConfig,
-                  renderConfig,
+                  resolveRenderConfig,
                 },
                 llmModel,
+                templateEngine,
                 progress,
                 totalPages,
                 {
@@ -282,7 +287,7 @@ interface StepConfigs {
   textClassifyConfig: ReturnType<typeof buildClassifyConfig>
   imageClassifyConfig: ReturnType<typeof buildImageClassifyConfig>
   sectioningConfig: ReturnType<typeof buildSectioningConfig>
-  renderConfig: ReturnType<typeof buildRenderConfig>
+  resolveRenderConfig: ReturnType<typeof buildRenderStrategyResolver>
 }
 
 interface PageCallbacks {
@@ -298,6 +303,7 @@ async function processPage(
   storage: Storage,
   configs: StepConfigs,
   llmModel: ReturnType<typeof createLLMModel>,
+  templateEngine: TemplateEngine,
   _progress: PipelineProgress,
   _totalPages: number,
   callbacks: PageCallbacks
@@ -306,7 +312,7 @@ async function processPage(
     textClassifyConfig,
     imageClassifyConfig,
     sectioningConfig,
-    renderConfig,
+    resolveRenderConfig,
   } = configs
 
   // Classify images (sync) + text (async)
@@ -387,8 +393,9 @@ async function processPage(
       textClassification,
       images: renderImages,
     },
-    renderConfig,
-    llmModel
+    resolveRenderConfig,
+    llmModel,
+    templateEngine
   )
   storage.putNodeData("web-rendering", page.pageId, renderResult)
   callbacks.onRender()
