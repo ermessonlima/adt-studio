@@ -10,6 +10,7 @@ export type StepName =
   | "image-classification"
   | "page-sectioning"
   | "web-rendering"
+  | "image-captioning"
 
 export interface StepProgress {
   step: StepName
