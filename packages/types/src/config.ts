@@ -71,6 +71,7 @@ export const AppConfig = z.object({
   output_languages: z.array(z.string()).optional(),
   book_format: z.array(BookFormat).optional(),
   layout_type: LayoutType.optional(),
+  spread_mode: z.boolean().optional(),
 })
 export type AppConfig = z.infer<typeof AppConfig>
 
