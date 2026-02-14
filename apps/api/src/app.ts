@@ -10,6 +10,9 @@ import { createPageRoutes } from "./routes/pages.js"
 import { createDebugRoutes } from "./routes/debug.js"
 import { createPipelineService } from "./services/pipeline-service.js"
 import { createPipelineRunner } from "./services/pipeline-runner.js"
+import { createProofService } from "./services/proof-service.js"
+import { createProofRunner } from "./services/proof-runner.js"
+import { createProofRoutes } from "./routes/proof.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -23,14 +26,23 @@ const configPath = path.resolve(
 
 const pipelineRunner = createPipelineRunner()
 const pipelineService = createPipelineService(pipelineRunner)
+const proofRunner = createProofRunner()
+const proofService = createProofService(proofRunner)
 
 const app = new Hono()
 
 app.use("*", logger())
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",    // Vite dev
+  "tauri://localhost",        // Tauri macOS
+  "https://tauri.localhost",  // Tauri Windows
+  "http://tauri.localhost",   // Tauri Linux
+]
+
 app.use(
   "*",
   cors({
-    origin: "http://localhost:5173",
+    origin: ALLOWED_ORIGINS,
   })
 )
 app.onError(errorHandler)
@@ -39,6 +51,7 @@ app.route("/api", healthRoutes)
 app.route("/api", createBookRoutes(booksDir))
 app.route("/api", createPipelineRoutes(pipelineService, booksDir, promptsDir, configPath))
 app.route("/api", createPageRoutes(booksDir, promptsDir, configPath))
+app.route("/api", createProofRoutes(proofService, booksDir, promptsDir, configPath))
 app.route("/api", createDebugRoutes(pipelineService, booksDir, promptsDir, configPath))
 
 export default app

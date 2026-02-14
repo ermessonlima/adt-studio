@@ -24,7 +24,6 @@ export interface StartPipelineOptions {
   configPath?: string
   startPage?: number
   endPage?: number
-  concurrency?: number
 }
 
 export interface PipelineProgress {

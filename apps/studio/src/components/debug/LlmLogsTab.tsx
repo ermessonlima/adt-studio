@@ -24,6 +24,7 @@ const STEPS = [
   "image-classification",
   "page-sectioning",
   "web-rendering",
+  "image-captioning",
 ] as const
 
 const STEP_LABELS: Record<StepName, string> = {
@@ -34,6 +35,7 @@ const STEP_LABELS: Record<StepName, string> = {
   "image-classification": "Images",
   "page-sectioning": "Sections",
   "web-rendering": "Render",
+  "image-captioning": "Captions",
 }
 
 interface LlmLogsTabProps {
@@ -131,7 +133,7 @@ function StepTracker({ progress }: { progress: PipelineProgress }) {
 
 // --- Expanded Detail View ---
 
-function LogDetail({ data, loading }: { data: LlmLogEntry["data"] | null; loading: boolean }) {
+function LogDetail({ data, loading, label }: { data: LlmLogEntry["data"] | null; loading: boolean; label: string }) {
   if (loading) {
     return (
       <td colSpan={9} className="px-4 py-3 bg-muted/20 text-xs text-muted-foreground">
@@ -214,8 +216,16 @@ function LogDetail({ data, loading }: { data: LlmLogEntry["data"] | null; loadin
                           {part.text}
                         </pre>
                       ) : (
-                        <div className="text-muted-foreground italic">
-                          [Image: {part.width}x{part.height}, {Math.round(part.byteLength / 1024)}KB]
+                        <div className="my-1">
+                          <img
+                            src={`/api/books/${label}/debug/llm-image/${part.hash}`}
+                            alt={`${part.width}×${part.height}`}
+                            className="max-h-48 rounded border bg-muted object-contain"
+                            loading="lazy"
+                          />
+                          <div className="text-[10px] text-muted-foreground mt-0.5">
+                            {part.width}×{part.height}, {Math.round(part.byteLength / 1024)}KB
+                          </div>
                         </div>
                       )}
                     </div>
@@ -307,7 +317,7 @@ function LiveLogRow({ entry, label }: { entry: LlmLogSummary; label: string }) {
       </tr>
       {expanded && (
         <tr className="border-b border-border/50">
-          <LogDetail data={detail} loading={loading} />
+          <LogDetail data={detail} loading={loading} label={label} />
         </tr>
       )}
     </>
@@ -316,7 +326,7 @@ function LiveLogRow({ entry, label }: { entry: LlmLogSummary; label: string }) {
 
 // --- History Log Row (from REST) ---
 
-function HistoryLogRow({ entry }: { entry: LlmLogEntry }) {
+function HistoryLogRow({ entry, label }: { entry: LlmLogEntry; label: string }) {
   const [expanded, setExpanded] = useState(false)
   const status = getStatusFromHistory(entry)
 
@@ -354,7 +364,7 @@ function HistoryLogRow({ entry }: { entry: LlmLogEntry }) {
       </tr>
       {expanded && (
         <tr className="border-b border-border/50">
-          <LogDetail data={entry.data} loading={false} />
+          <LogDetail data={entry.data} loading={false} label={label} />
         </tr>
       )}
     </>
@@ -499,7 +509,7 @@ export function LlmLogsTab({ label, progress }: LlmLogsTabProps) {
 
             {/* History logs from REST API */}
             {data?.logs.map((entry) => (
-              <HistoryLogRow key={entry.id} entry={entry} />
+              <HistoryLogRow key={entry.id} entry={entry} label={label} />
             ))}
           </tbody>
         </table>

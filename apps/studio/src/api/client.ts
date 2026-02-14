@@ -1,4 +1,14 @@
-const BASE_URL = "/api"
+function resolveBaseUrl(): string {
+  if (
+    window.location.protocol === "tauri:" ||
+    window.location.hostname === "tauri.localhost"
+  ) {
+    return "http://localhost:3001/api"
+  }
+  return "/api"
+}
+
+const BASE_URL = resolveBaseUrl()
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`
@@ -52,10 +62,17 @@ export interface PipelineStatus {
   completedAt?: number
 }
 
+export interface ProofStatus {
+  label: string
+  status: "idle" | "running" | "completed" | "failed"
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 export interface RunPipelineOptions {
   startPage?: number
   endPage?: number
-  concurrency?: number
 }
 
 export interface PageSummaryItem {
@@ -106,6 +123,9 @@ export interface PageDetail {
   } | null
   rendering: {
     sections: SectionRendering[]
+  } | null
+  imageCaptioning: {
+    captions: Array<{ imageId: string; reasoning: string; caption: string }>
   } | null
 }
 
@@ -306,6 +326,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ config }),
     }),
+
+  runProof: (label: string, apiKey: string) =>
+    request<{ status: string; label: string }>(
+      `/books/${label}/proof/run`,
+      { method: "POST", headers: { "X-OpenAI-Key": apiKey } }
+    ),
+
+  getProofStatus: (label: string) =>
+    request<ProofStatus>(`/books/${label}/proof/status`),
 
   acceptStoryboard: (label: string) =>
     request<{ version: number; acceptedAt: string }>(

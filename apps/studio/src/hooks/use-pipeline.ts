@@ -10,6 +10,7 @@ export type StepName =
   | "image-classification"
   | "page-sectioning"
   | "web-rendering"
+  | "image-captioning"
 
 export interface StepProgress {
   step: StepName
@@ -238,7 +239,7 @@ export function useRunPipeline() {
     }: {
       label: string
       apiKey: string
-      options?: { startPage?: number; endPage?: number; concurrency?: number }
+      options?: { startPage?: number; endPage?: number }
     }) => api.runPipeline(label, apiKey, options),
     onSuccess: (_data, { label }) => {
       queryClient.invalidateQueries({
