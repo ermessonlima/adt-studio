@@ -6,6 +6,7 @@ import { parseCliArgs, USAGE } from "./cli-args.js"
 import { createBookStorage } from "@adt/storage"
 import { runPipeline } from "./pipeline.js"
 import { runProof } from "./proof.js"
+import { runMaster } from "./master.js"
 import type { Progress } from "./progress.js"
 
 function log(msg: string): void {
@@ -86,6 +87,58 @@ function createProofProgress(): Progress & { stop(): void } {
         if (event.step === "quiz-generation" && quizBar) {
           quizBar.update(quizBar.getTotal())
         }
+      }
+
+      if (event.type === "step-error") {
+        multibar?.stop()
+      }
+    },
+
+    stop() {
+      multibar?.stop()
+    },
+  }
+}
+
+function createMasterProgress(): Progress & { stop(): void } {
+  let translationBar: cliProgress.SingleBar | undefined
+  let multibar: cliProgress.MultiBar | undefined
+
+  const barFormat = (label: string) =>
+    ` ${label.padEnd(20)} [{bar}] {value}/{total}`
+
+  return {
+    emit(event) {
+      if (event.type === "step-complete" && event.step === "text-catalog") {
+        log("✔ Text Catalog\n")
+      }
+
+      if (event.type === "step-progress" && event.step === "catalog-translation") {
+        if (event.page !== undefined && event.totalPages !== undefined) {
+          if (!translationBar) {
+            multibar = new cliProgress.MultiBar(
+              {
+                clearOnComplete: false,
+                hideCursor: true,
+                barsize: 30,
+                linewrap: false,
+                forceRedraw: true,
+              },
+              cliProgress.Presets.shades_grey
+            )
+            translationBar = multibar.create(event.totalPages, 0, {}, { format: barFormat("Translate Catalog") })
+          }
+          translationBar.setTotal(event.totalPages)
+          translationBar.update(event.page)
+        }
+      }
+
+      if (event.type === "step-complete" && event.step === "catalog-translation" && translationBar) {
+        translationBar.update(translationBar.getTotal())
+      }
+
+      if (event.type === "step-skip" && event.step === "catalog-translation") {
+        log("– Translate Catalog (skipped, no target languages)\n")
       }
 
       if (event.type === "step-error") {
@@ -325,6 +378,21 @@ async function main(): Promise<void> {
     proofProgress
   )
   proofProgress.stop()
+
+  // Master stage
+  log("\nMastering:\n")
+  const masterProgress = createMasterProgress()
+
+  await runMaster(
+    {
+      label,
+      booksRoot,
+      promptsDir,
+      logLevel: "silent",
+    },
+    masterProgress
+  )
+  masterProgress.stop()
 
   log(`\nOutput: ${path.join(booksRoot, label)}/\n`)
 }

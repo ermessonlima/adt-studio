@@ -70,6 +70,14 @@ export interface ProofStatus {
   completedAt?: number
 }
 
+export interface MasterStatus {
+  label: string
+  status: "idle" | "running" | "completed" | "failed"
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 export interface RunPipelineOptions {
   startPage?: number
   endPage?: number
@@ -364,6 +372,15 @@ export const api = {
 
   getProofStatus: (label: string) =>
     request<ProofStatus>(`/books/${label}/proof/status`),
+
+  runMaster: (label: string, apiKey: string) =>
+    request<{ status: string; label: string }>(
+      `/books/${label}/master/run`,
+      { method: "POST", headers: { "X-OpenAI-Key": apiKey } }
+    ),
+
+  getMasterStatus: (label: string) =>
+    request<MasterStatus>(`/books/${label}/master/status`),
 
   acceptStoryboard: (label: string) =>
     request<{ version: number; acceptedAt: string }>(

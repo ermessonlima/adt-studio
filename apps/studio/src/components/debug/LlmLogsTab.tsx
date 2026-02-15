@@ -27,6 +27,8 @@ const STEPS = [
   "image-captioning",
   "glossary",
   "quiz-generation",
+  "text-catalog",
+  "catalog-translation",
 ] as const
 
 const STEP_LABELS: Record<StepName, string> = {
@@ -40,6 +42,8 @@ const STEP_LABELS: Record<StepName, string> = {
   "image-captioning": "Captions",
   glossary: "Glossary",
   "quiz-generation": "Quizzes",
+  "text-catalog": "Text Catalog",
+  "catalog-translation": "Translate Catalog",
 }
 
 interface LlmLogsTabProps {

@@ -13,9 +13,11 @@ import {
 import { useBook, useExportBook } from "@/hooks/use-books"
 import { usePipelineSSE, usePipelineStatus, useRunPipeline } from "@/hooks/use-pipeline"
 import { useProofSSE, useProofStatus, useRunProof } from "@/hooks/use-proof"
+import { useMasterSSE, useMasterStatus, useRunMaster } from "@/hooks/use-master"
 import { useApiKey } from "@/hooks/use-api-key"
 import { PipelineProgress } from "@/components/pipeline/PipelineProgress"
 import { ProofProgress } from "@/components/proof/ProofProgress"
+import { MasterProgress } from "@/components/master/MasterProgress"
 import { PagePreviewGrid } from "@/components/pipeline/PagePreviewGrid"
 import { ConfigEditor } from "@/components/config/ConfigEditor"
 import { QuizPanel } from "@/components/storyboard/QuizPanel"
@@ -48,6 +50,12 @@ function BookDetailPage() {
   const { progress: proofProgress, reset: proofReset } = useProofSSE(label, proofSseEnabled)
   const { data: proofStatus } = useProofStatus(label)
 
+  // Master hooks
+  const runMaster = useRunMaster()
+  const [masterSseEnabled, setMasterSseEnabled] = useState(false)
+  const { progress: masterProgress, reset: masterReset } = useMasterSSE(label, masterSseEnabled)
+  const { data: masterStatus } = useMasterStatus(label)
+
   // Auto-run guard
   const hasAutoRun = useRef(false)
 
@@ -64,6 +72,13 @@ function BookDetailPage() {
       setProofSseEnabled(true)
     }
   }, [proofStatus?.status, proofSseEnabled])
+
+  // Auto-reconnect to SSE if master is already running
+  useEffect(() => {
+    if (masterStatus?.status === "running" && !masterSseEnabled) {
+      setMasterSseEnabled(true)
+    }
+  }, [masterStatus?.status, masterSseEnabled])
 
   // Auto-run pipeline when navigated from wizard
   useEffect(() => {
@@ -126,6 +141,23 @@ function BookDetailPage() {
         },
         onError: () => {
           setProofSseEnabled(false)
+        },
+      }
+    )
+  }
+
+  const handleRunMaster = () => {
+    masterReset()
+    setMasterSseEnabled(false)
+
+    runMaster.mutate(
+      { label, apiKey },
+      {
+        onSuccess: () => {
+          setMasterSseEnabled(true)
+        },
+        onError: () => {
+          setMasterSseEnabled(false)
         },
       }
     )
@@ -307,6 +339,16 @@ function BookDetailPage() {
           progress={proofProgress}
           onRun={handleRunProof}
           isStarting={runProof.isPending}
+          hasApiKey={hasApiKey}
+        />
+      )}
+
+      {/* Master Phase — shown after storyboard is accepted */}
+      {book.storyboardAccepted && (
+        <MasterProgress
+          progress={masterProgress}
+          onRun={handleRunMaster}
+          isStarting={runMaster.isPending}
           hasApiKey={hasApiKey}
         />
       )}

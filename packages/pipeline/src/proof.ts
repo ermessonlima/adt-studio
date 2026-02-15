@@ -171,7 +171,7 @@ function toErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function processWithConcurrency<T>(
+export async function processWithConcurrency<T>(
   items: T[],
   concurrency: number,
   fn: (item: T) => Promise<void>
