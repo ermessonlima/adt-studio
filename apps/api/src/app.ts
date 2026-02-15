@@ -15,6 +15,9 @@ import { createPipelineRunner } from "./services/pipeline-runner.js"
 import { createProofService } from "./services/proof-service.js"
 import { createProofRunner } from "./services/proof-runner.js"
 import { createProofRoutes } from "./routes/proof.js"
+import { createMasterService } from "./services/master-service.js"
+import { createMasterRunner } from "./services/master-runner.js"
+import { createMasterRoutes } from "./routes/master.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -30,6 +33,8 @@ const pipelineRunner = createPipelineRunner()
 const pipelineService = createPipelineService(pipelineRunner)
 const proofRunner = createProofRunner()
 const proofService = createProofService(proofRunner)
+const masterRunner = createMasterRunner()
+const masterService = createMasterService(masterRunner)
 
 const app = new Hono()
 
@@ -54,6 +59,7 @@ app.route("/api", createBookRoutes(booksDir))
 app.route("/api", createPipelineRoutes(pipelineService, booksDir, promptsDir, configPath))
 app.route("/api", createPageRoutes(booksDir, promptsDir, configPath))
 app.route("/api", createProofRoutes(proofService, booksDir, promptsDir, configPath))
+app.route("/api", createMasterRoutes(masterService, booksDir, promptsDir, configPath))
 app.route("/api", createGlossaryRoutes(booksDir))
 app.route("/api", createDebugRoutes(pipelineService, booksDir, promptsDir, configPath))
 app.route("/api", createQuizRoutes(booksDir))

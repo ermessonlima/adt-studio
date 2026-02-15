@@ -41,6 +41,7 @@ export interface BookSummary {
   needsRebuild: boolean
   rebuildReason: string | null
   storyboardAccepted: boolean
+  proofCompleted: boolean
 }
 
 export interface BookDetail extends BookSummary {
@@ -63,6 +64,14 @@ export interface PipelineStatus {
 }
 
 export interface ProofStatus {
+  label: string
+  status: "idle" | "running" | "completed" | "failed"
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
+export interface MasterStatus {
   label: string
   status: "idle" | "running" | "completed" | "failed"
   error?: string
@@ -364,6 +373,15 @@ export const api = {
 
   getProofStatus: (label: string) =>
     request<ProofStatus>(`/books/${label}/proof/status`),
+
+  runMaster: (label: string, apiKey: string) =>
+    request<{ status: string; label: string }>(
+      `/books/${label}/master/run`,
+      { method: "POST", headers: { "X-OpenAI-Key": apiKey } }
+    ),
+
+  getMasterStatus: (label: string) =>
+    request<MasterStatus>(`/books/${label}/master/status`),
 
   acceptStoryboard: (label: string) =>
     request<{ version: number; acceptedAt: string }>(

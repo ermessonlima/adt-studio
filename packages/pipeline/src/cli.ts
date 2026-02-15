@@ -6,6 +6,7 @@ import { parseCliArgs, USAGE } from "./cli-args.js"
 import { createBookStorage } from "@adt/storage"
 import { runPipeline } from "./pipeline.js"
 import { runProof } from "./proof.js"
+import { runMaster } from "./master.js"
 import type { Progress } from "./progress.js"
 
 function log(msg: string): void {
@@ -95,6 +96,91 @@ function createProofProgress(): Progress & { stop(): void } {
 
     stop() {
       multibar?.stop()
+    },
+  }
+}
+
+function createMasterProgress(): Progress & { stop(): void } {
+  let translationBar: cliProgress.SingleBar | undefined
+  let ttsBar: cliProgress.SingleBar | undefined
+  let multibar: cliProgress.MultiBar | undefined
+
+  const barFormat = (label: string) =>
+    ` ${label.padEnd(20)} [{bar}] {value}/{total}`
+
+  function ensureMultibar() {
+    if (!multibar) {
+      multibar = new cliProgress.MultiBar(
+        {
+          clearOnComplete: false,
+          hideCursor: true,
+          barsize: 30,
+          linewrap: false,
+          forceRedraw: true,
+        },
+        cliProgress.Presets.shades_grey
+      )
+    }
+    return multibar
+  }
+
+  return {
+    emit(event) {
+      if (event.type === "step-complete" && event.step === "text-catalog") {
+        log("✔ Text Catalog\n")
+      }
+
+      if (event.type === "step-progress" && event.step === "catalog-translation") {
+        if (event.page !== undefined && event.totalPages !== undefined) {
+          if (!translationBar) {
+            translationBar = ensureMultibar().create(event.totalPages, 0, {}, { format: barFormat("Translate Catalog") })
+          }
+          translationBar.setTotal(event.totalPages)
+          translationBar.update(event.page)
+        }
+      }
+
+      if (event.type === "step-complete" && event.step === "catalog-translation") {
+        if (translationBar) translationBar.update(translationBar.getTotal())
+      }
+
+      if (event.type === "step-skip" && event.step === "catalog-translation") {
+        log("– Translate Catalog (skipped, no target languages)\n")
+      }
+
+      if (event.type === "step-progress" && event.step === "tts") {
+        if (event.page !== undefined && event.totalPages !== undefined) {
+          if (!ttsBar) {
+            // If translation had a multibar, stop it first so TTS gets a fresh one
+            if (multibar && translationBar) {
+              multibar.stop()
+              multibar = undefined
+              translationBar = undefined
+            }
+            ttsBar = ensureMultibar().create(event.totalPages, 0, {}, { format: barFormat("Generate Speech") })
+          }
+          ttsBar.setTotal(event.totalPages)
+          ttsBar.update(event.page)
+        }
+      }
+
+      if (event.type === "step-complete" && event.step === "tts") {
+        if (ttsBar) ttsBar.update(ttsBar.getTotal())
+      }
+
+      if (event.type === "step-skip" && event.step === "tts") {
+        log("– Generate Speech (skipped, no output languages)\n")
+      }
+
+      if (event.type === "step-error") {
+        multibar?.stop()
+        multibar = undefined
+      }
+    },
+
+    stop() {
+      multibar?.stop()
+      multibar = undefined
     },
   }
 }
@@ -325,6 +411,21 @@ async function main(): Promise<void> {
     proofProgress
   )
   proofProgress.stop()
+
+  // Master stage
+  log("\nMastering:\n")
+  const masterProgress = createMasterProgress()
+
+  await runMaster(
+    {
+      label,
+      booksRoot,
+      promptsDir,
+      logLevel: "silent",
+    },
+    masterProgress
+  )
+  masterProgress.stop()
 
   log(`\nOutput: ${path.join(booksRoot, label)}/\n`)
 }

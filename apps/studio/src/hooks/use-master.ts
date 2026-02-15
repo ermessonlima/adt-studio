@@ -1,52 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
-
-export type StepName =
-  | "extract"
-  | "metadata"
-  | "text-classification"
-  | "translation"
-  | "image-classification"
-  | "page-sectioning"
-  | "web-rendering"
-  | "image-captioning"
-  | "glossary"
-  | "quiz-generation"
-  | "text-catalog"
-  | "catalog-translation"
-  | "tts"
-
-export interface StepProgress {
-  step: StepName
-  page?: number
-  totalPages?: number
-  message?: string
-}
-
-export interface LlmLogSummary {
-  step: StepName
-  itemId: string
-  promptName: string
-  modelId: string
-  cacheHit: boolean
-  durationMs: number
-  inputTokens?: number
-  outputTokens?: number
-  validationErrors?: string[]
-  receivedAt: number
-}
-
-export interface PipelineProgress {
-  isRunning: boolean
-  isComplete: boolean
-  error: string | null
-  currentStep: StepName | null
-  completedSteps: Set<StepName>
-  skippedSteps: Set<StepName>
-  stepProgress: Map<StepName, StepProgress>
-  liveLlmLogs: LlmLogSummary[]
-}
+import type { PipelineProgress, StepProgress, LlmLogSummary, StepName } from "./use-pipeline"
 
 const MAX_LIVE_LOGS = 500
 
@@ -62,18 +17,16 @@ const INITIAL_PROGRESS: PipelineProgress = {
 }
 
 /**
- * Hook to subscribe to real-time pipeline progress via SSE.
- * Connects to the SSE endpoint when `enabled` is true.
- * Includes a polling fallback to catch completion if SSE misses it.
+ * Hook to subscribe to real-time master progress via SSE.
+ * Same event format as pipeline/proof SSE — reuses PipelineProgress state shape.
  */
-export function usePipelineSSE(label: string, enabled: boolean) {
+export function useMasterSSE(label: string, enabled: boolean) {
   const [progress, setProgress] = useState<PipelineProgress>(INITIAL_PROGRESS)
   const queryClient = useQueryClient()
   const eventSourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
     if (!enabled || !label) {
-      setProgress(INITIAL_PROGRESS)
       return
     }
 
@@ -86,7 +39,7 @@ export function usePipelineSSE(label: string, enabled: boolean) {
       error: null,
     }))
 
-    const url = `/api/books/${label}/pipeline/status`
+    const url = `/api/books/${label}/master/status`
     const es = new EventSource(url)
     eventSourceRef.current = es
 
@@ -99,20 +52,20 @@ export function usePipelineSSE(label: string, enabled: boolean) {
         const skippedSteps = new Set(prev.skippedSteps)
 
         if (data.type === "step-start") {
-          next.currentStep = data.step
-        } else if (data.type === "step-skip") {
-          skippedSteps.add(data.step)
+          next.currentStep = data.step as StepName
         } else if (data.type === "step-progress") {
-          stepProgress.set(data.step, {
+          stepProgress.set(data.step as StepName, {
             step: data.step,
             page: data.page,
             totalPages: data.totalPages,
             message: data.message,
-          })
-          next.currentStep = data.step
+          } as StepProgress)
+          next.currentStep = data.step as StepName
         } else if (data.type === "step-complete") {
-          completedSteps.add(data.step)
-          stepProgress.delete(data.step)
+          completedSteps.add(data.step as StepName)
+          stepProgress.delete(data.step as StepName)
+        } else if (data.type === "step-skip") {
+          skippedSteps.add(data.step as StepName)
         } else if (data.type === "step-error") {
           next.error = `${data.step}: ${data.error}`
         } else if (data.type === "llm-log") {
@@ -146,10 +99,9 @@ export function usePipelineSSE(label: string, enabled: boolean) {
         isComplete: true,
         currentStep: null,
       }))
-      queryClient.invalidateQueries({ queryKey: ["pipeline-status", label] })
+      queryClient.invalidateQueries({ queryKey: ["master-status", label] })
       queryClient.invalidateQueries({ queryKey: ["books", label] })
       queryClient.invalidateQueries({ queryKey: ["books"] })
-      queryClient.invalidateQueries({ queryKey: ["books", label, "pages"] })
       queryClient.invalidateQueries({ queryKey: ["debug"] })
       es.close()
     })
@@ -158,8 +110,6 @@ export function usePipelineSSE(label: string, enabled: boolean) {
       if (es.readyState === EventSource.CLOSED) {
         return
       }
-      // Only close on actual server error events with data.
-      // For connection drops (no data), let EventSource auto-reconnect.
       const messageEvent = e as MessageEvent
       if (messageEvent.data) {
         try {
@@ -167,7 +117,7 @@ export function usePipelineSSE(label: string, enabled: boolean) {
           setProgress((prev) => ({
             ...prev,
             isRunning: false,
-            error: data.error ?? "Pipeline failed",
+            error: data.error ?? "Master failed",
           }))
         } catch {
           setProgress((prev) => ({
@@ -178,17 +128,14 @@ export function usePipelineSSE(label: string, enabled: boolean) {
         }
         es.close()
       }
-      // No data = connection drop, EventSource will auto-reconnect
     })
 
-    // Polling fallback: if SSE misses the complete event (e.g., during
-    // reconnection timing gap), poll the JSON status endpoint to catch it.
     const pollInterval = setInterval(async () => {
       try {
-        const status = await api.getPipelineStatus(label)
+        const status = await api.getMasterStatus(label)
         if (status.status === "completed") {
           setProgress((prev) => {
-            if (!prev.isRunning) return prev // already handled via SSE
+            if (!prev.isRunning) return prev
             return {
               ...prev,
               isRunning: false,
@@ -196,10 +143,10 @@ export function usePipelineSSE(label: string, enabled: boolean) {
               currentStep: null,
             }
           })
-          queryClient.invalidateQueries({ queryKey: ["pipeline-status", label] })
+          queryClient.invalidateQueries({ queryKey: ["master-status", label] })
           queryClient.invalidateQueries({ queryKey: ["books", label] })
           queryClient.invalidateQueries({ queryKey: ["books"] })
-          queryClient.invalidateQueries({ queryKey: ["books", label, "pages"] })
+          queryClient.invalidateQueries({ queryKey: ["debug"] })
           es.close()
           clearInterval(pollInterval)
         } else if (status.status === "failed") {
@@ -208,7 +155,7 @@ export function usePipelineSSE(label: string, enabled: boolean) {
             return {
               ...prev,
               isRunning: false,
-              error: status.error ?? "Pipeline failed",
+              error: status.error ?? "Master failed",
             }
           })
           es.close()
@@ -238,35 +185,26 @@ export function usePipelineSSE(label: string, enabled: boolean) {
 }
 
 /**
- * Hook to start a pipeline run.
+ * Hook to start a master run.
  */
-export function useRunPipeline() {
+export function useRunMaster() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      label,
-      apiKey,
-      options,
-    }: {
-      label: string
-      apiKey: string
-      options?: { startPage?: number; endPage?: number }
-    }) => api.runPipeline(label, apiKey, options),
+    mutationFn: ({ label, apiKey }: { label: string; apiKey: string }) =>
+      api.runMaster(label, apiKey),
     onSuccess: (_data, { label }) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pipeline-status", label],
-      })
+      queryClient.invalidateQueries({ queryKey: ["master-status", label] })
     },
   })
 }
 
 /**
- * Hook to poll pipeline status (non-SSE fallback).
+ * Hook to poll master status (non-SSE fallback).
  */
-export function usePipelineStatus(label: string) {
+export function useMasterStatus(label: string) {
   return useQuery({
-    queryKey: ["pipeline-status", label],
-    queryFn: () => api.getPipelineStatus(label),
+    queryKey: ["master-status", label],
+    queryFn: () => api.getMasterStatus(label),
     enabled: !!label,
     refetchInterval: false,
   })

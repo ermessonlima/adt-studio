@@ -66,3 +66,14 @@ export {
   QuizGenerationOutput,
   quizLLMSchema,
 } from "./quiz.js"
+
+export {
+  TextCatalogEntry,
+  TextCatalogOutput,
+} from "./text-catalog.js"
+
+export {
+  SpeechConfig,
+  SpeechFileEntry,
+  TTSOutput,
+} from "./speech.js"
