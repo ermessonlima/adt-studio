@@ -20,6 +20,7 @@ import {
 import { loadBookConfig } from "./config.js"
 import { nullProgress, type Progress } from "./progress.js"
 import { processWithConcurrency } from "./proof.js"
+import { packageAdtWeb } from "./package-web.js"
 import type { StepName, TextCatalogOutput, TextCatalogEntry, SpeechFileEntry, TTSOutput } from "@adt/types"
 
 export interface RunMasterOptions {
@@ -33,6 +34,8 @@ export interface RunMasterOptions {
   cacheDir?: string
   /** LLM console log level. Defaults to "info". Use "silent" for no output. */
   logLevel?: LogLevel
+  /** Path to the web runner assets directory (assets/web/). */
+  webAssetsDir?: string
 }
 
 /**
@@ -148,6 +151,22 @@ export async function runMaster(
       effectiveConcurrency,
       progress
     )
+
+    // Package web ADT if webAssetsDir is provided
+    if (options.webAssetsDir) {
+      const metadataRow = storage.getLatestNodeData("metadata", "book")
+      const bookMetadata = metadataRow?.data as { title?: string | null } | null
+      const bookTitle = bookMetadata?.title ?? label
+
+      await packageAdtWeb(storage, {
+        bookDir,
+        label,
+        language,
+        outputLanguages,
+        title: bookTitle,
+        webAssetsDir: options.webAssetsDir,
+      }, progress)
+    }
   } finally {
     storage.close()
   }

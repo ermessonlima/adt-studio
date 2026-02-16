@@ -18,6 +18,7 @@ import { createProofRoutes } from "./routes/proof.js"
 import { createMasterService } from "./services/master-service.js"
 import { createMasterRunner } from "./services/master-runner.js"
 import { createMasterRoutes } from "./routes/master.js"
+import { createPackageRoutes } from "./routes/package.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -27,6 +28,9 @@ const booksDir = path.resolve(process.env.BOOKS_DIR ?? path.join(projectRoot, "b
 const promptsDir = path.resolve(process.env.PROMPTS_DIR ?? path.join(projectRoot, "prompts"))
 const configPath = path.resolve(
   process.env.CONFIG_PATH ?? path.join(projectRoot, "config.yaml")
+)
+const webAssetsDir = path.resolve(
+  process.env.WEB_ASSETS_DIR ?? path.join(projectRoot, "assets", "web")
 )
 
 const pipelineRunner = createPipelineRunner()
@@ -63,5 +67,6 @@ app.route("/api", createMasterRoutes(masterService, booksDir, promptsDir, config
 app.route("/api", createGlossaryRoutes(booksDir))
 app.route("/api", createDebugRoutes(pipelineService, booksDir, promptsDir, configPath))
 app.route("/api", createQuizRoutes(booksDir))
+app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath))
 
 export default app

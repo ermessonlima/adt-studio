@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { BookOpen, LayoutGrid, FileDown, CheckCircle2, Loader2 } from "lucide-react"
+import { BookOpen, LayoutGrid, FileDown, CheckCircle2, Loader2, Package, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useBook, useExportBook } from "@/hooks/use-books"
+import { useBook, useExportBook, usePackageAdt, usePackageAdtStatus } from "@/hooks/use-books"
 import { usePipelineSSE, usePipelineStatus, useRunPipeline } from "@/hooks/use-pipeline"
 import { useProofSSE, useProofStatus, useRunProof } from "@/hooks/use-proof"
 import { useMasterSSE, useMasterStatus, useRunMaster } from "@/hooks/use-master"
@@ -21,6 +21,7 @@ import { MasterProgress } from "@/components/master/MasterProgress"
 import { PagePreviewGrid } from "@/components/pipeline/PagePreviewGrid"
 import { ConfigEditor } from "@/components/config/ConfigEditor"
 import { QuizPanel } from "@/components/storyboard/QuizPanel"
+import { getAdtUrl } from "@/api/client"
 
 export const Route = createFileRoute("/books/$label/")({
   component: BookDetailPage,
@@ -55,6 +56,10 @@ function BookDetailPage() {
   const [masterSseEnabled, setMasterSseEnabled] = useState(false)
   const { progress: masterProgress, reset: masterReset } = useMasterSSE(label, masterSseEnabled)
   const { data: masterStatus } = useMasterStatus(label)
+
+  // Package ADT hooks
+  const packageAdt = usePackageAdt()
+  const { data: packageAdtStatus } = usePackageAdtStatus(label)
 
   // Auto-run guard
   const hasAutoRun = useRef(false)
@@ -183,6 +188,9 @@ function BookDetailPage() {
     (book.proofCompleted ||
       proofProgress.isComplete ||
       proofStatus?.status === "completed")
+  const masterCompleted =
+    masterProgress.isComplete || masterStatus?.status === "completed"
+  const hasAdt = packageAdtStatus?.hasAdt ?? false
 
   return (
     <div className="p-4 space-y-4">
@@ -365,6 +373,66 @@ function BookDetailPage() {
             <CardDescription>
               Complete the proof phase before running master.
             </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* Package ADT — shown after master completes */}
+      {canRunMaster && masterCompleted && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  {(packageAdt.isSuccess || hasAdt) && !packageAdt.isPending && (
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  )}
+                  {packageAdt.isError && (
+                    <Package className="h-5 w-5 text-destructive" />
+                  )}
+                  Package ADT
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  {packageAdt.isPending && "Packaging ADT..."}
+                  {packageAdt.isError && `Packaging failed: ${packageAdt.error.message}`}
+                  {!packageAdt.isPending && !packageAdt.isError && (packageAdt.isSuccess || hasAdt)
+                    ? "ADT packaged and ready to view."
+                    : !packageAdt.isPending && !packageAdt.isError && "Build a standalone web application from the book."}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {(packageAdt.isSuccess || hasAdt) && !packageAdt.isPending && (
+                  <a
+                    href={getAdtUrl(label)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      View ADT
+                    </Button>
+                  </a>
+                )}
+                <Button
+                  onClick={() => packageAdt.mutate(label)}
+                  disabled={packageAdt.isPending}
+                  size="sm"
+                >
+                  {packageAdt.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Package className="mr-2 h-4 w-4" />
+                  )}
+                  {packageAdt.isPending
+                    ? "Packaging..."
+                    : packageAdt.isSuccess || hasAdt
+                      ? "Re-package"
+                      : packageAdt.isError
+                        ? "Retry"
+                        : "Package ADT"}
+                </Button>
+              </div>
+            </div>
           </CardHeader>
         </Card>
       )}
