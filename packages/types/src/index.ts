@@ -36,6 +36,10 @@ export {
 export { BookMetadata } from "./metadata.js"
 
 export {
+  SectionTextEntry,
+  SectionTextPart,
+  SectionImagePart,
+  SectionPart,
   PageSection,
   PageSectioningOutput,
   buildPageSectioningLLMSchema,

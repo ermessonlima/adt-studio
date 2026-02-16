@@ -129,7 +129,21 @@ export interface PageDetail {
     reasoning: string
     sections: Array<{
       sectionType: string
-      partIds: string[]
+      parts: Array<
+        | {
+            type: "text_group"
+            groupId: string
+            groupType: string
+            texts: Array<{ textType: string; text: string; isPruned: boolean }>
+            isPruned: boolean
+          }
+        | {
+            type: "image"
+            imageId: string
+            isPruned: boolean
+            reason?: string
+          }
+      >
       backgroundColor: string
       textColor: string
       pageNumber: number | null

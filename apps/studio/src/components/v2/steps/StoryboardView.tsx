@@ -11,6 +11,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
 
   const pageList = pages ?? []
   const [sectionIndex, setSectionIndex] = useState(0)
+  const [topHeight, setTopHeight] = useState(70)
   // When navigating backward across page boundary, resolve to last section
   const pendingLastSection = useRef(false)
 
@@ -200,6 +201,8 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
       pageId={selectedPageId!}
       sectionIndex={sectionIndex}
       page={page}
+      topHeight={topHeight}
+      onTopHeightChange={setTopHeight}
     />
   )
 }

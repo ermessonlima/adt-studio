@@ -1,4 +1,3 @@
-export { BookView } from "./BookView"
 export { ExtractView } from "./ExtractView"
 export { StoryboardView } from "./StoryboardView"
 export { QuizzesView } from "./QuizzesView"

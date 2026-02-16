@@ -72,7 +72,7 @@ describe("Page routes", () => {
         sections: [
           {
             sectionType: "content",
-            partIds: ["g1"],
+            parts: [{ type: "text_group", groupId: "g1", groupType: "paragraph", texts: [{ textType: "section_text", text: "Hello world", isPruned: false }], isPruned: false }],
             backgroundColor: "#ffffff",
             textColor: "#000000",
             pageNumber: 1,

@@ -3,8 +3,7 @@ import { Check, Eye, EyeOff, Layers, Loader2, ChevronDown } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import type { PageDetail, VersionEntry } from "@/api/client"
-import { useActiveConfig } from "@/hooks/use-debug"
-import { RenderedHtml } from "@/components/storyboard/RenderedHtml"
+import { BookPreviewFrame } from "@/components/storyboard/BookPreviewFrame"
 
 // -- VersionPicker (same as ExtractPageDetail) --
 
@@ -127,9 +126,9 @@ function VersionPicker({
   )
 }
 
-// -- ImageCard (same as ExtractPageDetail) --
+// -- ImageCard --
 
-function ImageCard({ imageId, bookLabel, isPruned, reason, onTogglePrune }: { imageId: string; bookLabel: string; isPruned?: boolean; reason?: string; onTogglePrune?: () => void }) {
+function ImageCard({ imageId, bookLabel, isPruned, reason }: { imageId: string; bookLabel: string; isPruned?: boolean; reason?: string }) {
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null)
 
   return (
@@ -137,21 +136,6 @@ function ImageCard({ imageId, bookLabel, isPruned, reason, onTogglePrune }: { im
       className={`relative rounded border overflow-hidden bg-card flex flex-col items-center min-h-[80px] ${isPruned ? "opacity-40" : ""}`}
       title={isPruned ? `Pruned: ${reason}` : undefined}
     >
-      <button
-        type="button"
-        onClick={onTogglePrune}
-        className={`absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors ${
-          isPruned
-            ? "bg-destructive hover:bg-destructive/80"
-            : "bg-black/30 opacity-0 group-hover:opacity-100 hover:bg-black/50"
-        }`}
-        title={isPruned ? "Unprune image" : "Prune image"}
-      >
-        {isPruned
-          ? <EyeOff className="h-3 w-3 text-white" />
-          : <Eye className="h-3 w-3 text-white" />
-        }
-      </button>
       <img
         src={`/api/books/${bookLabel}/images/${imageId}`}
         alt={imageId}
@@ -179,8 +163,7 @@ function ImageCard({ imageId, bookLabel, isPruned, reason, onTogglePrune }: { im
 
 // -- Types --
 
-type TextClassData = NonNullable<PageDetail["textClassification"]>
-type ImageClassData = NonNullable<PageDetail["imageClassification"]>
+type SectioningData = NonNullable<PageDetail["sectioning"]>
 
 // -- Main component --
 
@@ -189,37 +172,32 @@ export function StoryboardSectionDetail({
   pageId,
   sectionIndex,
   page,
+  topHeight,
+  onTopHeightChange,
 }: {
   bookLabel: string
   pageId: string
   sectionIndex: number
   page: PageDetail
+  topHeight: number
+  onTopHeightChange: (h: number) => void
 }) {
-  const { data: activeConfigData } = useActiveConfig(bookLabel)
-  const configuredTextTypes = activeConfigData?.merged
-    ? Object.keys((activeConfigData.merged as Record<string, unknown>).text_types as Record<string, string> ?? {})
-    : []
   const queryClient = useQueryClient()
 
-  const [savingText, setSavingText] = useState(false)
-  const [savingImages, setSavingImages] = useState(false)
-  const [pendingTextData, setPendingTextData] = useState<TextClassData | null>(null)
-  const [pendingImageData, setPendingImageData] = useState<ImageClassData | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [pendingSectioning, setPendingSectioning] = useState<SectioningData | null>(null)
 
-  // Clear pending state when page or section changes
+  // Clear pending state when page changes
   useEffect(() => {
-    setPendingTextData(null)
-    setPendingImageData(null)
-  }, [pageId, sectionIndex])
+    setPendingSectioning(null)
+  }, [pageId])
 
   // Effective data
-  const textClassData = pendingTextData ?? page.textClassification ?? null
-  const imageClassData = pendingImageData ?? page.imageClassification ?? null
-  const textDirty = pendingTextData != null
-  const imageDirty = pendingImageData != null
+  const sectioningData = pendingSectioning ?? page.sectioning
+  const dirty = pendingSectioning != null
 
   // Current section data
-  const section = page.sectioning?.sections[sectionIndex]
+  const section = sectioningData?.sections[sectionIndex]
   const renderedSection = page.rendering?.sections[sectionIndex]
 
   if (!section) {
@@ -230,85 +208,50 @@ export function StoryboardSectionDetail({
     )
   }
 
-  // Resolve partIds to text groups and images
-  const groupMap = new Map(textClassData?.groups.map((g) => [g.groupId, g]) ?? [])
-  const imageMap = new Map(imageClassData?.images.map((img) => [img.imageId, img]) ?? [])
+  // Parts are inline in the section data
+  const parts = section.parts
 
-  const parts = section.partIds.map((partId) => {
-    const group = groupMap.get(partId)
-    if (group) return { type: "group" as const, group }
-    const image = imageMap.get(partId)
-    if (image) return { type: "image" as const, image }
-    return { type: "unknown" as const, partId }
-  })
-
-  // Edit helpers
-  const updateTextField = (groupId: string, textIndex: number, field: "text" | "textType", value: string) => {
-    const base = pendingTextData ?? page.textClassification
-    if (!base) return
-    setPendingTextData({
-      ...base,
-      groups: base.groups.map((g) =>
-        g.groupId === groupId
-          ? { ...g, texts: g.texts.map((t, i) => (i === textIndex ? { ...t, [field]: value } : t)) }
-          : g
-      ),
-    })
-  }
-
-  const toggleTextPrune = (groupId: string, textIndex: number) => {
-    const base = pendingTextData ?? page.textClassification
-    if (!base) return
-    setPendingTextData({
-      ...base,
-      groups: base.groups.map((g) =>
-        g.groupId === groupId
-          ? { ...g, texts: g.texts.map((t, i) => (i === textIndex ? { ...t, isPruned: !t.isPruned } : t)) }
-          : g
-      ),
-    })
-  }
-
-  const toggleImagePrune = (imageId: string) => {
-    const base = pendingImageData ?? page.imageClassification
-    if (!base) return
-    setPendingImageData({
-      images: base.images.map((img) =>
-        img.imageId === imageId
-          ? { ...img, isPruned: !img.isPruned, reason: img.isPruned ? undefined : "manual" }
-          : img
-      ),
-    })
-  }
-
-  const saveTextChanges = async () => {
-    if (!pendingTextData) return
-    setSavingText(true)
+  // Save / discard sectioning
+  const saveSectioning = async () => {
+    if (!pendingSectioning) return
+    setSaving(true)
     const minDelay = new Promise((r) => setTimeout(r, 400))
-    await api.updateTextClassification(bookLabel, pageId, pendingTextData)
-    setPendingTextData(null)
+    await api.updateSectioning(bookLabel, pageId, pendingSectioning)
+    setPendingSectioning(null)
     await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
     await minDelay
-    setSavingText(false)
+    setSaving(false)
   }
 
-  const saveImageChanges = async () => {
-    if (!pendingImageData) return
-    setSavingImages(true)
-    const minDelay = new Promise((r) => setTimeout(r, 400))
-    await api.updateImageClassification(bookLabel, pageId, pendingImageData)
-    setPendingImageData(null)
-    await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
-    await minDelay
-    setSavingImages(false)
+  const discardSectioning = () => {
+    setPendingSectioning(null)
+  }
+
+  // Toggle isPruned on a part within the current section
+  const togglePartPruned = (partIndex: number) => {
+    const base = pendingSectioning ?? page.sectioning
+    if (!base) return
+    const updated: SectioningData = {
+      ...base,
+      sections: base.sections.map((s, si) => {
+        if (si !== sectionIndex) return s
+        return {
+          ...s,
+          parts: s.parts.map((p, pi) => {
+            if (pi !== partIndex) return p
+            return { ...p, isPruned: !p.isPruned }
+          }),
+        }
+      }),
+    }
+    setPendingSectioning(updated)
   }
 
   // Check if this section has any text groups or images
-  const hasTextParts = parts.some((p) => p.type === "group")
+  const hasTextParts = parts.some((p) => p.type === "text_group")
   const hasImageParts = parts.some((p) => p.type === "image")
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const [topHeight, setTopHeight] = useState(70) // percentage
   const dragging = useRef(false)
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -319,7 +262,7 @@ export function StoryboardSectionDetail({
       if (!dragging.current || !containerRef.current) return
       const rect = containerRef.current.getBoundingClientRect()
       const pct = ((ev.clientY - rect.top) / rect.height) * 100
-      setTopHeight(Math.min(Math.max(pct, 15), 85))
+      onTopHeightChange(Math.min(Math.max(pct, 15), 85))
     }
 
     const onMouseUp = () => {
@@ -337,11 +280,7 @@ export function StoryboardSectionDetail({
       {/* Top: Rendered HTML in scrollable frame */}
       <div className="shrink-0 overflow-auto" style={{ height: `${topHeight}%` }}>
         {renderedSection?.html ? (
-          <div className="max-w-3xl mx-auto py-4 px-4">
-            <div className="rounded border bg-white p-4">
-              <RenderedHtml html={renderedSection.html} />
-            </div>
-          </div>
+          <BookPreviewFrame html={renderedSection.html} className="w-full" />
         ) : (
           <div className="p-4 text-sm text-muted-foreground">
             No rendered content for this section.
@@ -380,15 +319,15 @@ export function StoryboardSectionDetail({
           <span className="text-destructive text-[10px] font-medium">(pruned)</span>
         )}
         <VersionPicker
-          currentVersion={page.versions.rendering}
-          saving={false}
-          dirty={false}
+          currentVersion={page.versions.sectioning}
+          saving={saving}
+          dirty={dirty}
           bookLabel={bookLabel}
-          node="web-rendering"
+          node="page-sectioning"
           itemId={pageId}
-          onPreview={() => {}}
-          onSave={() => {}}
-          onDiscard={() => {}}
+          onPreview={(data) => setPendingSectioning(data as SectioningData)}
+          onSave={saveSectioning}
+          onDiscard={discardSectioning}
         />
       </div>
 
@@ -398,79 +337,41 @@ export function StoryboardSectionDetail({
           <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
             <Layers className="h-3 w-3" />
             Text Groups
-            <VersionPicker
-              currentVersion={page.versions.textClassification}
-              saving={savingText}
-              dirty={textDirty}
-              bookLabel={bookLabel}
-              node="text-classification"
-              itemId={pageId}
-              onPreview={(data) => setPendingTextData(data as TextClassData)}
-              onSave={saveTextChanges}
-              onDiscard={() => setPendingTextData(null)}
-            />
           </h3>
           <div className="space-y-3">
-            {parts
-              .filter((p) => p.type === "group")
-              .map((p) => {
-                if (p.type !== "group") return null
-                const group = p.group
-                const maxTypeLen = Math.max(...group.texts.map((t) => t.textType.length), 0)
-                const colWidth = `${Math.max(maxTypeLen * 0.65 + 1.5, 4)}em`
+            {parts.map((p, partIndex) => {
+                if (p.type !== "text_group") return null
                 return (
-                  <div key={group.groupId} className="rounded border overflow-hidden">
+                  <div key={p.groupId} className={`rounded border overflow-hidden transition-opacity ${p.isPruned ? "opacity-40" : ""}`}>
                     <div className="px-3 py-1.5 bg-muted/50 border-b flex items-center gap-1.5">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.groupType}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{p.groupType}</span>
+                      <button
+                        type="button"
+                        onClick={() => togglePartPruned(partIndex)}
+                        className="ml-auto p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                        title={p.isPruned ? "Include in render" : "Exclude from render"}
+                      >
+                        {p.isPruned ? (
+                          <EyeOff className="h-3 w-3 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </button>
                     </div>
                     <div className="divide-y">
-                      {group.texts.map((t, i) => (
-                        <div key={i} className={`group/text px-3 py-1.5 flex items-start gap-2 text-sm ${t.isPruned ? "opacity-40" : ""}`}>
-                          <select
-                            value={t.textType}
-                            onChange={(e) => updateTextField(group.groupId, i, "textType", e.target.value)}
-                            className="shrink-0 text-xs font-medium text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5 text-center border-0 outline-none focus:ring-1 focus:ring-ring cursor-pointer appearance-none"
-                            style={{ width: colWidth }}
+                      {p.texts.map((t, i) => (
+                        <div key={i} className={`px-3 py-1.5 flex items-start gap-2 text-sm ${t.isPruned ? "opacity-40" : ""}`}>
+                          <span
+                            className="shrink-0 text-xs font-medium text-muted-foreground bg-muted/50 rounded px-1.5 py-0.5 text-center"
                           >
-                            {configuredTextTypes.includes(t.textType) ? null : (
-                              <option value={t.textType}>{t.textType}</option>
-                            )}
-                            {configuredTextTypes.map((tt) => (
-                              <option key={tt} value={tt}>{tt}</option>
-                            ))}
-                          </select>
-                          <textarea
-                            value={t.text}
-                            onChange={(e) => updateTextField(group.groupId, i, "text", e.target.value)}
-                            rows={1}
-                            className="leading-relaxed flex-1 min-w-0 bg-transparent border-0 outline-none resize-none p-0 focus:ring-1 focus:ring-ring focus:rounded"
-                            onInput={(e) => {
-                              const el = e.target as HTMLTextAreaElement
-                              el.style.height = "auto"
-                              el.style.height = el.scrollHeight + "px"
-                            }}
-                            ref={(el) => {
-                              if (el) {
-                                el.style.height = "auto"
-                                el.style.height = el.scrollHeight + "px"
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => toggleTextPrune(group.groupId, i)}
-                            className={`shrink-0 self-center flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors ${
-                              t.isPruned
-                                ? "bg-destructive hover:bg-destructive/80"
-                                : "opacity-0 group-hover/text:opacity-100 bg-black/30 hover:bg-black/50"
-                            }`}
-                            title={t.isPruned ? "Unprune text" : "Prune text"}
-                          >
-                            {t.isPruned
-                              ? <EyeOff className="h-3 w-3 text-white" />
-                              : <Eye className="h-3 w-3 text-white" />
-                            }
-                          </button>
+                            {t.textType}
+                          </span>
+                          <span className="leading-relaxed flex-1 min-w-0">
+                            {t.text}
+                          </span>
+                          {t.isPruned && (
+                            <EyeOff className="shrink-0 self-center h-3 w-3 text-muted-foreground" />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -486,34 +387,30 @@ export function StoryboardSectionDetail({
         <div>
           <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
             Images
-            {!hasTextParts && (
-              <VersionPicker
-                currentVersion={page.versions.imageClassification}
-                saving={savingImages}
-                dirty={imageDirty}
-                bookLabel={bookLabel}
-                node="image-classification"
-                itemId={pageId}
-                onPreview={(data) => setPendingImageData(data as ImageClassData)}
-                onSave={saveImageChanges}
-                onDiscard={() => setPendingImageData(null)}
-              />
-            )}
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            {parts
-              .filter((p) => p.type === "image")
-              .map((p) => {
+            {parts.map((p, partIndex) => {
                 if (p.type !== "image") return null
                 return (
-                  <div key={p.image.imageId} className="group">
+                  <div key={p.imageId} className="group relative">
                     <ImageCard
-                      imageId={p.image.imageId}
+                      imageId={p.imageId}
                       bookLabel={bookLabel}
-                      isPruned={p.image.isPruned}
-                      reason={p.image.reason}
-                      onTogglePrune={() => toggleImagePrune(p.image.imageId)}
+                      isPruned={p.isPruned}
+                      reason={p.reason}
                     />
+                    <button
+                      type="button"
+                      onClick={() => togglePartPruned(partIndex)}
+                      className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-accent transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      title={p.isPruned ? "Include in render" : "Exclude from render"}
+                    >
+                      {p.isPruned ? (
+                        <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </button>
                   </div>
                 )
               })}

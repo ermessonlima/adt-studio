@@ -1,7 +1,6 @@
 import { createContext, useContext, useCallback, useState, type ReactNode } from "react"
-import { STEPS, toCamelLabel } from "./StepSidebar"
+import { STEPS } from "./StepSidebar"
 import {
-  BookView,
   ExtractView,
   StoryboardView,
   QuizzesView,
@@ -37,7 +36,6 @@ interface ViewEntry {
 }
 
 const VIEW_MAP: Record<string, ViewEntry> = {
-  book: { component: BookView },
   extract: { component: ExtractView, fullHeight: true },
   storyboard: { component: StoryboardView, fullHeight: true },
   quizzes: { component: QuizzesView },
@@ -84,10 +82,10 @@ export function StepViewRouter({ step, bookLabel, selectedPageId, onSelectPage }
               onClick={labelClickHandler.fn}
               className="text-sm font-semibold hover:text-white/70 transition-colors"
             >
-              {step === "book" ? toCamelLabel(bookLabel) : stepConfig.label}
+              {stepConfig.label}
             </button>
           ) : (
-            <h2 className="text-sm font-semibold">{step === "book" ? toCamelLabel(bookLabel) : stepConfig.label}</h2>
+            <h2 className="text-sm font-semibold">{stepConfig.label}</h2>
           )}
           {headerExtra}
         </div>

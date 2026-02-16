@@ -510,7 +510,6 @@ async function processPage(
         pageId: page.pageId,
         pageImageBase64,
         sectioning,
-        textClassification,
         images: renderImages,
       },
       resolveRenderConfig,
