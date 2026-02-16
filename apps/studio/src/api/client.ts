@@ -10,6 +10,10 @@ function resolveBaseUrl(): string {
 
 const BASE_URL = resolveBaseUrl()
 
+export function getAdtUrl(label: string): string {
+  return `${BASE_URL}/books/${label}/adt`
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`
   const res = await fetch(url, {
@@ -391,6 +395,17 @@ export const api = {
 
   getQuizzes: (label: string) =>
     request<QuizzesResponse>(`/books/${label}/quizzes`),
+
+  packageAdt: (label: string) =>
+    request<{ status: string; label: string }>(
+      `/books/${label}/package-adt`,
+      { method: "POST" }
+    ),
+
+  getPackageAdtStatus: (label: string) =>
+    request<{ label: string; hasAdt: boolean }>(
+      `/books/${label}/package-adt/status`
+    ),
 
   exportBook: async (label: string): Promise<Blob> => {
     const url = `${BASE_URL}/books/${label}/export`

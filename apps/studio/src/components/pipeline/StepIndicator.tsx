@@ -36,6 +36,7 @@ const STEP_LABELS: Record<StepName, string> = {
   "text-catalog": "Build Text Catalog",
   "catalog-translation": "Translate Catalog",
   tts: "Generate Speech",
+  "package-web": "Package ADT",
 }
 
 export { STEP_ORDER, STEP_LABELS }

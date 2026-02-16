@@ -46,6 +46,7 @@ const STEP_LABELS: Record<StepName, string> = {
   "text-catalog": "Text Catalog",
   "catalog-translation": "Translate Catalog",
   tts: "Speech",
+  "package-web": "Package",
 }
 
 interface LlmLogsTabProps {

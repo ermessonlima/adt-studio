@@ -16,6 +16,7 @@ export type StepName =
   | "text-catalog"
   | "catalog-translation"
   | "tts"
+  | "package-web"
 
 export interface StepProgress {
   step: StepName
