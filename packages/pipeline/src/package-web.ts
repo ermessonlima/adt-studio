@@ -648,7 +648,7 @@ export function combineSections(rendering: WebRenderingOutput): {
 // Glossary helpers
 // ---------------------------------------------------------------------------
 
-function buildGlossaryJson(
+export function buildGlossaryJson(
   glossary: GlossaryOutput | undefined,
   catalog: TextCatalogOutput | undefined,
   textsMap: Record<string, string>,
