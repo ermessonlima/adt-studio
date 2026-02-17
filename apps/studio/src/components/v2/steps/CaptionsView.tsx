@@ -235,6 +235,7 @@ export function CaptionsView({ bookLabel }: { bookLabel: string }) {
   }, [bookLabel, apiKey, hasApiKey, captionsRunning, startRun, setSseEnabled, queryClient])
 
   const pagesWithImages = (pages ?? []).filter((p) => p.imageCount > 0)
+  const hasCaptionData = pagesWithImages.some((p) => p.hasCaptioning)
   const totalImages = pagesWithImages.reduce((sum, p) => sum + p.imageCount, 0)
 
   useEffect(() => {
@@ -257,7 +258,7 @@ export function CaptionsView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (pagesWithImages.length === 0 || captionsRunning) {
+  if (pagesWithImages.length === 0 || !hasCaptionData || captionsRunning) {
     return (
       <div className="p-4">
         <StepRunCard

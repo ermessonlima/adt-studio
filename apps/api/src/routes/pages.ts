@@ -11,6 +11,7 @@ interface PageSummary {
   pageId: string
   pageNumber: number
   hasRendering: boolean
+  hasCaptioning: boolean
   textPreview: string
   imageCount: number
   wordCount: number
@@ -74,6 +75,16 @@ export function createPageRoutes(
         rendered.add(row.item_id)
       }
 
+      // Check which pages have image-captioning output
+      const captioned = new Set<string>()
+      const captionRows = db.all(
+        "SELECT DISTINCT item_id FROM node_data WHERE node = ?",
+        ["image-captioning"]
+      ) as Array<{ item_id: string }>
+      for (const row of captionRows) {
+        captioned.add(row.item_id)
+      }
+
       // Get image counts per page from image-classification node data
       const imageCounts = new Map<string, number>()
       const imageRows = db.all(
@@ -98,6 +109,7 @@ export function createPageRoutes(
         pageId: p.page_id,
         pageNumber: p.page_number,
         hasRendering: rendered.has(p.page_id),
+        hasCaptioning: captioned.has(p.page_id),
         textPreview: p.text.slice(0, 150),
         imageCount: imageCounts.get(p.page_id) ?? 0,
         wordCount: p.text.trim() ? p.text.trim().split(/\s+/).length : 0,

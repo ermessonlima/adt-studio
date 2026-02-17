@@ -111,6 +111,7 @@ export interface PageSummaryItem {
   pageId: string
   pageNumber: number
   hasRendering: boolean
+  hasCaptioning: boolean
   textPreview: string
   imageCount: number
   wordCount: number
