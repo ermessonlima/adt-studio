@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Play, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,12 +22,16 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/v2/PromptViewer"
 import { PruneToggle } from "@/components/v2/PruneToggle"
+import { useStepRun } from "@/hooks/use-step-run"
 
 export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
   const { apiKey, hasApiKey } = useApiKey()
+  const { startRun, setSseEnabled } = useStepRun()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
   // Form state
@@ -167,23 +173,28 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const confirmSaveAndRerun = async () => {
     // Save any edited prompts first
     const promptSaves: Promise<unknown>[] = []
-    if (metadataPromptDraft != null) promptSaves.push(api.updatePrompt("metadata_extraction", metadataPromptDraft))
-    if (extractionPromptDraft != null) promptSaves.push(api.updatePrompt("text_classification", extractionPromptDraft))
+    if (metadataPromptDraft != null) promptSaves.push(api.updatePrompt("metadata_extraction", metadataPromptDraft, bookLabel))
+    if (extractionPromptDraft != null) promptSaves.push(api.updatePrompt("text_classification", extractionPromptDraft, bookLabel))
     if (promptSaves.length > 0) await Promise.all(promptSaves)
 
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setDirty({})
           setMetadataPromptDraft(null)
           setExtractionPromptDraft(null)
           setShowRerunDialog(false)
-          const options: { startPage?: number; endPage?: number } = {}
-          if (startPage) options.startPage = Number(startPage)
-          if (endPage) options.endPage = Number(endPage)
-          api.runPipeline(bookLabel, apiKey, options)
+          // Start step-scoped extract run — blocks until data is cleared on backend
+          startRun("extract", "extract")
+          setSseEnabled(true)
+          await api.runSteps(bookLabel, apiKey, { fromStep: "extract", toStep: "extract" })
+          // Remove cached data so the extract page shows empty state (not stale pages)
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "pages"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel] })
+          // Navigate back to the main extract view after data is cleared
+          navigate({ to: "/books/$label/v2/$step", params: { label: bookLabel, step: "extract" } })
         },
       }
     )
@@ -363,6 +374,7 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
       {tab === "metadata-prompt" && (
         <PromptViewer
           promptName="metadata_extraction"
+          bookLabel={bookLabel}
           title="Metadata Extraction Prompt"
           description="The prompt template used to extract book metadata (title, author, etc.) from the first few pages. This is a Liquid template processed with page context."
           model={metadataModel}
@@ -375,6 +387,7 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
       {tab === "prompt" && (
         <PromptViewer
           promptName="text_classification"
+          bookLabel={bookLabel}
           title="Text Classification Prompt"
           description="The prompt template used for text classification. This is a Liquid template processed with page context."
           model={extractionModel}

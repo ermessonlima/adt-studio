@@ -6,6 +6,14 @@ import { api } from "@/api/client"
 import type { GlossaryOutput, VersionEntry } from "@/api/client"
 import { useGlossary } from "@/hooks/use-glossary"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
+
+const GLOSSARY_SUB_STEPS = [
+  { key: "glossary", label: "Generating Glossary" },
+]
 
 type GlossaryData = Omit<GlossaryOutput, "version">
 
@@ -128,6 +136,17 @@ export function GlossaryView({ bookLabel }: { bookLabel: string }) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useGlossary(bookLabel)
   const { setExtra } = useStepHeader()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const glossaryRunning = stepProgress.isRunning && stepProgress.targetSteps.has("glossary")
+
+  const handleRunGlossary = useCallback(async () => {
+    if (!hasApiKey || glossaryRunning) return
+    startRun("glossary", "glossary")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "glossary", toStep: "glossary" })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "glossary"] })
+  }, [bookLabel, apiKey, hasApiKey, glossaryRunning, startRun, setSseEnabled, queryClient])
 
   const [pending, setPending] = useState<GlossaryData | null>(null)
   const [saving, setSaving] = useState(false)
@@ -195,11 +214,17 @@ export function GlossaryView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 || glossaryRunning) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-muted-foreground">No glossary generated yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">Run the proof pipeline to generate a glossary.</p>
+      <div className="p-4">
+        <StepRunCard
+          stepSlug="glossary"
+          subSteps={GLOSSARY_SUB_STEPS}
+          description={STEP_DESCRIPTIONS.glossary}
+          isRunning={glossaryRunning}
+          onRun={handleRunGlossary}
+          disabled={!hasApiKey || glossaryRunning}
+        />
       </div>
     )
   }

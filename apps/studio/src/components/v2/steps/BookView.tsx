@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router"
-import { STEPS } from "../StepSidebar"
+import { STEPS, STEP_DESCRIPTIONS } from "../StepSidebar"
+import { useStepRun } from "@/hooks/use-step-run"
+import { StepProgressRing } from "../StepProgressRing"
 
 interface ViewProps {
   bookLabel: string
@@ -7,24 +9,20 @@ interface ViewProps {
   onSelectPage?: (pageId: string | null) => void
 }
 
-const STEP_DESCRIPTIONS: Record<string, string> = {
-  extract: "Extract text and images from each page of the PDF using AI-powered analysis.",
-  storyboard: "Arrange extracted content into a structured storyboard with pages, sections, and layouts.",
-  quizzes: "Generate comprehension quizzes and activities based on the book content.",
-  captions: "Create descriptive captions for images to improve accessibility.",
-  glossary: "Build a glossary of key terms and definitions found in the text.",
-  translations: "Translate the book content into additional languages.",
-  "text-to-speech": "Generate audio narration for the book using text-to-speech.",
-}
 
 export function BookView({ bookLabel }: ViewProps) {
   const pipelineSteps = STEPS.filter((s) => s.slug !== "book")
+  const { progress: stepRunProgress } = useStepRun()
 
   return (
     <div className="flex flex-col items-start max-w-xl">
       {pipelineSteps.map((step, index) => {
         const Icon = step.icon
         const isLast = index === pipelineSteps.length - 1
+
+        const stepProgress = stepRunProgress.steps.get(step.slug)
+        const ringState = stepProgress?.state ?? "idle"
+
         return (
           <div key={step.slug} className="w-full">
             <Link
@@ -32,13 +30,25 @@ export function BookView({ bookLabel }: ViewProps) {
               params={{ label: bookLabel, step: step.slug }}
               className={`rounded-lg border ${step.borderColor} ${step.bgLight} p-3 flex gap-3 items-center h-[76px] overflow-hidden hover:shadow-sm transition-shadow w-full`}
             >
-              <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 ${step.color} text-white`}>
-                <Icon className="w-4 h-4" />
+              <div className="relative shrink-0">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${step.color} text-white`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <StepProgressRing
+                  size={32}
+                  progress={stepProgress?.progress ?? 0}
+                  state={ringState}
+                  colorClass={step.color}
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className={`text-sm font-semibold ${step.textColor}`}>{step.label}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
-                  {STEP_DESCRIPTIONS[step.slug]}
+                  {ringState === "running" && stepProgress?.totalPages
+                    ? `Processing ${stepProgress.page ?? 0} / ${stepProgress.totalPages} pages...`
+                    : ringState === "queued"
+                      ? "Queued..."
+                      : STEP_DESCRIPTIONS[step.slug]}
                 </p>
               </div>
             </Link>

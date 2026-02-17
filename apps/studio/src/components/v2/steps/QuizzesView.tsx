@@ -5,6 +5,14 @@ import { api } from "@/api/client"
 import type { QuizGenerationOutput, VersionEntry } from "@/api/client"
 import { useQuizzes } from "@/hooks/use-quizzes"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
+
+const QUIZZES_SUB_STEPS = [
+  { key: "quiz-generation", label: "Generating Quizzes" },
+]
 
 type QuizData = QuizGenerationOutput
 
@@ -127,6 +135,17 @@ export function QuizzesView({ bookLabel }: { bookLabel: string }) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuizzes(bookLabel)
   const { setExtra } = useStepHeader()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const quizzesRunning = stepProgress.isRunning && stepProgress.targetSteps.has("quizzes")
+
+  const handleRunQuizzes = useCallback(async () => {
+    if (!hasApiKey || quizzesRunning) return
+    startRun("quizzes", "quizzes")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "quizzes", toStep: "quizzes" })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "quizzes"] })
+  }, [bookLabel, apiKey, hasApiKey, quizzesRunning, startRun, setSseEnabled, queryClient])
 
   const [pending, setPending] = useState<QuizData | null>(null)
   const [saving, setSaving] = useState(false)
@@ -219,11 +238,17 @@ export function QuizzesView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (quizzes.length === 0) {
+  if (quizzes.length === 0 || quizzesRunning) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-muted-foreground">No quizzes generated yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">Run the proof pipeline to generate quizzes.</p>
+      <div className="p-4">
+        <StepRunCard
+          stepSlug="quizzes"
+          subSteps={QUIZZES_SUB_STEPS}
+          description={STEP_DESCRIPTIONS.quizzes}
+          isRunning={quizzesRunning}
+          onRun={handleRunQuizzes}
+          disabled={!hasApiKey || quizzesRunning}
+        />
       </div>
     )
   }

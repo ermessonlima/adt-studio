@@ -11,6 +11,8 @@ import {
   Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useStepRun } from "@/hooks/use-step-run"
+import { StepProgressRing } from "./StepProgressRing"
 
 export const STEPS = [
   { slug: "book", label: "Book", icon: BookMarked, color: "bg-gray-500", textColor: "text-gray-600", bgLight: "bg-gray-50", bgDark: "bg-gray-700", borderColor: "border-gray-200" },
@@ -24,6 +26,16 @@ export const STEPS = [
 ] as const
 
 export type StepSlug = (typeof STEPS)[number]["slug"]
+
+export const STEP_DESCRIPTIONS: Record<string, string> = {
+  extract: "Extract text and images from each page of the PDF using AI-powered analysis.",
+  storyboard: "Arrange extracted content into a structured storyboard with pages, sections, and layouts.",
+  quizzes: "Generate comprehension quizzes and activities based on the book content.",
+  captions: "Create descriptive captions for images to improve accessibility.",
+  glossary: "Build a glossary of key terms and definitions found in the text.",
+  translations: "Translate the book content into additional languages.",
+  "text-to-speech": "Generate audio narration for the book using text-to-speech.",
+}
 
 export function toCamelLabel(label: string): string {
   return label.split(/[-_]+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")
@@ -77,6 +89,7 @@ const SETTINGS_TABS: Record<string, { key: string; label: string }[]> = {
 export function StepSidebar({ bookLabel, activeStep }: { bookLabel: string; activeStep: string }) {
   const matchRoute = useMatchRoute()
   const search = useSearch({ strict: false }) as { tab?: string }
+  const { progress: stepRunProgress } = useStepRun()
 
   const isSettings = !!matchRoute({
     to: "/books/$label/v2/$step/settings",
@@ -92,6 +105,10 @@ export function StepSidebar({ bookLabel, activeStep }: { bookLabel: string; acti
         const Icon = step.icon
         const settingsTabs = SETTINGS_TABS[step.slug]
         const showSubTabs = isActive && isSettings && !!settingsTabs
+
+        // Step progress state
+        const stepProgress = stepRunProgress.steps.get(step.slug)
+        const ringState = stepProgress?.state ?? "idle"
 
         return (
           <div key={step.slug} className="relative">
@@ -115,13 +132,21 @@ export function StepSidebar({ bookLabel, activeStep }: { bookLabel: string; acti
                 className="flex items-center gap-2.5 lg:flex-1 group-hover/sidebar:flex-1 min-w-0"
                 title={step.label}
               >
-                <div
-                  className={cn(
-                    "flex items-center justify-center w-7 h-7 rounded-full shrink-0 transition-colors",
-                    isActive ? cn(step.color, "text-white") : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
+                <div className="relative shrink-0">
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+                      isActive ? cn(step.color, "text-white") : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <StepProgressRing
+                    size={28}
+                    progress={stepProgress?.progress ?? 0}
+                    state={ringState}
+                    colorClass={step.color}
+                  />
                 </div>
                 <span className="truncate hidden lg:inline group-hover/sidebar:inline">
                   {step.slug === "book" ? toCamelLabel(bookLabel) : step.label}

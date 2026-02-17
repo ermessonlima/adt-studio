@@ -92,6 +92,21 @@ export interface RunPipelineOptions {
   endPage?: number
 }
 
+export interface RunStepsOptions {
+  fromStep: string
+  toStep: string
+}
+
+export interface StepRunStatus {
+  label: string
+  status: "idle" | "running" | "completed" | "failed"
+  fromStep?: string
+  toStep?: string
+  error?: string
+  startedAt?: number
+  completedAt?: number
+}
+
 export interface PageSummaryItem {
   pageId: string
   pageNumber: number
@@ -370,6 +385,23 @@ export const api = {
   getPipelineStatus: (label: string) =>
     request<PipelineStatus>(`/books/${label}/pipeline/status`),
 
+  runSteps: (
+    label: string,
+    apiKey: string,
+    options: RunStepsOptions
+  ) =>
+    request<{ status: string; label: string; fromStep: string; toStep: string }>(
+      `/books/${label}/steps/run`,
+      {
+        method: "POST",
+        headers: { "X-OpenAI-Key": apiKey },
+        body: JSON.stringify(options),
+      }
+    ),
+
+  getStepsStatus: (label: string) =>
+    request<StepRunStatus>(`/books/${label}/steps/status`),
+
   getPages: (label: string) =>
     request<PageSummaryItem[]>(`/books/${label}/pages`),
 
@@ -458,14 +490,16 @@ export const api = {
       body: JSON.stringify({ config }),
     }),
 
-  getPrompt: (name: string) =>
-    request<{ name: string; content: string }>(`/prompts/${name}`),
+  getPrompt: (name: string, bookLabel?: string) =>
+    request<{ name: string; content: string; source?: string }>(
+      bookLabel ? `/books/${bookLabel}/prompts/${name}` : `/prompts/${name}`
+    ),
 
-  updatePrompt: (name: string, content: string) =>
-    request<{ name: string; content: string }>(`/prompts/${name}`, {
-      method: "PUT",
-      body: JSON.stringify({ content }),
-    }),
+  updatePrompt: (name: string, content: string, bookLabel?: string) =>
+    request<{ name: string; content: string; source?: string }>(
+      bookLabel ? `/books/${bookLabel}/prompts/${name}` : `/prompts/${name}`,
+      { method: "PUT", body: JSON.stringify({ content }) },
+    ),
 
   runProof: (label: string, apiKey: string) =>
     request<{ status: string; label: string }>(

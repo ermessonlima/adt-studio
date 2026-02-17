@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,12 +18,16 @@ import { useBookConfig, useUpdateBookConfig } from "@/hooks/use-book-config"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
+import { useStepRun } from "@/hooks/use-step-run"
 
 export function TextToSpeechSettings({ bookLabel, headerTarget }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
   const { apiKey, hasApiKey } = useApiKey()
+  const { startRun, setSseEnabled } = useStepRun()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
   const [model, setModel] = useState("")
@@ -66,10 +72,16 @@ export function TextToSpeechSettings({ bookLabel, headerTarget }: { bookLabel: s
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setDirty({})
           setShowRerunDialog(false)
-          api.runMaster(bookLabel, apiKey)
+          startRun("text-to-speech", "text-to-speech")
+          setSseEnabled(true)
+          await api.runSteps(bookLabel, apiKey, { fromStep: "text-to-speech", toStep: "text-to-speech" })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "tts"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "text-catalog"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel] })
+          navigate({ to: "/books/$label/v2/$step", params: { label: bookLabel, step: "text-to-speech" } })
         },
       }
     )
@@ -130,7 +142,7 @@ export function TextToSpeechSettings({ bookLabel, headerTarget }: { bookLabel: s
           <DialogHeader>
             <DialogTitle>Save &amp; Rerun Text to Speech</DialogTitle>
             <DialogDescription>
-              This will save your settings and re-run the master pipeline,
+              This will save your settings and re-run text-to-speech,
               regenerating all audio files.
             </DialogDescription>
           </DialogHeader>

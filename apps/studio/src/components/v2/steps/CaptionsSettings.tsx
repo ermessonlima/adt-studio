@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,12 +17,16 @@ import { useActiveConfig } from "@/hooks/use-debug"
 import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/v2/PromptViewer"
+import { useStepRun } from "@/hooks/use-step-run"
 
 export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
   const { apiKey, hasApiKey } = useApiKey()
+  const { startRun, setSseEnabled } = useStepRun()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
   const [model, setModel] = useState("")
@@ -57,18 +63,23 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
 
   const confirmSaveAndRerun = async () => {
     const promptSaves: Promise<unknown>[] = []
-    if (promptDraft != null) promptSaves.push(api.updatePrompt("image_captioning", promptDraft))
+    if (promptDraft != null) promptSaves.push(api.updatePrompt("image_captioning", promptDraft, bookLabel))
     if (promptSaves.length > 0) await Promise.all(promptSaves)
 
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setDirty({})
           setPromptDraft(null)
           setShowRerunDialog(false)
-          api.runProof(bookLabel, apiKey)
+          startRun("captions", "captions")
+          setSseEnabled(true)
+          await api.runSteps(bookLabel, apiKey, { fromStep: "captions", toStep: "captions" })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "pages"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel] })
+          navigate({ to: "/books/$label/v2/$step", params: { label: bookLabel, step: "captions" } })
         },
       }
     )
@@ -78,6 +89,7 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
     <div className="h-full max-w-4xl">
       <PromptViewer
         promptName="image_captioning"
+        bookLabel={bookLabel}
         title="Caption Prompt"
         description="The prompt template used to generate captions for images in the book."
         model={model}
@@ -103,8 +115,7 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
           <DialogHeader>
             <DialogTitle>Save &amp; Rerun Captions</DialogTitle>
             <DialogDescription>
-              This will save your settings and re-run the proof pipeline,
-              regenerating quizzes, glossary, and captions.
+              This will save your settings and re-run image captioning.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -2,8 +2,10 @@ import { useEffect } from "react"
 import { AlignLeft, ArrowLeft, ArrowRight, BookOpen, Building2, FileText, Globe, Image, Loader2, User } from "lucide-react"
 import { useBook } from "@/hooks/use-books"
 import { usePages, usePageImage } from "@/hooks/use-pages"
+import { useStepRun } from "@/hooks/use-step-run"
 import { ExtractPageDetail } from "./ExtractPageDetail"
 import { useStepHeader } from "../StepViewRouter"
+import { StepRunCard } from "../StepRunCard"
 import type { PageSummaryItem } from "@/api/client"
 
 function PageCard({
@@ -68,6 +70,14 @@ function PageCard({
     </button>
   )
 }
+
+const EXTRACT_SUB_STEPS = [
+  { key: "extract", label: "Extracting PDF" },
+  { key: "metadata", label: "Extracting Metadata" },
+  { key: "image-classification", label: "Classifying Images" },
+  { key: "text-classification", label: "Classifying Text" },
+  { key: "translation", label: "Translating" },
+]
 
 function BookBanner({ bookLabel, pages }: { bookLabel: string; pages: PageSummaryItem[] | undefined }) {
   const { data: book } = useBook(bookLabel)
@@ -135,9 +145,11 @@ function BookBanner({ bookLabel, pages }: { bookLabel: string; pages: PageSummar
 
 export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onSelectPage }: { bookLabel: string; selectedPageId?: string; onSelectPage?: (pageId: string | null) => void }) {
   const { data: pages, isLoading } = usePages(bookLabel)
+  const { progress: stepProgress } = useStepRun()
   const selectedPageId = selectedPageIdProp ?? null
   const setSelectedPageId = onSelectPage ?? (() => {})
   const { setExtra, setOnLabelClick } = useStepHeader()
+  const extractRunning = stepProgress.isRunning && stepProgress.targetSteps.has("extract")
 
   const pageList = pages ?? []
   const currentIndex = selectedPageId ? pageList.findIndex((p) => p.pageId === selectedPageId) : -1
@@ -226,12 +238,22 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
   // Page grid view
   return (
     <div>
-      <BookBanner bookLabel={bookLabel} pages={pages} />
+      {pageList.length > 0 && <BookBanner bookLabel={bookLabel} pages={pages} />}
       <div className="p-4">
       {pageList.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No pages extracted yet. Run the pipeline to extract content.
-        </p>
+        extractRunning ? (
+          <StepRunCard
+            stepSlug="extract"
+            subSteps={EXTRACT_SUB_STEPS}
+            isRunning
+            onRun={() => {}}
+            disabled
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No pages extracted yet. Run the pipeline to extract content.
+          </p>
+        )
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {pageList.map((page) => (

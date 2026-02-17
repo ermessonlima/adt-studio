@@ -55,7 +55,8 @@ export async function reRenderPage(
 
     // Create LLM model resolver (model-specific, cached)
     const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
-    const promptEngine = createPromptEngine(promptsDir)
+    const bookPromptsDir = path.join(path.resolve(booksDir), label, "prompts")
+    const promptEngine = createPromptEngine([bookPromptsDir, promptsDir])
     const templatesDir = path.join(path.dirname(promptsDir), "templates")
     const templateEngine = createTemplateEngine(templatesDir)
     const renderModels = new Map<string, LLMModel>()

@@ -1,15 +1,36 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Loader2 } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import type { TextCatalogEntry } from "@/api/client"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
 import { cn } from "@/lib/utils"
+
+const TRANSLATIONS_SUB_STEPS = [
+  { key: "text-catalog", label: "Building Text Catalog" },
+  { key: "catalog-translation", label: "Translating Entries" },
+]
 
 export function TranslationsView({ bookLabel }: { bookLabel: string }) {
   const { setExtra } = useStepHeader()
   const { data: activeConfigData } = useActiveConfig(bookLabel)
+  const queryClient = useQueryClient()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const translationsRunning = stepProgress.isRunning && stepProgress.targetSteps.has("translations")
+
+  const handleRunTranslations = useCallback(async () => {
+    if (!hasApiKey || translationsRunning) return
+    startRun("translations", "translations")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "translations", toStep: "translations" })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "text-catalog"] })
+  }, [bookLabel, apiKey, hasApiKey, translationsRunning, startRun, setSseEnabled, queryClient])
   const { data: catalog, isLoading } = useQuery({
     queryKey: ["books", bookLabel, "text-catalog"],
     queryFn: () => api.getTextCatalog(bookLabel),
@@ -58,11 +79,17 @@ export function TranslationsView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (!catalog || entries.length === 0) {
+  if (!catalog || entries.length === 0 || translationsRunning) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-muted-foreground">No text catalog generated yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">Run the master pipeline to build the text catalog.</p>
+      <div className="p-4">
+        <StepRunCard
+          stepSlug="translations"
+          subSteps={TRANSLATIONS_SUB_STEPS}
+          description={STEP_DESCRIPTIONS.translations}
+          isRunning={translationsRunning}
+          onRun={handleRunTranslations}
+          disabled={!hasApiKey || translationsRunning}
+        />
       </div>
     )
   }

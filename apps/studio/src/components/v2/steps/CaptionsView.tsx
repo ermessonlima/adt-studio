@@ -1,10 +1,18 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Check, ChevronDown, Loader2 } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import type { PageDetail, VersionEntry } from "@/api/client"
 import { usePages, usePage } from "@/hooks/use-pages"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
+
+const CAPTIONS_SUB_STEPS = [
+  { key: "image-captioning", label: "Captioning Images" },
+]
 
 type CaptioningData = NonNullable<PageDetail["imageCaptioning"]>
 
@@ -213,6 +221,18 @@ function PageCaptions({ bookLabel, pageId, pageNumber }: { bookLabel: string; pa
 export function CaptionsView({ bookLabel }: { bookLabel: string }) {
   const { data: pages, isLoading } = usePages(bookLabel)
   const { setExtra } = useStepHeader()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const queryClient = useQueryClient()
+  const captionsRunning = stepProgress.isRunning && stepProgress.targetSteps.has("captions")
+
+  const handleRunCaptions = useCallback(async () => {
+    if (!hasApiKey || captionsRunning) return
+    startRun("captions", "captions")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "captions", toStep: "captions" })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "pages"] })
+  }, [bookLabel, apiKey, hasApiKey, captionsRunning, startRun, setSseEnabled, queryClient])
 
   const pagesWithImages = (pages ?? []).filter((p) => p.imageCount > 0)
   const totalImages = pagesWithImages.reduce((sum, p) => sum + p.imageCount, 0)
@@ -237,11 +257,17 @@ export function CaptionsView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (pagesWithImages.length === 0) {
+  if (pagesWithImages.length === 0 || captionsRunning) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-muted-foreground">No images found in this book.</p>
-        <p className="text-xs text-muted-foreground mt-1">Run the extraction pipeline first.</p>
+      <div className="p-4">
+        <StepRunCard
+          stepSlug="captions"
+          subSteps={CAPTIONS_SUB_STEPS}
+          description={STEP_DESCRIPTIONS.captions}
+          isRunning={captionsRunning}
+          onRun={handleRunCaptions}
+          disabled={!hasApiKey || captionsRunning}
+        />
       </div>
     )
   }

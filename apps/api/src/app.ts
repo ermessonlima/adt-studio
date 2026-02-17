@@ -22,6 +22,9 @@ import { createPackageRoutes } from "./routes/package.js"
 import { createPromptRoutes } from "./routes/prompts.js"
 import { createTextCatalogRoutes } from "./routes/text-catalog.js"
 import { createTTSRoutes } from "./routes/tts.js"
+import { createStepRoutes } from "./routes/steps.js"
+import { createStepService } from "./services/step-service.js"
+import { createStepRunner } from "./services/step-runner.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -42,6 +45,8 @@ const proofRunner = createProofRunner()
 const proofService = createProofService(proofRunner)
 const masterRunner = createMasterRunner()
 const masterService = createMasterService(masterRunner)
+const stepRunner = createStepRunner()
+const stepService = createStepService(stepRunner, pipelineService)
 
 const app = new Hono()
 
@@ -71,8 +76,9 @@ app.route("/api", createGlossaryRoutes(booksDir))
 app.route("/api", createDebugRoutes(pipelineService, booksDir, promptsDir, configPath))
 app.route("/api", createQuizRoutes(booksDir))
 app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath))
-app.route("/api", createPromptRoutes(promptsDir))
+app.route("/api", createPromptRoutes(promptsDir, booksDir))
 app.route("/api", createTextCatalogRoutes(booksDir))
 app.route("/api", createTTSRoutes(booksDir))
+app.route("/api", createStepRoutes(stepService, pipelineService, booksDir, promptsDir, configPath))
 
 export default app

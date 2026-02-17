@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,12 +18,16 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/v2/PromptViewer"
 import { LanguagePicker } from "@/components/LanguagePicker"
+import { useStepRun } from "@/hooks/use-step-run"
 
 export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
   const { apiKey, hasApiKey } = useApiKey()
+  const { startRun, setSseEnabled } = useStepRun()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
   const [model, setModel] = useState("")
@@ -75,18 +81,23 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
 
   const confirmSaveAndRerun = async () => {
     const promptSaves: Promise<unknown>[] = []
-    if (promptDraft != null) promptSaves.push(api.updatePrompt("translation", promptDraft))
+    if (promptDraft != null) promptSaves.push(api.updatePrompt("translation", promptDraft, bookLabel))
     if (promptSaves.length > 0) await Promise.all(promptSaves)
 
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setDirty({})
           setPromptDraft(null)
           setShowRerunDialog(false)
-          api.runMaster(bookLabel, apiKey)
+          startRun("translations", "translations")
+          setSseEnabled(true)
+          await api.runSteps(bookLabel, apiKey, { fromStep: "translations", toStep: "translations" })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "text-catalog"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel] })
+          navigate({ to: "/books/$label/v2/$step", params: { label: bookLabel, step: "translations" } })
         },
       }
     )
@@ -107,6 +118,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
       {tab === "prompt" && (
         <PromptViewer
           promptName="translation"
+          bookLabel={bookLabel}
           title="Translation Prompt"
           description="The prompt template used to translate text catalog entries."
           model={model}
@@ -134,7 +146,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           <DialogHeader>
             <DialogTitle>Save &amp; Rerun Translations</DialogTitle>
             <DialogDescription>
-              This will save your settings and re-run the master pipeline,
+              This will save your settings and re-run translations,
               rebuilding the text catalog and translating to output languages.
             </DialogDescription>
           </DialogHeader>

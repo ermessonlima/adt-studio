@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { Play, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +26,7 @@ import { useActiveConfig } from "@/hooks/use-debug"
 import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/v2/PromptViewer"
+import { useStepRun } from "@/hooks/use-step-run"
 
 /** "two_column_story" → "Two Column Story" */
 function titleCase(slug: string): string {
@@ -41,6 +44,9 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
   const { apiKey, hasApiKey } = useApiKey()
+  const { startRun, setSseEnabled } = useStepRun()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
   // Form state
@@ -52,6 +58,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const [renderStrategyNames, setRenderStrategyNames] = useState<string[]>([])
   const [sectioningModel, setSectioningModel] = useState("")
   const [renderingModel, setRenderingModel] = useState("")
+  const [renderingPromptName, setRenderingPromptName] = useState("web_generation_html")
   const [sectioningPromptDraft, setSectioningPromptDraft] = useState<string | null>(null)
   const [renderingPromptDraft, setRenderingPromptDraft] = useState<string | null>(null)
 
@@ -86,12 +93,15 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
       const ps = merged.page_sectioning as Record<string, unknown>
       if (ps.model) setSectioningModel(String(ps.model))
     }
-    // Rendering model comes from the default render strategy's config
+    // Rendering model + prompt come from the default render strategy's config
     if (merged.render_strategies && merged.default_render_strategy) {
-      const strategies = merged.render_strategies as Record<string, { config?: { model?: string } }>
+      const strategies = merged.render_strategies as Record<string, { config?: { model?: string; prompt?: string } }>
       const defaultStrategy = strategies[String(merged.default_render_strategy)]
       if (defaultStrategy?.config?.model) {
         setRenderingModel(String(defaultStrategy.config.model))
+      }
+      if (defaultStrategy?.config?.prompt) {
+        setRenderingPromptName(String(defaultStrategy.config.prompt))
       }
     }
   }, [activeConfigData])
@@ -194,20 +204,28 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const confirmSaveAndRerun = async () => {
     // Save any edited prompts first
     const promptSaves: Promise<unknown>[] = []
-    if (sectioningPromptDraft != null) promptSaves.push(api.updatePrompt("page_sectioning", sectioningPromptDraft))
-    if (renderingPromptDraft != null) promptSaves.push(api.updatePrompt("web_generation_html", renderingPromptDraft))
+    if (sectioningPromptDraft != null) promptSaves.push(api.updatePrompt("page_sectioning", sectioningPromptDraft, bookLabel))
+    if (renderingPromptDraft != null) promptSaves.push(api.updatePrompt(renderingPromptName, renderingPromptDraft, bookLabel))
     if (promptSaves.length > 0) await Promise.all(promptSaves)
 
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           setDirty({})
           setSectioningPromptDraft(null)
           setRenderingPromptDraft(null)
           setShowRerunDialog(false)
-          api.runPipeline(bookLabel, apiKey, {})
+          // Start step-scoped storyboard run — blocks until data is cleared on backend
+          startRun("storyboard", "storyboard")
+          setSseEnabled(true)
+          await api.runSteps(bookLabel, apiKey, { fromStep: "storyboard", toStep: "storyboard" })
+          // Remove cached data so the storyboard page shows empty state (not stale pages)
+          queryClient.removeQueries({ queryKey: ["books", bookLabel, "pages"] })
+          queryClient.removeQueries({ queryKey: ["books", bookLabel] })
+          // Navigate to the storyboard view
+          navigate({ to: "/books/$label/v2/$step", params: { label: bookLabel, step: "storyboard" } })
         },
       }
     )
@@ -352,6 +370,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
       {tab === "sectioning-prompt" && (
         <PromptViewer
           promptName="page_sectioning"
+          bookLabel={bookLabel}
           title="Page Sectioning Prompt"
           description="The prompt template used to split each page into logical sections. This is a Liquid template processed with page context."
           model={sectioningModel}
@@ -362,7 +381,8 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
 
       {tab === "rendering-prompt" && (
         <PromptViewer
-          promptName="web_generation_html"
+          promptName={renderingPromptName}
+          bookLabel={bookLabel}
           title="Rendering Prompt"
           description="The prompt template used to generate HTML for each section. This is a Liquid template processed with section context."
           model={renderingModel}

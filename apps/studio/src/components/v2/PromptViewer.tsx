@@ -7,6 +7,8 @@ import { api } from "@/api/client"
 interface PromptViewerProps {
   /** Prompt template name to fetch (e.g. "page_sectioning") */
   promptName: string
+  /** Book label for book-scoped prompt overrides */
+  bookLabel?: string
   /** Human-readable title */
   title: string
   /** Short description shown above the prompt */
@@ -41,6 +43,7 @@ function highlightLiquid(text: string): string {
 
 export function PromptViewer({
   promptName,
+  bookLabel,
   title,
   description,
   model,
@@ -50,8 +53,8 @@ export function PromptViewer({
   enabled = true,
 }: PromptViewerProps) {
   const { data: promptData, isLoading } = useQuery({
-    queryKey: ["prompts", promptName],
-    queryFn: () => api.getPrompt(promptName),
+    queryKey: ["prompts", promptName, bookLabel],
+    queryFn: () => api.getPrompt(promptName, bookLabel),
     enabled,
   })
 

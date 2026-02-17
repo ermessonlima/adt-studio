@@ -1,13 +1,37 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { usePages, usePage } from "@/hooks/use-pages"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { api } from "@/api/client"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
 import { StoryboardSectionDetail } from "./StoryboardSectionDetail"
+
+const STORYBOARD_SUB_STEPS = [
+  { key: "page-sectioning", label: "Sectioning Pages" },
+  { key: "web-rendering", label: "Rendering Pages" },
+]
 
 export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, onSelectPage }: { bookLabel: string; selectedPageId?: string; onSelectPage?: (pageId: string | null) => void }) {
   const { data: pages, isLoading: pagesLoading } = usePages(bookLabel)
   const setSelectedPageId = onSelectPage ?? (() => {})
   const { setExtra, setOnLabelClick } = useStepHeader()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const queryClient = useQueryClient()
+  const storyboardRunning = stepProgress.isRunning && stepProgress.targetSteps.has("storyboard")
+
+  const handleRunStoryboard = useCallback(async () => {
+    if (!hasApiKey || storyboardRunning) return
+    startRun("storyboard", "storyboard")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "storyboard", toStep: "storyboard" })
+    // Remove cached page data so section data is cleared
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "pages"] })
+  }, [bookLabel, apiKey, hasApiKey, storyboardRunning, startRun, setSseEnabled, queryClient])
 
   const pageList = pages ?? []
   const [sectionIndex, setSectionIndex] = useState(0)
@@ -184,12 +208,17 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
     )
   }
 
-  if (sectionCount === 0) {
+  if (sectionCount === 0 || storyboardRunning) {
     return (
       <div className="p-4">
-        <p className="text-sm text-muted-foreground">
-          No sections for this page. Run the pipeline to generate the storyboard.
-        </p>
+        <StepRunCard
+          stepSlug="storyboard"
+          subSteps={STORYBOARD_SUB_STEPS}
+          description={STEP_DESCRIPTIONS.storyboard}
+          isRunning={storyboardRunning}
+          onRun={handleRunStoryboard}
+          disabled={!hasApiKey || storyboardRunning}
+        />
       </div>
     )
   }

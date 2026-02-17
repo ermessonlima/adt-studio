@@ -1,12 +1,35 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Loader2, Play, Pause, Volume2 } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, getAudioUrl } from "@/api/client"
 import { useStepHeader } from "../StepViewRouter"
+import { useStepRun } from "@/hooks/use-step-run"
+import { useApiKey } from "@/hooks/use-api-key"
+import { StepRunCard } from "../StepRunCard"
+import { STEP_DESCRIPTIONS } from "../StepSidebar"
 import { cn } from "@/lib/utils"
+
+const TTS_SUB_STEPS = [
+  { key: "text-catalog", label: "Building Text Catalog" },
+  { key: "tts", label: "Generating Audio" },
+]
 
 export function TextToSpeechView({ bookLabel }: { bookLabel: string }) {
   const { setExtra } = useStepHeader()
+  const queryClient = useQueryClient()
+  const { progress: stepProgress, startRun, setSseEnabled } = useStepRun()
+  const { apiKey, hasApiKey } = useApiKey()
+  const ttsRunning = stepProgress.isRunning && stepProgress.targetSteps.has("text-to-speech")
+
+  const handleRunTTS = useCallback(async () => {
+    if (!hasApiKey || ttsRunning) return
+    startRun("text-to-speech", "text-to-speech")
+    setSseEnabled(true)
+    await api.runSteps(bookLabel, apiKey, { fromStep: "text-to-speech", toStep: "text-to-speech" })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "tts"] })
+    queryClient.removeQueries({ queryKey: ["books", bookLabel, "text-catalog"] })
+  }, [bookLabel, apiKey, hasApiKey, ttsRunning, startRun, setSseEnabled, queryClient])
+
   const { data: ttsData, isLoading: ttsLoading } = useQuery({
     queryKey: ["books", bookLabel, "tts"],
     queryFn: () => api.getTTS(bookLabel),
@@ -71,12 +94,17 @@ export function TextToSpeechView({ bookLabel }: { bookLabel: string }) {
     )
   }
 
-  if (!ttsData || languages.length === 0) {
+  if (!ttsData || languages.length === 0 || ttsRunning) {
     return (
-      <div className="text-center py-12">
-        <Volume2 className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-        <p className="text-sm text-muted-foreground">No audio files generated yet.</p>
-        <p className="text-xs text-muted-foreground mt-1">Run the master pipeline to generate speech audio.</p>
+      <div className="p-4">
+        <StepRunCard
+          stepSlug="text-to-speech"
+          subSteps={TTS_SUB_STEPS}
+          description={STEP_DESCRIPTIONS["text-to-speech"]}
+          isRunning={ttsRunning}
+          onRun={handleRunTTS}
+          disabled={!hasApiKey || ttsRunning}
+        />
       </div>
     )
   }
