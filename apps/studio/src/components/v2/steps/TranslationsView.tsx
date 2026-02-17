@@ -1,100 +1,150 @@
-import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
+import { Loader2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { api } from "@/api/client"
+import type { TextCatalogEntry } from "@/api/client"
+import { useActiveConfig } from "@/hooks/use-debug"
+import { useStepHeader } from "../StepViewRouter"
 import { cn } from "@/lib/utils"
 
-const LANGUAGES = [
-  { code: "fr", label: "French", progress: 100 },
-  { code: "es", label: "Spanish", progress: 72 },
-  { code: "sw", label: "Swahili", progress: 45 },
-]
+export function TranslationsView({ bookLabel }: { bookLabel: string }) {
+  const { setExtra } = useStepHeader()
+  const { data: activeConfigData } = useActiveConfig(bookLabel)
+  const { data: catalog, isLoading } = useQuery({
+    queryKey: ["books", bookLabel, "text-catalog"],
+    queryFn: () => api.getTextCatalog(bookLabel),
+    enabled: !!bookLabel,
+  })
 
-const MOCK_TRANSLATIONS: Record<string, { original: string; translated: string }[]> = {
-  fr: [
-    { original: "Water is essential for all living things on Earth.", translated: "L'eau est essentielle pour tous les \u00eatres vivants sur Terre." },
-    { original: "The water cycle describes how water moves through the environment.", translated: "Le cycle de l'eau d\u00e9crit comment l'eau circule dans l'environnement." },
-    { original: "Plants absorb water through their roots.", translated: "Les plantes absorbent l'eau par leurs racines." },
-  ],
-  es: [
-    { original: "Water is essential for all living things on Earth.", translated: "El agua es esencial para todos los seres vivos en la Tierra." },
-    { original: "The water cycle describes how water moves through the environment.", translated: "El ciclo del agua describe c\u00f3mo el agua se mueve a trav\u00e9s del medio ambiente." },
-    { original: "Plants absorb water through their roots.", translated: "Las plantas absorben agua a trav\u00e9s de sus ra\u00edces." },
-  ],
-  sw: [
-    { original: "Water is essential for all living things on Earth.", translated: "Maji ni muhimu kwa viumbe vyote vilivyo hai duniani." },
-    { original: "The water cycle describes how water moves through the environment.", translated: "Mzunguko wa maji unaelezea jinsi maji yanavyosogea katika mazingira." },
-    { original: "Plants absorb water through their roots.", translated: "" },
-  ],
-}
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const outputLanguages = (merged?.output_languages as string[] | undefined) ?? []
+  const editingLanguage = (merged?.editing_language as string | undefined) ?? "English"
 
-export function TranslationsView({ bookLabel: _ }: { bookLabel: string }) {
-  const [selectedLang, setSelectedLang] = useState("fr")
-  const translations = MOCK_TRANSLATIONS[selectedLang] ?? []
-  const langInfo = LANGUAGES.find((l) => l.code === selectedLang)
+  const [selectedLang, setSelectedLang] = useState<string | null>(null)
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Translations</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {LANGUAGES.length} languages configured
-          </p>
-        </div>
+  // Default to first output language when available
+  useEffect(() => {
+    if (outputLanguages.length > 0 && !selectedLang) {
+      setSelectedLang(outputLanguages[0])
+    }
+  }, [outputLanguages.length])
+
+  const entries = catalog?.entries ?? []
+  const hasTranslations = outputLanguages.length > 0
+
+  // Get translated entries for selected language
+  const translatedEntries = selectedLang ? catalog?.translations?.[selectedLang]?.entries ?? [] : []
+  const translatedMap = new Map(translatedEntries.map((e) => [e.id, e.text]))
+
+  useEffect(() => {
+    if (!catalog) return
+    setExtra(
+      <div className="flex items-center gap-1.5 ml-auto">
+        <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{entries.length} texts</span>
+        {hasTranslations && (
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{outputLanguages.length} languages</span>
+        )}
       </div>
+    )
+    return () => setExtra(null)
+  }, [catalog, entries.length, outputLanguages.length, hasTranslations])
 
-      {/* Language selector */}
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        <span className="text-sm">Loading text catalog...</span>
+      </div>
+    )
+  }
+
+  if (!catalog || entries.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-muted-foreground">No text catalog generated yet.</p>
+        <p className="text-xs text-muted-foreground mt-1">Run the master pipeline to build the text catalog.</p>
+      </div>
+    )
+  }
+
+  // No output languages — just show source entries
+  if (!hasTranslations) {
+    return (
+      <div className="space-y-1">
+        {entries.map((entry) => (
+          <EntryRow key={entry.id} entry={entry} />
+        ))}
+      </div>
+    )
+  }
+
+  // With output languages — language tabs + side-by-side
+  return (
+    <div className="space-y-3">
+      {/* Language tabs */}
       <div className="flex gap-1.5">
-        {LANGUAGES.map((lang) => (
-          <Button
-            key={lang.code}
-            variant={selectedLang === lang.code ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedLang(lang.code)}
-            className="text-xs h-7 gap-1.5"
-          >
-            {lang.label}
-            <Badge
-              variant="secondary"
+        {outputLanguages.map((lang) => {
+          const translated = catalog.translations?.[lang]?.entries ?? []
+          const progress = entries.length > 0 ? Math.round((translated.length / entries.length) * 100) : 0
+          return (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setSelectedLang(lang)}
               className={cn(
-                "text-[10px] h-4 px-1",
-                selectedLang === lang.code && "bg-white/20 text-white"
+                "text-xs h-7 px-3 rounded-md font-medium transition-colors cursor-pointer",
+                selectedLang === lang
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground hover:bg-accent"
               )}
             >
-              {lang.progress}%
-            </Badge>
-          </Button>
-        ))}
+              {lang}
+              <span className={cn(
+                "ml-1.5 text-[10px]",
+                selectedLang === lang ? "opacity-60" : "opacity-50"
+              )}>
+                {progress}%
+              </span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Progress bar */}
-      {langInfo && (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-pink-500 rounded-full transition-all"
-              style={{ width: `${langInfo.progress}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground">{langInfo.progress}% complete</span>
-        </div>
-      )}
-
-      {/* Side-by-side translations */}
-      <div className="space-y-2">
+      {/* Side-by-side */}
+      <div className="space-y-1">
         <div className="grid grid-cols-2 gap-3 px-3 py-1.5">
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Original</span>
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{langInfo?.label}</span>
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{editingLanguage}</span>
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{selectedLang}</span>
         </div>
-        {translations.map((item, i) => (
-          <div key={i} className="grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border bg-card">
-            <p className="text-xs leading-relaxed">{item.original}</p>
-            <p className={cn("text-xs leading-relaxed", !item.translated && "text-muted-foreground italic")}>
-              {item.translated || "Pending translation..."}
-            </p>
-          </div>
-        ))}
+        {entries.map((entry) => {
+          const translated = translatedMap.get(entry.id)
+          return (
+            <div key={entry.id} className="grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border bg-card">
+              <div>
+                <span className="text-[10px] text-muted-foreground">{entry.id}</span>
+                <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-muted-foreground">&nbsp;</span>
+                <p className={cn("text-sm leading-relaxed mt-0.5", !translated && "text-muted-foreground italic")}>
+                  {translated || "Pending..."}
+                </p>
+              </div>
+            </div>
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+function EntryRow({ entry }: { entry: TextCatalogEntry }) {
+  return (
+    <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border bg-card">
+      <span className="shrink-0 text-[10px] font-medium text-muted-foreground w-32 truncate pt-0.5" title={entry.id}>
+        {entry.id}
+      </span>
+      <p className="text-sm leading-relaxed flex-1 min-w-0">{entry.text}</p>
     </div>
   )
 }

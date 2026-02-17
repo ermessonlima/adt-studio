@@ -3,6 +3,11 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { STEPS } from "@/components/v2/StepSidebar"
 import { ExtractSettings } from "@/components/v2/steps/ExtractSettings"
 import { StoryboardSettings } from "@/components/v2/steps/StoryboardSettings"
+import { QuizzesSettings } from "@/components/v2/steps/QuizzesSettings"
+import { GlossarySettings } from "@/components/v2/steps/GlossarySettings"
+import { CaptionsSettings } from "@/components/v2/steps/CaptionsSettings"
+import { TranslationsSettings } from "@/components/v2/steps/TranslationsSettings"
+import { TextToSpeechSettings } from "@/components/v2/steps/TextToSpeechSettings"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/books/$label/v2/$step/settings")({
@@ -45,6 +50,16 @@ function StepSettingsPage() {
           <ExtractSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
         ) : step === "storyboard" ? (
           <StoryboardSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "quizzes" ? (
+          <QuizzesSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "glossary" ? (
+          <GlossarySettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "captions" ? (
+          <CaptionsSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "translations" ? (
+          <TranslationsSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "text-to-speech" ? (
+          <TextToSpeechSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
         ) : (
           <div className="p-4 max-w-2xl">
             <p className="text-sm text-muted-foreground">

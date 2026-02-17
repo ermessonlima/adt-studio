@@ -20,6 +20,8 @@ import { createMasterRunner } from "./services/master-runner.js"
 import { createMasterRoutes } from "./routes/master.js"
 import { createPackageRoutes } from "./routes/package.js"
 import { createPromptRoutes } from "./routes/prompts.js"
+import { createTextCatalogRoutes } from "./routes/text-catalog.js"
+import { createTTSRoutes } from "./routes/tts.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -70,5 +72,7 @@ app.route("/api", createDebugRoutes(pipelineService, booksDir, promptsDir, confi
 app.route("/api", createQuizRoutes(booksDir))
 app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath))
 app.route("/api", createPromptRoutes(promptsDir))
+app.route("/api", createTextCatalogRoutes(booksDir))
+app.route("/api", createTTSRoutes(booksDir))
 
 export default app

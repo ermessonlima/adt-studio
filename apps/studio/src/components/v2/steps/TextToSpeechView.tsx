@@ -1,70 +1,186 @@
-import { Play, Clock } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect, useRef } from "react"
+import { Loader2, Play, Pause, Volume2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { api, getAudioUrl } from "@/api/client"
+import { useStepHeader } from "../StepViewRouter"
+import { cn } from "@/lib/utils"
 
-const MOCK_AUDIO = [
-  { id: 1, section: "Chapter 1: Water and Life", page: 1, duration: "0:45", voice: "Aria", status: "complete" as const },
-  { id: 2, section: "Introduction to water cycles", page: 1, duration: "2:12", voice: "Aria", status: "complete" as const },
-  { id: 3, section: "Evaporation and condensation", page: 2, duration: "1:48", voice: "Aria", status: "complete" as const },
-  { id: 4, section: "Precipitation", page: 3, duration: "1:33", voice: "Aria", status: "complete" as const },
-  { id: 5, section: "Chapter 2: Plants and Water", page: 4, duration: "0:38", voice: "Aria", status: "complete" as const },
-  { id: 6, section: "How plants use water", page: 4, duration: "2:05", voice: "Aria", status: "pending" as const },
-  { id: 7, section: "Water conservation", page: 6, duration: "--:--", voice: "Aria", status: "pending" as const },
-]
+export function TextToSpeechView({ bookLabel }: { bookLabel: string }) {
+  const { setExtra } = useStepHeader()
+  const { data: ttsData, isLoading: ttsLoading } = useQuery({
+    queryKey: ["books", bookLabel, "tts"],
+    queryFn: () => api.getTTS(bookLabel),
+    enabled: !!bookLabel,
+  })
+  const { data: catalog, isLoading: catalogLoading } = useQuery({
+    queryKey: ["books", bookLabel, "text-catalog"],
+    queryFn: () => api.getTextCatalog(bookLabel),
+    enabled: !!bookLabel,
+  })
 
-export function TextToSpeechView({ bookLabel: _ }: { bookLabel: string }) {
-  const completedCount = MOCK_AUDIO.filter((a) => a.status === "complete").length
+  const languages = ttsData ? Object.keys(ttsData.languages) : []
+  const [selectedLang, setSelectedLang] = useState<string | null>(null)
+
+  // Default to first language when available
+  useEffect(() => {
+    if (languages.length > 0 && !selectedLang) {
+      setSelectedLang(languages[0])
+    }
+  }, [languages.length])
+
+  const totalEntries = selectedLang && ttsData ? ttsData.languages[selectedLang]?.entries.length ?? 0 : 0
+
+  // Build a map from textId to source text for display
+  const textMap = new Map<string, string>()
+  if (catalog?.entries) {
+    for (const e of catalog.entries) {
+      textMap.set(e.id, e.text)
+    }
+  }
+  // Also include translated text if viewing a non-source language
+  const translatedTextMap = new Map<string, string>()
+  if (selectedLang && catalog?.translations?.[selectedLang]?.entries) {
+    for (const e of catalog.translations[selectedLang].entries) {
+      translatedTextMap.set(e.id, e.text)
+    }
+  }
+
+  useEffect(() => {
+    if (!ttsData) return
+    setExtra(
+      <div className="flex items-center gap-1.5 ml-auto">
+        {languages.length > 0 && (
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{languages.length} {languages.length === 1 ? "language" : "languages"}</span>
+        )}
+        {totalEntries > 0 && (
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{totalEntries} audio files</span>
+        )}
+      </div>
+    )
+    return () => setExtra(null)
+  }, [ttsData, languages.length, totalEntries, selectedLang])
+
+  const isLoading = ttsLoading || catalogLoading
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        <span className="text-sm">Loading audio data...</span>
+      </div>
+    )
+  }
+
+  if (!ttsData || languages.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Volume2 className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+        <p className="text-sm text-muted-foreground">No audio files generated yet.</p>
+        <p className="text-xs text-muted-foreground mt-1">Run the master pipeline to generate speech audio.</p>
+      </div>
+    )
+  }
+
+  const langData = selectedLang ? ttsData.languages[selectedLang] : null
+  const entries = langData?.entries ?? []
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Text to Speech</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {completedCount} of {MOCK_AUDIO.length} segments generated
-          </p>
+    <div className="space-y-3">
+      {/* Language tabs */}
+      {languages.length > 1 && (
+        <div className="flex gap-1.5">
+          {languages.map((lang) => {
+            const count = ttsData.languages[lang]?.entries.length ?? 0
+            return (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setSelectedLang(lang)}
+                className={cn(
+                  "text-xs h-7 px-3 rounded-md font-medium transition-colors cursor-pointer",
+                  selectedLang === lang
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {lang}
+                <span className={cn(
+                  "ml-1.5 text-[10px]",
+                  selectedLang === lang ? "opacity-60" : "opacity-50"
+                )}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
-        <Badge variant="secondary" className="text-xs">
-          Voice: Aria
-        </Badge>
-      </div>
+      )}
 
-      <div className="rounded-md border overflow-hidden">
-        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-4 px-3 py-1.5 bg-muted/50 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          <span className="w-8" />
-          <span>Section</span>
-          <span>Page</span>
-          <span>Duration</span>
-          <span>Status</span>
-        </div>
-        {MOCK_AUDIO.map((audio) => (
-          <div
-            key={audio.id}
-            className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-x-4 items-center px-3 py-2 border-t bg-card hover:bg-muted/30 transition-colors"
-          >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-7 h-7"
-              disabled={audio.status === "pending"}
-            >
-              <Play className="w-3 h-3" />
-            </Button>
-            <span className="text-sm truncate">{audio.section}</span>
-            <span className="text-xs text-muted-foreground">p.{audio.page}</span>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {audio.duration}
-            </span>
-            <Badge
-              variant={audio.status === "complete" ? "secondary" : "outline"}
-              className="text-[10px]"
-            >
-              {audio.status}
-            </Badge>
-          </div>
-        ))}
+      {/* Audio entries */}
+      <div className="space-y-1">
+        {entries.map((entry) => {
+          const displayText = translatedTextMap.get(entry.textId) ?? textMap.get(entry.textId)
+          return (
+            <AudioEntryRow
+              key={entry.textId}
+              textId={entry.textId}
+              text={displayText}
+              voice={entry.voice}
+              audioUrl={getAudioUrl(bookLabel, selectedLang!, entry.fileName)}
+            />
+          )
+        })}
       </div>
+    </div>
+  )
+}
+
+function AudioEntryRow({ textId, text, voice, audioUrl }: { textId: string; text?: string; voice: string; audioUrl: string }) {
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const toggle = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(audioUrl)
+      audioRef.current.addEventListener("ended", () => setPlaying(false))
+    }
+    if (playing) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      setPlaying(false)
+    } else {
+      audioRef.current.play()
+      setPlaying(true)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-md border bg-card">
+      <button
+        type="button"
+        onClick={toggle}
+        className={cn(
+          "shrink-0 flex items-center justify-center w-7 h-7 rounded-full transition-colors",
+          playing ? "bg-amber-500 text-white" : "bg-muted hover:bg-accent"
+        )}
+      >
+        {playing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3 ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <span className="text-[10px] text-muted-foreground">{textId}</span>
+        {text && <p className="text-sm leading-relaxed truncate">{text}</p>}
+      </div>
+      <span className="shrink-0 text-[10px] text-muted-foreground">{voice}</span>
     </div>
   )
 }

@@ -14,6 +14,10 @@ export function getAdtUrl(label: string): string {
   return `${BASE_URL}/books/${label}/adt`
 }
 
+export function getAudioUrl(label: string, language: string, fileName: string): string {
+  return `${BASE_URL}/books/${label}/audio/${language}/${fileName}`
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const url = `${BASE_URL}${path}`
   const res = await fetch(url, {
@@ -165,6 +169,22 @@ export interface PageDetail {
   }
 }
 
+// --- Glossary types ---
+
+export interface GlossaryItem {
+  word: string
+  definition: string
+  variations: string[]
+  emojis: string[]
+}
+
+export interface GlossaryOutput {
+  items: GlossaryItem[]
+  pageCount: number
+  generatedAt: string
+  version: number
+}
+
 // --- Quiz types ---
 
 export interface QuizOption {
@@ -192,6 +212,40 @@ export interface QuizGenerationOutput {
 export interface QuizzesResponse {
   quizzes: QuizGenerationOutput | null
   version: number | null
+}
+
+// --- Text Catalog types ---
+
+export interface TextCatalogEntry {
+  id: string
+  text: string
+}
+
+export interface TextCatalogResponse {
+  entries: TextCatalogEntry[]
+  generatedAt: string
+  version: number
+  translations: Record<string, { entries: TextCatalogEntry[]; version: number }>
+}
+
+// --- TTS types ---
+
+export interface TTSEntry {
+  textId: string
+  fileName: string
+  voice: string
+  model: string
+  cached: boolean
+}
+
+export interface TTSLanguageData {
+  entries: TTSEntry[]
+  generatedAt: string
+  version: number
+}
+
+export interface TTSResponse {
+  languages: Record<string, TTSLanguageData>
 }
 
 // --- Debug types ---
@@ -349,6 +403,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  updateImageCaptioning: (label: string, pageId: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/pages/${pageId}/image-captioning`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   reRenderPage: (label: string, pageId: string, apiKey: string) =>
     request<{ version: number; rendering: { sections: SectionRendering[] } }>(
       `/books/${label}/pages/${pageId}/re-render`,
@@ -433,6 +493,27 @@ export const api = {
 
   getQuizzes: (label: string) =>
     request<QuizzesResponse>(`/books/${label}/quizzes`),
+
+  updateQuizzes: (label: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/quizzes`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getGlossary: (label: string) =>
+    request<GlossaryOutput | null>(`/books/${label}/glossary`),
+
+  updateGlossary: (label: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/glossary`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getTextCatalog: (label: string) =>
+    request<TextCatalogResponse | null>(`/books/${label}/text-catalog`),
+
+  getTTS: (label: string) =>
+    request<TTSResponse>(`/books/${label}/tts`),
 
   packageAdt: (label: string) =>
     request<{ status: string; label: string }>(

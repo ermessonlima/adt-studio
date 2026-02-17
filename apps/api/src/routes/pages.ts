@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, PageSectioningOutput, WebRenderingOutput } from "@adt/types"
+import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, PageSectioningOutput, WebRenderingOutput, ImageCaptioningOutput } from "@adt/types"
 import { openBookDb } from "@adt/storage"
 import { createBookStorage } from "@adt/storage"
 import { reRenderPage } from "../services/page-edit-service.js"
@@ -325,6 +325,34 @@ export function createPageRoutes(
       }
 
       const version = storage.putNodeData("web-rendering", pageId, parsed.data)
+      return c.json({ version })
+    } finally {
+      storage.close()
+    }
+  })
+
+  // PUT /books/:label/pages/:pageId/image-captioning — Update image captioning
+  app.put("/books/:label/pages/:pageId/image-captioning", async (c) => {
+    const { label, pageId } = c.req.param()
+    const safeLabel = parseBookLabel(label)
+
+    const body = await c.req.json()
+    const parsed = ImageCaptioningOutput.safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid image-captioning data: ${parsed.error.message}`,
+      })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      const pages = storage.getPages()
+      const page = pages.find((p) => p.pageId === pageId)
+      if (!page) {
+        throw new HTTPException(404, { message: `Page not found: ${pageId}` })
+      }
+
+      const version = storage.putNodeData("image-captioning", pageId, parsed.data)
       return c.json({ version })
     } finally {
       storage.close()

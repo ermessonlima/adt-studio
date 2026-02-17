@@ -42,9 +42,36 @@ const STORYBOARD_SETTINGS_TABS = [
   { key: "rendering-prompt", label: "Rendering Prompt" },
 ]
 
+const QUIZ_SETTINGS_TABS = [
+  { key: "general", label: "General" },
+  { key: "prompt", label: "Quiz Prompt" },
+]
+
+const GLOSSARY_SETTINGS_TABS = [
+  { key: "general", label: "Glossary Prompt" },
+]
+
+const CAPTIONS_SETTINGS_TABS = [
+  { key: "general", label: "Caption Prompt" },
+]
+
+const TRANSLATIONS_SETTINGS_TABS = [
+  { key: "general", label: "Languages" },
+  { key: "prompt", label: "Translation Prompt" },
+]
+
+const TTS_SETTINGS_TABS = [
+  { key: "general", label: "Speech Settings" },
+]
+
 const SETTINGS_TABS: Record<string, { key: string; label: string }[]> = {
   extract: EXTRACT_SETTINGS_TABS,
   storyboard: STORYBOARD_SETTINGS_TABS,
+  quizzes: QUIZ_SETTINGS_TABS,
+  glossary: GLOSSARY_SETTINGS_TABS,
+  captions: CAPTIONS_SETTINGS_TABS,
+  translations: TRANSLATIONS_SETTINGS_TABS,
+  "text-to-speech": TTS_SETTINGS_TABS,
 }
 
 export function StepSidebar({ bookLabel, activeStep }: { bookLabel: string; activeStep: string }) {
