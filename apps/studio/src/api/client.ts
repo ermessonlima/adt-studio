@@ -401,6 +401,12 @@ export const api = {
   getPrompt: (name: string) =>
     request<{ name: string; content: string }>(`/prompts/${name}`),
 
+  updatePrompt: (name: string, content: string) =>
+    request<{ name: string; content: string }>(`/prompts/${name}`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+
   runProof: (label: string, apiKey: string) =>
     request<{ status: string; label: string }>(
       `/books/${label}/proof/run`,

@@ -32,6 +32,7 @@ export function toCamelLabel(label: string): string {
 const EXTRACT_SETTINGS_TABS = [
   { key: "general", label: "General" },
   { key: "text-types", label: "Text Types" },
+  { key: "metadata-prompt", label: "Metadata Prompt" },
   { key: "prompt", label: "Extraction Prompt" },
 ]
 

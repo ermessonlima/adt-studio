@@ -23,5 +23,27 @@ export function createPromptRoutes(promptsDir: string) {
     return c.json({ name, content })
   })
 
+  // PUT /prompts/:name — update prompt template content
+  app.put("/prompts/:name", async (c) => {
+    const name = c.req.param("name")
+
+    if (!/^[a-zA-Z0-9_]+$/.test(name)) {
+      return c.json({ error: "Invalid prompt name" }, 400)
+    }
+
+    const body = await c.req.json<{ content: string }>()
+    if (typeof body.content !== "string") {
+      return c.json({ error: "Missing content field" }, 400)
+    }
+
+    const filePath = path.join(promptsDir, `${name}.liquid`)
+    if (!fs.existsSync(filePath)) {
+      return c.json({ error: "Prompt not found" }, 404)
+    }
+
+    fs.writeFileSync(filePath, body.content, "utf-8")
+    return c.json({ name, content: body.content })
+  })
+
   return app
 }

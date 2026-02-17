@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { Play, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PruneToggle } from "@/components/v2/PruneToggle"
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,8 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const [renderStrategyNames, setRenderStrategyNames] = useState<string[]>([])
   const [sectioningModel, setSectioningModel] = useState("")
   const [renderingModel, setRenderingModel] = useState("")
+  const [sectioningPromptDraft, setSectioningPromptDraft] = useState<string | null>(null)
+  const [renderingPromptDraft, setRenderingPromptDraft] = useState<string | null>(null)
 
   // Track which field groups the user has actually touched
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
@@ -188,13 +191,21 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
     return overrides
   }
 
-  const confirmSaveAndRerun = () => {
+  const confirmSaveAndRerun = async () => {
+    // Save any edited prompts first
+    const promptSaves: Promise<unknown>[] = []
+    if (sectioningPromptDraft != null) promptSaves.push(api.updatePrompt("page_sectioning", sectioningPromptDraft))
+    if (renderingPromptDraft != null) promptSaves.push(api.updatePrompt("web_generation_html", renderingPromptDraft))
+    if (promptSaves.length > 0) await Promise.all(promptSaves)
+
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
         onSuccess: () => {
           setDirty({})
+          setSectioningPromptDraft(null)
+          setRenderingPromptDraft(null)
           setShowRerunDialog(false)
           api.runPipeline(bookLabel, apiKey, {})
         },
@@ -203,7 +214,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className={tab === "sectioning-prompt" || tab === "rendering-prompt" ? "h-full max-w-4xl" : "p-4 space-y-6"}>
       {tab === "general" && (
         <>
           {/* Default Render Strategy */}
@@ -263,15 +274,9 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
                 return (
                   <div
                     key={key}
-                    className="flex items-center gap-2 px-3 py-1.5 group"
+                    className={`flex items-center gap-2 px-3 py-1.5 group ${pruned ? "bg-muted/30" : ""}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={pruned}
-                      onChange={() => togglePruned(key)}
-                      title={pruned ? "Include in rendering" : "Prune from rendering"}
-                      className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-primary"
-                    />
+                    <PruneToggle pruned={pruned} onToggle={() => togglePruned(key)} />
                     <span className={`text-xs shrink-0 w-40 truncate font-mono ${pruned ? "text-muted-foreground line-through" : "font-medium"}`}>
                       {key}
                     </span>
@@ -351,6 +356,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
           description="The prompt template used to split each page into logical sections. This is a Liquid template processed with page context."
           model={sectioningModel}
           onModelChange={(v) => { setSectioningModel(v); markDirty("page_sectioning") }}
+          onContentChange={setSectioningPromptDraft}
         />
       )}
 
@@ -361,6 +367,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
           description="The prompt template used to generate HTML for each section. This is a Liquid template processed with section context."
           model={renderingModel}
           onModelChange={(v) => { setRenderingModel(v); markDirty("rendering_model") }}
+          onContentChange={setRenderingPromptDraft}
         />
       )}
 

@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router"
-import { ChevronDown } from "lucide-react"
 import { STEPS } from "../StepSidebar"
 
 interface ViewProps {
@@ -44,9 +43,11 @@ export function BookView({ bookLabel }: ViewProps) {
               </div>
             </Link>
             {!isLast && (
-              <div className="flex flex-col items-center w-8 ml-3 py-0.5">
-                <div className={`w-1 h-2 rounded-full ${step.color} opacity-25`} />
-                <ChevronDown className={`w-4 h-4 ${step.textColor} opacity-50`} strokeWidth={3} />
+              <div className="flex flex-col items-center w-8 ml-3 mb-1">
+                <div className={`w-1.5 h-2 ${step.color} opacity-25`} />
+                <svg viewBox="0 0 12 8" className="w-3 h-2 opacity-40" fill="currentColor">
+                  <path d="M6 8L0 0h12z" className={step.textColor} />
+                </svg>
               </div>
             )}
           </div>

@@ -17,8 +17,9 @@ import { LanguagePicker } from "@/components/LanguagePicker"
 import { useBookConfig, useUpdateBookConfig } from "@/hooks/use-book-config"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useApiKey } from "@/hooks/use-api-key"
-import { useQuery } from "@tanstack/react-query"
 import { api } from "@/api/client"
+import { PromptViewer } from "@/components/v2/PromptViewer"
+import { PruneToggle } from "@/components/v2/PruneToggle"
 
 export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
@@ -36,6 +37,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const [prunedTextTypes, setPrunedTextTypes] = useState<Set<string>>(new Set())
   const [minSide, setMinSide] = useState("")
   const [maxSide, setMaxSide] = useState("")
+  const [metadataModel, setMetadataModel] = useState("")
+  const [extractionModel, setExtractionModel] = useState("")
+  const [metadataPromptDraft, setMetadataPromptDraft] = useState<string | null>(null)
+  const [extractionPromptDraft, setExtractionPromptDraft] = useState<string | null>(null)
 
   // Track which field groups the user has actually touched
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
@@ -63,6 +68,14 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
       const filters = merged.image_filters as Record<string, unknown>
       if (filters.min_side != null) setMinSide(String(filters.min_side))
       if (filters.max_side != null) setMaxSide(String(filters.max_side))
+    }
+    if (merged.metadata && typeof merged.metadata === "object") {
+      const md = merged.metadata as Record<string, unknown>
+      if (md.model) setMetadataModel(String(md.model))
+    }
+    if (merged.text_classification && typeof merged.text_classification === "object") {
+      const tc = merged.text_classification as Record<string, unknown>
+      if (tc.model) setExtractionModel(String(tc.model))
     }
   }, [activeConfigData])
 
@@ -139,17 +152,33 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
       if (maxSide) filters.max_side = Number(maxSide)
       overrides.image_filters = Object.keys(filters).length > 0 ? filters : undefined
     }
+    if (shouldWrite("metadata")) {
+      const existing = (bookConfigData?.config?.metadata ?? {}) as Record<string, unknown>
+      overrides.metadata = { ...existing, model: metadataModel.trim() || undefined }
+    }
+    if (shouldWrite("text_classification")) {
+      const existing = (bookConfigData?.config?.text_classification ?? {}) as Record<string, unknown>
+      overrides.text_classification = { ...existing, model: extractionModel.trim() || undefined }
+    }
 
     return overrides
   }
 
-  const confirmSaveAndRerun = () => {
+  const confirmSaveAndRerun = async () => {
+    // Save any edited prompts first
+    const promptSaves: Promise<unknown>[] = []
+    if (metadataPromptDraft != null) promptSaves.push(api.updatePrompt("metadata_extraction", metadataPromptDraft))
+    if (extractionPromptDraft != null) promptSaves.push(api.updatePrompt("text_classification", extractionPromptDraft))
+    if (promptSaves.length > 0) await Promise.all(promptSaves)
+
     const overrides = buildOverrides()
     updateConfig.mutate(
       { label: bookLabel, config: overrides },
       {
         onSuccess: () => {
           setDirty({})
+          setMetadataPromptDraft(null)
+          setExtractionPromptDraft(null)
           setShowRerunDialog(false)
           const options: { startPage?: number; endPage?: number } = {}
           if (startPage) options.startPage = Number(startPage)
@@ -160,15 +189,8 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
     )
   }
 
-  // Prompt fetching (only when tab is active)
-  const { data: promptData, isLoading: promptLoading } = useQuery({
-    queryKey: ["prompts", "text_classification"],
-    queryFn: () => api.getPrompt("text_classification"),
-    enabled: tab === "prompt",
-  })
-
   return (
-    <div className="p-4 max-w-2xl space-y-6">
+    <div className={tab === "metadata-prompt" || tab === "prompt" ? "h-full max-w-4xl" : "p-4 max-w-2xl space-y-6"}>
       {tab === "general" && (
         <>
           {/* Page Range */}
@@ -272,22 +294,23 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
             Types used during text classification. Pruned types are excluded from rendering.
           </p>
           <div className="rounded-md border divide-y">
+            {/* Header */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50">
+              <span className="shrink-0 w-5" />
+              <span className="text-xs font-medium text-muted-foreground shrink-0 w-40">Type</span>
+              <span className="text-xs font-medium text-muted-foreground flex-1 min-w-0">Description</span>
+              <span className="shrink-0 w-5" />
+            </div>
             {Object.entries(textTypes).map(([key, description]) => {
               const pruned = prunedTextTypes.has(key)
               return (
                 <div
                   key={key}
-                  className="flex items-center gap-2 px-3 py-1.5 group"
+                  className={`flex items-center gap-2 px-3 py-1.5 group ${pruned ? "bg-muted/30" : ""}`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={pruned}
-                    onChange={() => togglePruned(key)}
-                    title={pruned ? "Include in rendering" : "Prune from rendering"}
-                    className="h-3.5 w-3.5 shrink-0 rounded border-gray-300 accent-primary"
-                  />
-                  <span className={`text-xs shrink-0 w-40 truncate ${pruned ? "text-muted-foreground line-through" : "font-medium"}`}>
-                    {key.replace(/_/g, " ")}
+                  <PruneToggle pruned={pruned} onToggle={() => togglePruned(key)} />
+                  <span className={`text-xs shrink-0 w-40 truncate font-mono ${pruned ? "text-muted-foreground line-through" : "font-medium"}`}>
+                    {key}
                   </span>
                   <Input
                     value={description}
@@ -337,23 +360,28 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
         </div>
       )}
 
+      {tab === "metadata-prompt" && (
+        <PromptViewer
+          promptName="metadata_extraction"
+          title="Metadata Extraction Prompt"
+          description="The prompt template used to extract book metadata (title, author, etc.) from the first few pages. This is a Liquid template processed with page context."
+          model={metadataModel}
+          onModelChange={(v) => { setMetadataModel(v); markDirty("metadata") }}
+          onContentChange={setMetadataPromptDraft}
+          enabled={tab === "metadata-prompt"}
+        />
+      )}
+
       {tab === "prompt" && (
-        <div>
-          <p className="text-xs text-muted-foreground mb-3">
-            The prompt template used for text classification. This is a Liquid template processed with page context.
-          </p>
-          {promptLoading ? (
-            <div className="text-sm text-muted-foreground">Loading prompt...</div>
-          ) : promptData?.content ? (
-            <pre className="text-xs font-mono bg-muted/50 border rounded-md p-4 overflow-auto max-h-[calc(100vh-200px)] whitespace-pre-wrap">
-              {promptData.content}
-            </pre>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              Prompt template not found.
-            </div>
-          )}
-        </div>
+        <PromptViewer
+          promptName="text_classification"
+          title="Text Classification Prompt"
+          description="The prompt template used for text classification. This is a Liquid template processed with page context."
+          model={extractionModel}
+          onModelChange={(v) => { setExtractionModel(v); markDirty("text_classification") }}
+          onContentChange={setExtractionPromptDraft}
+          enabled={tab === "prompt"}
+        />
       )}
 
       {headerTarget && createPortal(

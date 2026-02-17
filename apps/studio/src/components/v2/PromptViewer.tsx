@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useQuery } from "@tanstack/react-query"
@@ -14,10 +15,28 @@ interface PromptViewerProps {
   model: string
   /** Called when the user changes the model */
   onModelChange: (model: string) => void
+  /** Called when the user edits the prompt content (null = reverted to original) */
+  onContentChange?: (content: string | null) => void
   /** Placeholder for the model input */
   modelPlaceholder?: string
   /** Whether to fetch the prompt (set false to defer loading) */
   enabled?: boolean
+}
+
+/** Simple Liquid template syntax highlighter */
+function highlightLiquid(text: string): string {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+
+  return escaped
+    // Liquid output tags: {{ ... }}
+    .replace(/(\{\{[\s\S]*?\}\})/g, '<span class="text-blue-400">$1</span>')
+    // Liquid control tags: {% ... %}
+    .replace(/(\{%[\s\S]*?%\})/g, '<span class="text-purple-400">$1</span>')
+    // Liquid comments: {# ... #}
+    .replace(/(\{#[\s\S]*?#\})/g, '<span class="text-gray-500">$1</span>')
 }
 
 export function PromptViewer({
@@ -26,6 +45,7 @@ export function PromptViewer({
   description,
   model,
   onModelChange,
+  onContentChange,
   modelPlaceholder = "openai:gpt-5.2",
   enabled = true,
 }: PromptViewerProps) {
@@ -35,19 +55,47 @@ export function PromptViewer({
     enabled,
   })
 
+  const [draft, setDraft] = useState<string | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const highlightRef = useRef<HTMLPreElement>(null)
+
+  // Reset draft when prompt data loads or changes
+  useEffect(() => {
+    setDraft(null)
+    onContentChange?.(null)
+  }, [promptData?.content])
+
+  const currentContent = promptData?.content ?? ""
+  const displayContent = draft ?? currentContent
+
+  const highlighted = useMemo(() => highlightLiquid(displayContent), [displayContent])
+
+  // Sync scroll between textarea and highlight overlay
+  const syncScroll = () => {
+    if (textareaRef.current && highlightRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft
+    }
+  }
+
+  const onChange = (value: string) => {
+    setDraft(value)
+    onContentChange?.(value === currentContent ? null : value)
+  }
+
   return (
-    <div className="space-y-4">
-      <div>
+    <div className="flex flex-col h-full p-4 gap-4">
+      <div className="shrink-0">
         <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
           {title}
         </h3>
-        <p className="text-xs text-muted-foreground mb-3">
+        <p className="text-xs text-muted-foreground">
           {description}
         </p>
       </div>
 
       {/* Model picker */}
-      <div className="max-w-xs">
+      <div className="shrink-0 max-w-xs">
         <Label className="text-xs">Model</Label>
         <Input
           value={model}
@@ -57,13 +105,29 @@ export function PromptViewer({
         />
       </div>
 
-      {/* Prompt template */}
+      {/* Prompt editor */}
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Loading prompt...</div>
-      ) : promptData?.content ? (
-        <pre className="text-xs font-mono bg-muted/50 border rounded-md p-4 overflow-auto max-h-[calc(100vh-200px)] whitespace-pre-wrap">
-          {promptData.content}
-        </pre>
+      ) : promptData?.content != null ? (
+        <div className="relative flex-1 min-h-0 border rounded-md overflow-hidden">
+          {/* Syntax-highlighted underlay */}
+          <pre
+            ref={highlightRef}
+            aria-hidden
+            className="absolute inset-0 text-xs font-mono p-4 whitespace-pre-wrap break-words overflow-auto pointer-events-none bg-muted/50"
+            dangerouslySetInnerHTML={{ __html: highlighted + "\n" }}
+          />
+          {/* Editable textarea overlay */}
+          <textarea
+            ref={textareaRef}
+            value={displayContent}
+            onChange={(e) => onChange(e.target.value)}
+            onScroll={syncScroll}
+            spellCheck={false}
+            className="relative w-full h-full text-xs font-mono p-4 whitespace-pre-wrap break-words bg-transparent text-transparent caret-foreground resize-none outline-none"
+            style={{ WebkitTextFillColor: "transparent" }}
+          />
+        </div>
       ) : (
         <div className="text-sm text-muted-foreground">
           Prompt template not found.
