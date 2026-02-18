@@ -599,6 +599,9 @@ export const api = {
       `/books/${label}/package-adt/status`
     ),
 
+  getTemplates: () =>
+    request<{ templates: string[] }>(`/templates`),
+
   getPreset: (name: string) =>
     request<{ config: Record<string, unknown> }>(`/presets/${name}`),
 
