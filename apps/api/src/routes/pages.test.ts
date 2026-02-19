@@ -300,6 +300,123 @@ describe("Page routes", () => {
     })
   })
 
+  describe("POST /api/books/:label/images/ai-generate", () => {
+    const pageId = "test-book_p1"
+    const endpoint = `/api/books/${label}/images/ai-generate?pageId=${pageId}`
+
+    it("returns 400 when X-OpenAI-Key header is missing", async () => {
+      const res = await app.request(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "a cat" }),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("X-OpenAI-Key")
+    })
+
+    it("returns 400 when pageId query param is missing", async () => {
+      const res = await app.request(`/api/books/${label}/images/ai-generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-OpenAI-Key": "sk-test",
+        },
+        body: JSON.stringify({ prompt: "a cat" }),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("pageId")
+    })
+
+    it("returns 400 when prompt is missing", async () => {
+      const res = await app.request(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-OpenAI-Key": "sk-test",
+        },
+        body: JSON.stringify({}),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("prompt")
+    })
+
+    it("returns 404 for nonexistent book", async () => {
+      const res = await app.request(
+        `/api/books/no-such-book/images/ai-generate?pageId=pg001`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-OpenAI-Key": "sk-test",
+          },
+          body: JSON.stringify({ prompt: "a cat" }),
+        }
+      )
+
+      expect(res.status).toBe(404)
+    })
+
+    it("rejects referenceImageId with path traversal characters", async () => {
+      const res = await app.request(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-OpenAI-Key": "sk-test",
+        },
+        body: JSON.stringify({
+          prompt: "a cat",
+          referenceImageId: "../../../etc/passwd",
+        }),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("Invalid image ID")
+    })
+
+    it("rejects targetImageId with path traversal characters", async () => {
+      const res = await app.request(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-OpenAI-Key": "sk-test",
+        },
+        body: JSON.stringify({
+          prompt: "a cat",
+          targetImageId: "../../secret",
+        }),
+      })
+
+      expect(res.status).toBe(400)
+      const body = await res.json()
+      expect(body.error).toContain("Invalid image ID")
+    })
+
+    it("returns 404 when reference image file does not exist", async () => {
+      const res = await app.request(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-OpenAI-Key": "sk-test",
+        },
+        body: JSON.stringify({
+          prompt: "make it brighter",
+          referenceImageId: "nonexistent-image",
+        }),
+      })
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.error).toContain("Reference image not found")
+    })
+  })
+
   describe("POST /api/books/:label/images (crop upload)", () => {
     it("uploads a cropped image and returns new imageId", async () => {
       // Create a minimal valid PNG (1x1 pixel)
