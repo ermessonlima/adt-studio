@@ -87,6 +87,11 @@ export interface MasterStatus {
   completedAt?: number
 }
 
+export interface AzureCredentials {
+  key: string
+  region: string
+}
+
 export interface RunPipelineOptions {
   startPage?: number
   endPage?: number
@@ -95,6 +100,16 @@ export interface RunPipelineOptions {
 export interface RunStepsOptions {
   fromStep: string
   toStep: string
+}
+
+function buildApiHeaders(
+  apiKey: string,
+  azure?: AzureCredentials
+): Record<string, string> {
+  const headers: Record<string, string> = { "X-OpenAI-Key": apiKey }
+  if (azure?.key) headers["X-Azure-Speech-Key"] = azure.key
+  if (azure?.region) headers["X-Azure-Speech-Region"] = azure.region
+  return headers
 }
 
 export interface StepRunStatus {
@@ -373,13 +388,14 @@ export const api = {
   runPipeline: (
     label: string,
     apiKey: string,
-    options?: RunPipelineOptions
+    options?: RunPipelineOptions,
+    azure?: AzureCredentials
   ) =>
     request<{ status: string; label: string }>(
       `/books/${label}/pipeline/run`,
       {
         method: "POST",
-        headers: { "X-OpenAI-Key": apiKey },
+        headers: buildApiHeaders(apiKey, azure),
         body: options ? JSON.stringify(options) : undefined,
       }
     ),
@@ -390,13 +406,14 @@ export const api = {
   runSteps: (
     label: string,
     apiKey: string,
-    options: RunStepsOptions
+    options: RunStepsOptions,
+    azure?: AzureCredentials
   ) =>
     request<{ status: string; label: string; fromStep: string; toStep: string }>(
       `/books/${label}/steps/run`,
       {
         method: "POST",
-        headers: { "X-OpenAI-Key": apiKey },
+        headers: buildApiHeaders(apiKey, azure),
         body: JSON.stringify(options),
       }
     ),
@@ -541,10 +558,10 @@ export const api = {
   getProofStatus: (label: string) =>
     request<ProofStatus>(`/books/${label}/proof/status`),
 
-  runMaster: (label: string, apiKey: string) =>
+  runMaster: (label: string, apiKey: string, azure?: AzureCredentials) =>
     request<{ status: string; label: string }>(
       `/books/${label}/master/run`,
-      { method: "POST", headers: { "X-OpenAI-Key": apiKey } }
+      { method: "POST", headers: buildApiHeaders(apiKey, azure) }
     ),
 
   getMasterStatus: (label: string) =>
@@ -614,6 +631,24 @@ export const api = {
 
   getGlobalConfig: () =>
     request<{ config: Record<string, unknown> }>(`/config`),
+
+  getSpeechInstructions: () =>
+    request<Record<string, string>>("/speech-config/instructions"),
+
+  updateSpeechInstructions: (data: Record<string, string>) =>
+    request<Record<string, string>>("/speech-config/instructions", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getVoiceMappings: () =>
+    request<Record<string, Record<string, string>>>("/speech-config/voices"),
+
+  updateVoiceMappings: (data: Record<string, Record<string, string>>) =>
+    request<Record<string, Record<string, string>>>("/speech-config/voices", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   exportBook: async (label: string, format: "web" | "epub" = "web"): Promise<Blob> => {
     const url = `${BASE_URL}/books/${label}/export?format=${format}`

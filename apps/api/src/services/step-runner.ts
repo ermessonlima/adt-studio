@@ -1,3 +1,4 @@
+import crypto from "node:crypto"
 import path from "node:path"
 import { createBookStorage } from "@adt/storage"
 import type { Storage } from "@adt/storage"
@@ -38,11 +39,13 @@ import {
   loadSpeechInstructions,
   resolveVoice,
   resolveInstructions,
+  resolveProviderForLanguage,
   generateSpeechFile,
 } from "@adt/pipeline"
-import type { TranslationConfig, QuizPageInput } from "@adt/pipeline"
+import type { TranslationConfig, QuizPageInput, ProviderRouting } from "@adt/pipeline"
 import { loadStyleguideContent } from "./pipeline-runner"
-import { createTTSSynthesizer } from "@adt/llm"
+import { createTTSSynthesizer, createAzureTTSSynthesizer } from "@adt/llm"
+import type { TTSSynthesizer } from "@adt/llm"
 import type {
   TextClassificationOutput,
   ImageClassificationOutput,
@@ -1163,7 +1166,9 @@ async function runTextToSpeechStep(
     const config = loadBookConfig(label, booksDir, configPath)
     const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
     const bookDir = path.join(path.resolve(booksDir), label)
-    const configDir = configPath ? path.dirname(configPath) : path.resolve(process.cwd(), "config")
+    const configDir = configPath
+      ? path.join(path.dirname(configPath), "config")
+      : path.resolve(process.cwd(), "config")
 
     // Get book language from metadata
     const metadataRow = storage.getLatestNodeData("metadata", "book")
@@ -1213,8 +1218,35 @@ async function runTextToSpeechStep(
 
     const speechModel = config.speech?.model ?? "gpt-4o-mini-tts"
     const speechFormat = config.speech?.format ?? "mp3"
-    const provider = "openai"
-    const ttsSynthesizer = createTTSSynthesizer()
+    const defaultProvider = config.speech?.default_provider ?? "openai"
+    const providerConfigs = config.speech?.providers ?? {}
+    const routing: ProviderRouting = { providers: providerConfigs, defaultProvider }
+
+    console.log(`[step-run] ${label}: TTS configDir=${configDir} voiceMaps=${Object.keys(voiceMaps).join(",")||"(empty)"}`)
+    console.log(`[step-run] ${label}: TTS config — defaultProvider=${defaultProvider} model=${speechModel} format=${speechFormat}`)
+    console.log(`[step-run] ${label}: TTS providers=${JSON.stringify(providerConfigs)}`)
+    console.log(`[step-run] ${label}: TTS azureKey=${options.azureSpeechKey ? "set" : "NOT SET"} azureRegion=${options.azureSpeechRegion ?? "NOT SET"}`)
+
+    // Lazy per-provider synthesizer cache
+    const synthesizers = new Map<string, TTSSynthesizer>()
+    function getSynthesizer(providerName: string): TTSSynthesizer {
+      if (synthesizers.has(providerName)) return synthesizers.get(providerName)!
+      console.log(`[step-run] ${label}: creating TTS synthesizer for provider="${providerName}"`)
+      if (providerName === "azure") {
+        if (!options.azureSpeechKey || !options.azureSpeechRegion) {
+          throw new Error("Azure Speech key and region are required for Azure TTS provider. Set them in the API Keys dialog (gear icon).")
+        }
+        const synth = createAzureTTSSynthesizer(
+          { subscriptionKey: options.azureSpeechKey, region: options.azureSpeechRegion },
+          { sampleRate: config.speech?.sample_rate, bitRate: config.speech?.bit_rate }
+        )
+        synthesizers.set("azure", synth)
+        return synth
+      }
+      const synth = createTTSSynthesizer()
+      synthesizers.set(providerName, synth)
+      return synth
+    }
 
     // For output languages that differ from source, we need translated catalogs
     // Check if translations exist; if running TTS separately they should already exist
@@ -1263,47 +1295,137 @@ async function runTextToSpeechStep(
       totalPages: totalItems,
     })
 
-    console.log(`[step-run] ${label}: generating TTS for ${totalItems} entries across ${outputLanguages.length} languages`)
+    console.log(`[step-run] ${label}: generating TTS for ${totalItems} entries across ${outputLanguages.length} languages (${outputLanguages.join(", ")})`)
+    console.log(`[step-run] ${label}: TTS routing — for each language: ${outputLanguages.map((l) => `${l}→${resolveProviderForLanguage(l, routing)}`).join(", ")}`)
 
     const resultsByLang = new Map<string, SpeechFileEntry[]>()
     for (const lang of outputLanguages) {
       resultsByLang.set(lang, [])
     }
 
+    const failedItems: string[] = []
+
     await processWithConcurrency(
       workItems,
       effectiveConcurrency,
       async (item: TTSWorkItem) => {
+        const startMs = Date.now()
+        const provider = resolveProviderForLanguage(item.language, routing)
+        const providerModel = providerConfigs[provider]?.model ?? (provider === "azure" ? "azure-tts" : speechModel)
         const voice = config.speech?.voice ?? resolveVoice(provider, item.language, voiceMaps)
-        const instructions = resolveInstructions(item.language, instructionsMap)
+        const instructions = provider === "openai"
+          ? resolveInstructions(item.language, instructionsMap)
+          : ""
 
-        const entry = await generateSpeechFile({
-          textId: item.textId,
-          text: item.text,
-          language: item.language,
-          model: speechModel,
-          voice,
-          instructions,
-          format: speechFormat,
-          bookDir,
-          cacheDir,
-          ttsSynthesizer,
-        })
+        console.log(`[step-run] ${label}: TTS ${item.textId} → provider=${provider} voice=${voice} model=${providerModel}`)
 
-        if (entry) {
-          resultsByLang.get(item.language)?.push(entry)
+        try {
+          const ttsSynthesizer = getSynthesizer(provider)
+
+          const entry = await generateSpeechFile({
+            textId: item.textId,
+            text: item.text,
+            language: item.language,
+            model: providerModel,
+            voice,
+            instructions,
+            format: speechFormat,
+            bookDir,
+            cacheDir,
+            ttsSynthesizer,
+            provider,
+          })
+
+          const durationMs = Date.now() - startMs
+          const cached = entry?.cached ?? false
+
+          // Log to debug panel
+          const logEntry: LlmLogEntry = {
+            requestId: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            taskType: "tts",
+            pageId: item.textId,
+            promptName: `tts-${provider}`,
+            modelId: `${provider}/${providerModel}`,
+            cacheHit: cached,
+            success: true,
+            errorCount: 0,
+            attempt: 1,
+            durationMs,
+            messages: [{
+              role: "user",
+              content: [{ type: "text" as const, text: `[${item.language}] voice=${voice}\n${item.text.slice(0, 300)}` }],
+            }],
+          }
+          storage.appendLlmLog(logEntry)
+          progress.emit({
+            type: "llm-log",
+            step: "tts",
+            itemId: item.textId,
+            promptName: logEntry.promptName,
+            modelId: logEntry.modelId,
+            cacheHit: cached,
+            durationMs,
+          })
+
+          if (entry) {
+            resultsByLang.get(item.language)?.push(entry)
+          }
+        } catch (err) {
+          const msg = toErrorMessage(err)
+          const durationMs = Date.now() - startMs
+          console.error(`[step-run] ${label}: TTS failed for ${item.textId} (${item.language}): ${msg}`)
+          failedItems.push(`${item.textId}: ${msg}`)
+
+          // Log failure to debug panel
+          const logEntry: LlmLogEntry = {
+            requestId: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            taskType: "tts",
+            pageId: item.textId,
+            promptName: `tts-${provider}`,
+            modelId: `${provider}/${providerModel}`,
+            cacheHit: false,
+            success: false,
+            errorCount: 1,
+            attempt: 1,
+            durationMs,
+            messages: [{
+              role: "user",
+              content: [{ type: "text" as const, text: `[${item.language}] voice=${voice}\nERROR: ${msg}\n\n${item.text.slice(0, 300)}` }],
+            }],
+          }
+          storage.appendLlmLog(logEntry)
+          progress.emit({
+            type: "llm-log",
+            step: "tts",
+            itemId: item.textId,
+            promptName: logEntry.promptName,
+            modelId: logEntry.modelId,
+            cacheHit: false,
+            durationMs,
+          })
+          progress.emit({
+            type: "step-error",
+            step: "tts",
+            error: `${item.textId} failed: ${msg}`,
+          })
         }
 
         completedItems++
         progress.emit({
           type: "step-progress",
           step: "tts",
-          message: `${completedItems}/${totalItems} entries`,
+          message: `${completedItems}/${totalItems} entries${failedItems.length > 0 ? ` (${failedItems.length} failed)` : ""}`,
           page: completedItems,
           totalPages: totalItems,
         })
       }
     )
+
+    if (failedItems.length > 0) {
+      console.error(`[step-run] ${label}: ${failedItems.length} TTS item(s) failed:\n${failedItems.join("\n")}`)
+    }
 
     // Store per-language TTS metadata
     for (const lang of outputLanguages) {
