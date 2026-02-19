@@ -37,7 +37,13 @@ export {
   ImageClassificationOutput,
 } from "./image-classification.js"
 
+export {
+  imageMeaningfulnessLLMSchema,
+} from "./image-meaningfulness.js"
+
 export { BookMetadata } from "./metadata.js"
+
+export { BookSummaryOutput } from "./book-summary.js"
 
 export {
   SectionTextEntry,

@@ -1,9 +1,53 @@
 import { describe, expect, it } from "vitest"
 import { getTargetStepsForRange, isFinalPipelineStepForUiStep } from "./step-run-range"
+import { PIPELINE_TO_UI_STEP, ALL_MAPPED_STEP_NAMES } from "./step-mapping"
+import type { StepName } from "./use-pipeline"
 import {
   getInvalidationKeysForUiStep,
   getMetadataInvalidationKeys,
 } from "./step-run-invalidation"
+
+/**
+ * Pipeline steps emitted by step-run flows.
+ * `package-web` is intentionally excluded because packaging is standalone and
+ * not part of step-run TTS.
+ */
+const ALL_STEP_NAMES: StepName[] = [
+  "extract",
+  "metadata",
+  "text-classification",
+  "book-summary",
+  "translation",
+  "image-classification",
+  "page-sectioning",
+  "web-rendering",
+  "image-captioning",
+  "glossary",
+  "quiz-generation",
+  "text-catalog",
+  "catalog-translation",
+  "tts",
+]
+
+describe("step mapping exhaustiveness", () => {
+  it("every step-run StepName is mapped to a UI step", () => {
+    for (const step of ALL_STEP_NAMES) {
+      expect(
+        ALL_MAPPED_STEP_NAMES.has(step),
+        `StepName "${step}" is not mapped in step-mapping.ts — add it to UI_STEP_PIPELINE_STEPS`
+      ).toBe(true)
+    }
+  })
+
+  it("PIPELINE_TO_UI_STEP covers every step-run StepName", () => {
+    for (const step of ALL_STEP_NAMES) {
+      expect(
+        PIPELINE_TO_UI_STEP[step],
+        `StepName "${step}" has no entry in PIPELINE_TO_UI_STEP`
+      ).toBeDefined()
+    }
+  })
+})
 
 describe("getTargetStepsForRange", () => {
   it("returns all steps in an inclusive valid range", () => {
@@ -28,7 +72,7 @@ describe("getTargetStepsForRange", () => {
   })
 
   it("recognizes terminal sub-steps for ui steps", () => {
-    expect(isFinalPipelineStepForUiStep("extract", "translation")).toBe(true)
+    expect(isFinalPipelineStepForUiStep("extract", "book-summary")).toBe(true)
     expect(isFinalPipelineStepForUiStep("storyboard", "web-rendering")).toBe(true)
     expect(isFinalPipelineStepForUiStep("extract", "metadata")).toBe(false)
   })

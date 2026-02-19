@@ -57,6 +57,10 @@ text_classification:
   prompt: text_classification
   model: openai:gpt-5.2
 
+image_meaningfulness:
+  prompt: image_meaningfulness
+  model: openai:gpt-5.2
+
 page_sectioning:
   prompt: page_sectioning
   model: openai:gpt-5.2
@@ -144,6 +148,14 @@ section_render_strategies:
   activity_sorting: activity_sorting
   activity_open_ended_answer: activity_open_ended_answer
 
+quiz_generation:
+  quiz_section_types:
+    - boxed_text
+    - text_only
+    - text_and_single_image
+    - text_and_images
+    - images_only
+
 pruned_text_types:
   - header_text
   - footer_text
@@ -159,6 +171,8 @@ concurrency: 32
 image_filters:
   min_side: 100
   max_side: 5000
+  min_stddev: 2
+  meaningfulness: true
 
 # rate_limit:
 #   requests_per_minute: 60

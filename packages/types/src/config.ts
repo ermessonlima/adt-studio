@@ -18,6 +18,7 @@ export type StepConfig = z.infer<typeof StepConfig>
 
 export const QuizGenerationConfig = StepConfig.extend({
   pages_per_quiz: z.number().int().min(1).optional(),
+  quiz_section_types: z.array(z.string()).optional(),
 })
 export type QuizGenerationConfig = z.infer<typeof QuizGenerationConfig>
 
@@ -83,12 +84,14 @@ export const AppConfig = z
     text_classification: StepConfig.optional(),
     translation: StepConfig.optional(),
     metadata: StepConfig.optional(),
+    book_summary: StepConfig.optional(),
     page_sectioning: PageSectioningConfig.optional(),
     quiz_generation: QuizGenerationConfig.optional(),
     default_render_strategy: z.string().optional(),
     render_strategies: z.record(z.string(), RenderStrategyConfig).optional(),
     section_render_strategies: z.record(z.string(), z.string()).optional(),
     image_filters: ImageFilters.optional(),
+    image_meaningfulness: StepConfig.optional(),
     glossary: StepConfig.optional(),
     concurrency: z.number().int().min(1).optional(),
     rate_limit: RateLimitConfig.optional(),

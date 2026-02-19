@@ -16,6 +16,12 @@ export {
   buildImageClassifyConfig,
   type ImageClassifyConfig,
 } from "./image-classification.js"
+export {
+  filterPageImageMeaningfulness,
+  buildMeaningfulnessConfig,
+  type MeaningfulnessConfig,
+  type MeaningfulnessPageInput,
+} from "./image-meaningfulness.js"
 export { grayscaleStdDev } from "./image-complexity.js"
 export {
   extractMetadata,
@@ -23,6 +29,12 @@ export {
   type MetadataConfig,
   type MetadataPageInput,
 } from "./metadata-extraction.js"
+export {
+  generateBookSummary,
+  buildBookSummaryConfig,
+  type BookSummaryConfig,
+  type BookSummaryPageInput,
+} from "./book-summary.js"
 export {
   sectionPage,
   buildSectioningConfig,
