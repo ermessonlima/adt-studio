@@ -2,8 +2,12 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { AppConfig } from "@adt/types"
 import { createBookStorage } from "@adt/storage"
-import { createStepRunner } from "./step-runner.js"
+import {
+  buildStepRunnerImageClassifyConfig,
+  createStepRunner,
+} from "./step-runner.js"
 
 const { capturedCaptionInputs, captionPageImagesMock } = vi.hoisted(() => {
   const capturedCaptionInputs: unknown[] = []
@@ -86,6 +90,34 @@ function seedCaptionBook(
     storage.close()
   }
 }
+
+describe("buildStepRunnerImageClassifyConfig", () => {
+  it("injects getImageBytes so min_stddev filtering can decode image bytes", () => {
+    const config: AppConfig = {
+      text_types: { section_text: "Main body text" },
+      text_group_types: { paragraph: "Paragraph" },
+      image_filters: {
+        min_side: 100,
+        min_stddev: 2,
+        meaningfulness: true,
+      },
+    }
+    const expectedBytes = Buffer.from("fake-image-bytes")
+    const storage = {
+      getImageBase64: (_imageId: string) => expectedBytes.toString("base64"),
+    }
+
+    const imageConfig = buildStepRunnerImageClassifyConfig(config, storage)
+
+    expect(imageConfig.filters).toEqual({
+      min_side: 100,
+      min_stddev: 2,
+      meaningfulness: true,
+    })
+    expect(imageConfig.getImageBytes).toBeTypeOf("function")
+    expect(imageConfig.getImageBytes?.("pg001_im001")).toEqual(expectedBytes)
+  })
+})
 
 describe("createStepRunner captions step", () => {
   let tmpDir = ""
