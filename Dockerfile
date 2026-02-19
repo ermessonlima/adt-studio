@@ -160,7 +160,7 @@ COPY --from=build /app/prompts/ ./prompts/
 COPY --from=build /app/templates/ ./templates/
 COPY --from=build /app/config.yaml ./config.yaml
 
-RUN mkdir -p /app/books
+RUN mkdir -p /app/books && chown -R node:node /app/books
 
 ENV NODE_ENV=production
 ENV PROJECT_ROOT=/app

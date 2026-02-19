@@ -2,8 +2,12 @@ name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to release (e.g. v1.2.3)"
+        required: true
 
 permissions:
   contents: write
@@ -39,9 +43,10 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          REF="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          VERSION="${REF#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "tag=${REF}" >> "$GITHUB_OUTPUT"
 
       - name: Set version in tauri.conf.json
         shell: bash
@@ -63,8 +68,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: "ADT Studio ${{ github.ref_name }}"
+          tagName: ${{ steps.version.outputs.tag }}
+          releaseName: "ADT Studio ${{ steps.version.outputs.tag }}"
           releaseBody: ""
           releaseDraft: false
           prerelease: false
@@ -99,7 +104,7 @@ jobs:
       - name: Generate standalone docker-compose.yml
         run: |
           TAG="${{ needs.release.outputs.tag }}"
-          printf '# ADT Studio %s\n# Usage:  docker compose up\n# Open:   http://localhost:8080\n# Books persist in ./books/\nservices:\n  adt-studio:\n    image: ghcr.io/unicef/adt-studio:%s\n    ports:\n      - "${PORT:-8080}:80"\n    volumes:\n      - ./books:/app/books\n    restart: unless-stopped\n' "$TAG" "$TAG" > docker-compose.yml
+          sed "s/__TAG__/${TAG}/g" docker/compose-release.yml.template > docker-compose.yml
 
       - name: Upload docker-compose.yml to release
         env:
@@ -117,4 +122,4 @@ jobs:
           NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
             -f tag_name=${{ github.ref_name }} \
             --jq '.body')
-          gh release edit ${{ github.ref_name }} --notes "$NOTES"
+          gh release edit ${{ needs.release.outputs.tag }} --notes "$NOTES"
