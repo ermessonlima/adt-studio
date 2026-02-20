@@ -2,7 +2,7 @@ export type QueryKey = ReadonlyArray<unknown>
 
 /**
  * Query keys to refresh after a UI step is fully completed.
- * Always includes step-status so v2 completion state refreshes.
+ * Always includes step-status so completion state refreshes.
  */
 export function getInvalidationKeysForUiStep(label: string, uiStep: string): QueryKey[] {
   const keys: QueryKey[] = []
@@ -21,7 +21,7 @@ export function getInvalidationKeysForUiStep(label: string, uiStep: string): Que
     case "glossary":
       keys.push(["books", label, "glossary"])
       break
-    case "translations":
+    case "text-and-speech":
       keys.push(["books", label, "text-catalog"])
       break
   }
