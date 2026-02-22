@@ -59,12 +59,10 @@ COPY apps/studio/index.html apps/studio/index.html
 COPY apps/studio/vite.config.ts apps/studio/vite.config.ts
 COPY apps/studio/components.json apps/studio/components.json
 
-# Copy read-only code assets (prompts, templates, global config, presets, styleguides)
+# Copy read-only code assets required during build (prompts, templates, global config)
 COPY prompts/ ./prompts/
 COPY templates/ ./templates/
 COPY config.yaml ./config.yaml
-COPY config/ ./config/
-COPY assets/ ./assets/
 
 # Build all TypeScript packages (tsc --build — type-checks + compiles shared packages)
 RUN pnpm build
@@ -74,6 +72,11 @@ RUN pnpm --filter @adt/api build:server
 
 # Build the studio SPA (Vite)
 RUN pnpm --filter @adt/studio build
+
+# Copy additional runtime assets (presets, voices, styleguides, web assets).
+# Keeping these after build preserves Docker layer cache for pnpm build.
+COPY config/ ./config/
+COPY assets/ ./assets/
 
 # =============================================================================
 # Stage 4: API — production Node.js server
