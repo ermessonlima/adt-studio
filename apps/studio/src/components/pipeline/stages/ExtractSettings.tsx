@@ -22,6 +22,7 @@ import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { PruneToggle } from "@/components/pipeline/PruneToggle"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 import { normalizeLocale } from "@/lib/languages"
 
 export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
@@ -46,13 +47,7 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const [meaningfulness, setMeaningfulness] = useState(true)
   const [cropping, setCropping] = useState(false)
   const [segmentation, setSegmentation] = useState(false)
-  const [metadataModel, setMetadataModel] = useState("")
-  const [extractionModel, setExtractionModel] = useState("")
-  const [meaningfulnessModel, setMeaningfulnessModel] = useState("")
-  const [croppingModel, setCroppingModel] = useState("")
-  const [segmentationModel, setSegmentationModel] = useState("")
   const [segmentationMinSide, setSegmentationMinSide] = useState("")
-  const [bookSummaryModel, setBookSummaryModel] = useState("")
   const [metadataPromptDraft, setMetadataPromptDraft] = useState<string | null>(null)
   const [extractionPromptDraft, setExtractionPromptDraft] = useState<string | null>(null)
   const [meaningfulnessPromptDraft, setMeaningfulnessPromptDraft] = useState<string | null>(null)
@@ -64,6 +59,14 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const metadata = useStepConfig(merged, "metadata", markDirty)
+  const textClassification = useStepConfig(merged, "text_classification", markDirty)
+  const imageMeaningfulness = useStepConfig(merged, "image_meaningfulness", markDirty)
+  const imageCropping = useStepConfig(merged, "image_cropping", markDirty)
+  const imageSegmentation = useStepConfig(merged, "image_segmentation", markDirty)
+  const bookSummary = useStepConfig(merged, "book_summary", markDirty)
+
   // Load config into form state
   useEffect(() => {
     if (!bookConfigData) return
@@ -72,18 +75,18 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
     if (c.editing_language) setEditingLanguage(normalizeLocale(String(c.editing_language)))
   }, [bookConfigData])
 
-  // Load text types, pruned types, and image filters from active (merged) config
+  // Load text types, pruned types, image filters, and segmentation min_side from active (merged) config
   useEffect(() => {
     if (!activeConfigData) return
-    const merged = activeConfigData.merged as Record<string, unknown>
-    if (merged.text_types && typeof merged.text_types === "object") {
-      setTextTypes(merged.text_types as Record<string, string>)
+    const m = activeConfigData.merged as Record<string, unknown>
+    if (m.text_types && typeof m.text_types === "object") {
+      setTextTypes(m.text_types as Record<string, string>)
     }
-    if (Array.isArray(merged.pruned_text_types)) {
-      setPrunedTextTypes(new Set(merged.pruned_text_types as string[]))
+    if (Array.isArray(m.pruned_text_types)) {
+      setPrunedTextTypes(new Set(m.pruned_text_types as string[]))
     }
-    if (merged.image_filters && typeof merged.image_filters === "object") {
-      const filters = merged.image_filters as Record<string, unknown>
+    if (m.image_filters && typeof m.image_filters === "object") {
+      const filters = m.image_filters as Record<string, unknown>
       if (filters.min_side != null) setMinSide(String(filters.min_side))
       if (filters.max_side != null) setMaxSide(String(filters.max_side))
       if (filters.min_stddev != null) setMinStddev(String(filters.min_stddev))
@@ -91,30 +94,9 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
       if (filters.cropping != null) setCropping(filters.cropping === true)
       if (filters.segmentation != null) setSegmentation(filters.segmentation === true)
     }
-    if (merged.metadata && typeof merged.metadata === "object") {
-      const md = merged.metadata as Record<string, unknown>
-      if (md.model) setMetadataModel(String(md.model))
-    }
-    if (merged.text_classification && typeof merged.text_classification === "object") {
-      const tc = merged.text_classification as Record<string, unknown>
-      if (tc.model) setExtractionModel(String(tc.model))
-    }
-    if (merged.image_meaningfulness && typeof merged.image_meaningfulness === "object") {
-      const im = merged.image_meaningfulness as Record<string, unknown>
-      if (im.model) setMeaningfulnessModel(String(im.model))
-    }
-    if (merged.image_cropping && typeof merged.image_cropping === "object") {
-      const ic = merged.image_cropping as Record<string, unknown>
-      if (ic.model) setCroppingModel(String(ic.model))
-    }
-    if (merged.image_segmentation && typeof merged.image_segmentation === "object") {
-      const is = merged.image_segmentation as Record<string, unknown>
-      if (is.model) setSegmentationModel(String(is.model))
+    if (m.image_segmentation && typeof m.image_segmentation === "object") {
+      const is = m.image_segmentation as Record<string, unknown>
       if (is.min_side != null) setSegmentationMinSide(String(is.min_side))
-    }
-    if (merged.book_summary && typeof merged.book_summary === "object") {
-      const bs = merged.book_summary as Record<string, unknown>
-      if (bs.model) setBookSummaryModel(String(bs.model))
     }
   }, [activeConfigData])
 
@@ -198,31 +180,31 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
     }
     if (shouldWrite("metadata")) {
       const existing = (bookConfigData?.config?.metadata ?? {}) as Record<string, unknown>
-      overrides.metadata = { ...existing, model: metadataModel.trim() || undefined }
+      overrides.metadata = { ...existing, ...metadata.configOverrides }
     }
     if (shouldWrite("text_classification")) {
       const existing = (bookConfigData?.config?.text_classification ?? {}) as Record<string, unknown>
-      overrides.text_classification = { ...existing, model: extractionModel.trim() || undefined }
+      overrides.text_classification = { ...existing, ...textClassification.configOverrides }
     }
     if (shouldWrite("image_meaningfulness")) {
       const existing = (bookConfigData?.config?.image_meaningfulness ?? {}) as Record<string, unknown>
-      overrides.image_meaningfulness = { ...existing, model: meaningfulnessModel.trim() || undefined }
+      overrides.image_meaningfulness = { ...existing, ...imageMeaningfulness.configOverrides }
     }
     if (shouldWrite("image_cropping")) {
       const existing = (bookConfigData?.config?.image_cropping ?? {}) as Record<string, unknown>
-      overrides.image_cropping = { ...existing, model: croppingModel.trim() || undefined }
+      overrides.image_cropping = { ...existing, ...imageCropping.configOverrides }
     }
     if (shouldWrite("image_segmentation")) {
       const existing = (bookConfigData?.config?.image_segmentation ?? {}) as Record<string, unknown>
       overrides.image_segmentation = {
         ...existing,
-        model: segmentationModel.trim() || undefined,
+        ...imageSegmentation.configOverrides,
         min_side: segmentationMinSide.trim() ? Number(segmentationMinSide) : undefined,
       }
     }
     if (shouldWrite("book_summary")) {
       const existing = (bookConfigData?.config?.book_summary ?? {}) as Record<string, unknown>
-      overrides.book_summary = { ...existing, model: bookSummaryModel.trim() || undefined }
+      overrides.book_summary = { ...existing, ...bookSummary.configOverrides }
     }
 
     return overrides
@@ -499,8 +481,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Metadata Extraction Prompt"
           description="The prompt template used to extract book metadata (title, author, etc.) from the first few pages. This is a Liquid template processed with page context."
-          model={metadataModel}
-          onModelChange={(v) => { setMetadataModel(v); markDirty("metadata") }}
+          model={metadata.model}
+          onModelChange={metadata.onModelChange}
+          maxRetries={metadata.maxRetries}
+          onMaxRetriesChange={metadata.onMaxRetriesChange}
           onContentChange={setMetadataPromptDraft}
           enabled={tab === "metadata-prompt"}
         />
@@ -512,8 +496,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Text Classification Prompt"
           description="The prompt template used for text classification. This is a Liquid template processed with page context."
-          model={extractionModel}
-          onModelChange={(v) => { setExtractionModel(v); markDirty("text_classification") }}
+          model={textClassification.model}
+          onModelChange={textClassification.onModelChange}
+          maxRetries={textClassification.maxRetries}
+          onMaxRetriesChange={textClassification.onMaxRetriesChange}
           onContentChange={setExtractionPromptDraft}
           enabled={tab === "prompt"}
         />
@@ -525,8 +511,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Image Meaningfulness Prompt"
           description="LLM-based filter to determine if extracted images are meaningful."
-          model={meaningfulnessModel}
-          onModelChange={(v) => { setMeaningfulnessModel(v); markDirty("image_meaningfulness") }}
+          model={imageMeaningfulness.model}
+          onModelChange={imageMeaningfulness.onModelChange}
+          maxRetries={imageMeaningfulness.maxRetries}
+          onMaxRetriesChange={imageMeaningfulness.onMaxRetriesChange}
           onContentChange={setMeaningfulnessPromptDraft}
           enabled={tab === "meaningfulness-prompt"}
         />
@@ -538,8 +526,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Image Cropping Prompt"
           description="LLM-based cropping to remove stray text, artifacts, and excessive whitespace from extracted images."
-          model={croppingModel}
-          onModelChange={(v) => { setCroppingModel(v); markDirty("image_cropping") }}
+          model={imageCropping.model}
+          onModelChange={imageCropping.onModelChange}
+          maxRetries={imageCropping.maxRetries}
+          onMaxRetriesChange={imageCropping.onMaxRetriesChange}
           onContentChange={setCroppingPromptDraft}
           enabled={tab === "cropping-prompt"}
         />
@@ -567,8 +557,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
               bookLabel={bookLabel}
               title="Image Segmentation Prompt"
               description="LLM-based segmentation to detect and split composited images into individual segments. Requires GPT-5.2+ for accurate bounding box coordinates."
-              model={segmentationModel}
-              onModelChange={(v) => { setSegmentationModel(v); markDirty("image_segmentation") }}
+              model={imageSegmentation.model}
+              onModelChange={imageSegmentation.onModelChange}
+              maxRetries={imageSegmentation.maxRetries}
+              onMaxRetriesChange={imageSegmentation.onMaxRetriesChange}
               onContentChange={setSegmentationPromptDraft}
               enabled={tab === "segmentation-prompt"}
             />
@@ -582,8 +574,10 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Book Summary Prompt"
           description="The prompt template used to generate a short book summary at the end of extract. The summary is generated in the configured editing language."
-          model={bookSummaryModel}
-          onModelChange={(v) => { setBookSummaryModel(v); markDirty("book_summary") }}
+          model={bookSummary.model}
+          onModelChange={bookSummary.onModelChange}
+          maxRetries={bookSummary.maxRetries}
+          onMaxRetriesChange={bookSummary.onMaxRetriesChange}
           onContentChange={setBookSummaryPromptDraft}
           enabled={tab === "book-summary-prompt"}
         />

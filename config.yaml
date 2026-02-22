@@ -77,7 +77,7 @@ render_strategies:
     config:
       prompt: web_generation_html
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   two_column:
     render_type: template
@@ -93,7 +93,7 @@ render_strategies:
       prompt: activity_multiple_choice
       answer_prompt: activity_multiple_choice_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_true_false:
     render_type: activity
@@ -101,7 +101,7 @@ render_strategies:
       prompt: activity_true_false
       answer_prompt: activity_true_false_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_fill_in_the_blank:
     render_type: activity
@@ -109,7 +109,7 @@ render_strategies:
       prompt: activity_fill_in_the_blank
       answer_prompt: activity_fill_in_the_blank_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_fill_in_a_table:
     render_type: activity
@@ -117,7 +117,7 @@ render_strategies:
       prompt: activity_fill_in_a_table
       answer_prompt: activity_fill_in_a_table_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_matching:
     render_type: activity
@@ -125,7 +125,7 @@ render_strategies:
       prompt: activity_matching
       answer_prompt: activity_matching_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_sorting:
     render_type: activity
@@ -133,14 +133,14 @@ render_strategies:
       prompt: activity_sorting
       answer_prompt: activity_sorting_answers
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
   activity_open_ended_answer:
     render_type: activity
     config:
       prompt: activity_open_ended_answer
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
 
 section_render_strategies:

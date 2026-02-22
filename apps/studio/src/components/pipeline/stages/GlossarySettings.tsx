@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { createPortal } from "react-dom"
 import { useNavigate } from "@tanstack/react-router"
 import { Play } from "lucide-react"
@@ -17,6 +17,7 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 
 export function GlossarySettings({ bookLabel, headerTarget }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
@@ -26,21 +27,13 @@ export function GlossarySettings({ bookLabel, headerTarget }: { bookLabel: strin
   const { queueRun } = useBookRun()
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
-
-  const [model, setModel] = useState("")
   const [promptDraft, setPromptDraft] = useState<string | null>(null)
 
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
-  useEffect(() => {
-    if (!activeConfigData) return
-    const merged = activeConfigData.merged as Record<string, unknown>
-    if (merged.glossary && typeof merged.glossary === "object") {
-      const g = merged.glossary as Record<string, unknown>
-      if (g.model) setModel(String(g.model))
-    }
-  }, [activeConfigData])
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const glossary = useStepConfig(merged, "glossary", markDirty)
 
   const shouldWrite = (field: string) =>
     dirty[field] || (bookConfigData?.config && field in bookConfigData.config)
@@ -51,10 +44,7 @@ export function GlossarySettings({ bookLabel, headerTarget }: { bookLabel: strin
 
     if (shouldWrite("glossary")) {
       const existing = (bookConfigData?.config?.glossary ?? {}) as Record<string, unknown>
-      overrides.glossary = {
-        ...existing,
-        model: model.trim() || undefined,
-      }
+      overrides.glossary = { ...existing, ...glossary.configOverrides }
     }
     return overrides
   }
@@ -86,8 +76,10 @@ export function GlossarySettings({ bookLabel, headerTarget }: { bookLabel: strin
         bookLabel={bookLabel}
         title="Glossary Prompt"
         description="The prompt template used to generate glossary terms from book content."
-        model={model}
-        onModelChange={(v) => { setModel(v); markDirty("glossary") }}
+        model={glossary.model}
+        onModelChange={glossary.onModelChange}
+        maxRetries={glossary.maxRetries}
+        onMaxRetriesChange={glossary.onMaxRetriesChange}
         onContentChange={setPromptDraft}
       />
 

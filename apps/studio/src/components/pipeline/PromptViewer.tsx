@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useQuery } from "@tanstack/react-query"
+import { DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import { api } from "@/api/client"
 
 interface PromptViewerBaseProps {
@@ -15,6 +16,10 @@ interface PromptViewerBaseProps {
   description: string
   /** Called when the user edits the prompt content (null = reverted to original) */
   onContentChange?: (content: string | null) => void
+  /** Current max retries value (as string for input binding) */
+  maxRetries?: string
+  /** Called when the user changes the retries value */
+  onMaxRetriesChange?: (value: string) => void
   /** Placeholder for the model input */
   modelPlaceholder?: string
   /** Whether to fetch the prompt (set false to defer loading) */
@@ -49,6 +54,8 @@ export function PromptViewer({
   model,
   onModelChange,
   onContentChange,
+  maxRetries,
+  onMaxRetriesChange,
   modelPlaceholder = "openai:gpt-5.2",
   enabled = true,
   hideModel = false,
@@ -100,14 +107,29 @@ export function PromptViewer({
 
       {/* Model picker */}
       {!hideModel && (
-        <div className="shrink-0 max-w-xs">
-          <Label className="text-xs">Model</Label>
-          <Input
-            value={model ?? ""}
-            onChange={(e) => onModelChange?.(e.target.value)}
-            placeholder={modelPlaceholder}
-            className="mt-1 text-xs"
-          />
+        <div className="shrink-0 flex items-end gap-3">
+          <div className="min-w-0 max-w-xs flex-1">
+            <Label className="text-xs">Model</Label>
+            <Input
+              value={model ?? ""}
+              onChange={(e) => onModelChange?.(e.target.value)}
+              placeholder={modelPlaceholder}
+              className="mt-1 text-xs"
+            />
+          </div>
+          {onMaxRetriesChange && (
+            <div className="w-20">
+              <Label className="text-xs">Retries</Label>
+              <Input
+                type="number"
+                min={0}
+                value={maxRetries ?? ""}
+                onChange={(e) => onMaxRetriesChange(e.target.value)}
+                placeholder={String(DEFAULT_LLM_MAX_RETRIES)}
+                className="mt-1 text-xs"
+              />
+            </div>
+          )}
         </div>
       )}
 

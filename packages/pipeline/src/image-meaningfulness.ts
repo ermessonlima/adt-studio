@@ -1,5 +1,8 @@
 import type { AppConfig, ImageClassificationOutput } from "@adt/types"
-import { imageMeaningfulnessLLMSchema } from "@adt/types"
+import {
+  imageMeaningfulnessLLMSchema,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 
 export interface MeaningfulnessPageInput {
@@ -11,6 +14,7 @@ export interface MeaningfulnessPageInput {
 export interface MeaningfulnessConfig {
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 /**
@@ -28,6 +32,8 @@ export function buildMeaningfulnessConfig(
   return {
     promptName: appConfig.image_meaningfulness?.prompt ?? "image_meaningfulness",
     modelId: model,
+    maxRetries:
+      appConfig.image_meaningfulness?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }
 
@@ -79,7 +85,7 @@ export async function filterPageImageMeaningfulness(
       }
       return { valid: errors.length === 0, errors }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 4096,
     log: {
       taskType: "image-filtering",

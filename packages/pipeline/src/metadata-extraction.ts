@@ -1,9 +1,14 @@
-import { BookMetadata, type AppConfig } from "@adt/types"
+import {
+  BookMetadata,
+  type AppConfig,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel } from "@adt/llm"
 
 export interface MetadataConfig {
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 export interface MetadataPageInput {
@@ -35,7 +40,7 @@ export async function extractMetadata(
         imageBase64: p.imageBase64,
       })),
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 4096,
     log: {
       taskType: "metadata",
@@ -53,5 +58,6 @@ export function buildMetadataConfig(appConfig: AppConfig): MetadataConfig {
   return {
     promptName: appConfig.metadata?.prompt ?? "metadata_extraction",
     modelId: appConfig.metadata?.model ?? "openai:gpt-5.2",
+    maxRetries: appConfig.metadata?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }

@@ -38,6 +38,7 @@ export {
   LayoutType,
   PresetName,
   StyleguideName,
+  DEFAULT_LLM_MAX_RETRIES,
   StepConfig,
   QuizGenerationConfig,
   SectioningMode,

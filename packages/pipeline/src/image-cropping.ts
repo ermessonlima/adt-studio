@@ -1,5 +1,8 @@
 import type { AppConfig, ImageCroppingOutput } from "@adt/types"
-import { imageCroppingLLMSchema } from "@adt/types"
+import {
+  imageCroppingLLMSchema,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 import { cropPng } from "@adt/pdf"
 import jpeg from "jpeg-js"
@@ -13,6 +16,7 @@ export interface CroppingPageInput {
 export interface CroppingConfig {
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 /**
@@ -35,6 +39,8 @@ export function buildCroppingConfig(
   return {
     promptName: appConfig.image_cropping?.prompt ?? "image_cropping",
     modelId: model,
+    maxRetries:
+      appConfig.image_cropping?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }
 
@@ -129,7 +135,7 @@ export async function cropPageImages(
       }
       return { valid: errors.length === 0, errors }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 4096,
     log: {
       taskType: "image-cropping",

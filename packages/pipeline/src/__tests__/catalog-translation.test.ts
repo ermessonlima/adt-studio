@@ -33,6 +33,7 @@ describe("buildCatalogTranslationConfig", () => {
     expect(config.sourceLanguage).toBe("en")
     expect(config.promptName).toBe("translation")
     expect(config.modelId).toBe("openai:gpt-4.1")
+    expect(config.maxRetries).toBe(5)
     expect(config.batchSize).toBe(50)
   })
 
@@ -40,12 +41,17 @@ describe("buildCatalogTranslationConfig", () => {
     const appConfig: AppConfig = {
       text_types: { body: "Body" },
       text_group_types: { paragraph: "Para" },
-      translation: { model: "openai:gpt-5", prompt: "custom_translation" },
+      translation: {
+        model: "openai:gpt-5",
+        prompt: "custom_translation",
+        max_retries: 11,
+      },
     }
     const config = buildCatalogTranslationConfig(appConfig, "fr")
     expect(config.sourceLanguage).toBe("fr")
     expect(config.promptName).toBe("custom_translation")
     expect(config.modelId).toBe("openai:gpt-5")
+    expect(config.maxRetries).toBe(11)
   })
 })
 

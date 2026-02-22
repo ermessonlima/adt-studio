@@ -26,6 +26,7 @@ describe("extractMetadata", () => {
   const config: MetadataConfig = {
     promptName: "metadata_extraction",
     modelId: "openai:gpt-4o",
+    maxRetries: 5,
   }
 
   it("returns metadata from LLM", async () => {
@@ -109,12 +110,17 @@ describe("buildMetadataConfig", () => {
     const appConfig: AppConfig = {
       text_types: { heading: "Heading" },
       text_group_types: { paragraph: "Paragraph" },
-      metadata: { prompt: "custom_metadata", model: "openai:gpt-4.1-mini" },
+      metadata: {
+        prompt: "custom_metadata",
+        model: "openai:gpt-4.1-mini",
+        max_retries: 9,
+      },
     }
 
     const config = buildMetadataConfig(appConfig)
     expect(config.promptName).toBe("custom_metadata")
     expect(config.modelId).toBe("openai:gpt-4.1-mini")
+    expect(config.maxRetries).toBe(9)
   })
 
   it("defaults metadata prompt and model", () => {
@@ -126,5 +132,6 @@ describe("buildMetadataConfig", () => {
     const config = buildMetadataConfig(appConfig)
     expect(config.promptName).toBe("metadata_extraction")
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(5)
   })
 })

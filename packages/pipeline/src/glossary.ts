@@ -1,6 +1,10 @@
 import { parseDocument, DomUtils } from "htmlparser2"
 import type { AppConfig, GlossaryItem, GlossaryOutput } from "@adt/types"
-import { glossaryLLMSchema, WebRenderingOutput } from "@adt/types"
+import {
+  glossaryLLMSchema,
+  WebRenderingOutput,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel } from "@adt/llm"
 import type { Storage, PageData } from "@adt/storage"
 import { processWithConcurrency } from "./concurrency.js"
@@ -24,7 +28,7 @@ export function buildGlossaryConfig(
       appConfig.glossary?.model ??
       appConfig.text_classification?.model ??
       "openai:gpt-4.1",
-    maxRetries: appConfig.glossary?.max_retries ?? 2,
+    maxRetries: appConfig.glossary?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     language,
     batchSize: 10,
   }

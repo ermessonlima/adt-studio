@@ -1,10 +1,15 @@
-import { BookSummaryOutput, type AppConfig } from "@adt/types"
+import {
+  BookSummaryOutput,
+  type AppConfig,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel } from "@adt/llm"
 import { buildLanguageContext, normalizeLocale } from "./language-context.js"
 
 export interface BookSummaryConfig {
   promptName: string
   modelId: string
+  maxRetries: number
   outputLanguage: string
 }
 
@@ -38,7 +43,7 @@ export async function generateBookSummary(
       output_language_code: outputLanguage.language_code,
       output_language: outputLanguage.language,
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 1024,
     log: {
       taskType: "book-summary",
@@ -56,6 +61,8 @@ export function buildBookSummaryConfig(appConfig: AppConfig): BookSummaryConfig 
   return {
     promptName: appConfig.book_summary?.prompt ?? "book_summary",
     modelId: appConfig.book_summary?.model ?? "openai:gpt-5.2",
+    maxRetries:
+      appConfig.book_summary?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     outputLanguage: normalizeLocale(appConfig.editing_language ?? "en"),
   }
 }

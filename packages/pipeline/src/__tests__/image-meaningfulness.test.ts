@@ -53,17 +53,23 @@ describe("buildMeaningfulnessConfig", () => {
     expect(config).not.toBeNull()
     expect(config!.promptName).toBe("image_meaningfulness")
     expect(config!.modelId).toBe("openai:gpt-4.1")
+    expect(config!.maxRetries).toBe(5)
   })
 
   it("uses explicit prompt name when provided", () => {
     const appConfig: AppConfig = {
       text_types: { section_text: "Main body text" },
       text_group_types: { paragraph: "Paragraph" },
-      image_meaningfulness: { model: "openai:gpt-4.1", prompt: "custom_meaningfulness" },
+      image_meaningfulness: {
+        model: "openai:gpt-4.1",
+        prompt: "custom_meaningfulness",
+        max_retries: 13,
+      },
     }
     const config = buildMeaningfulnessConfig(appConfig)
     expect(config!.promptName).toBe("custom_meaningfulness")
     expect(config!.modelId).toBe("openai:gpt-4.1")
+    expect(config!.maxRetries).toBe(13)
   })
 
   it("returns null when image_filters.meaningfulness is false", () => {
@@ -88,7 +94,11 @@ describe("buildMeaningfulnessConfig", () => {
 })
 
 describe("filterPageImageMeaningfulness", () => {
-  const config = { promptName: "image_meaningfulness", modelId: "openai:gpt-4.1" }
+  const config = {
+    promptName: "image_meaningfulness",
+    modelId: "openai:gpt-4.1",
+    maxRetries: 5,
+  }
 
   it("returns existing classification when no images", async () => {
     const existing: ImageClassificationOutput = {

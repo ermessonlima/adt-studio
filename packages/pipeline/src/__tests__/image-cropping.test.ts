@@ -90,6 +90,7 @@ describe("buildCroppingConfig", () => {
     expect(config).not.toBeNull()
     expect(config!.promptName).toBe("image_cropping")
     expect(config!.modelId).toBe("openai:gpt-4.1")
+    expect(config!.maxRetries).toBe(5)
   })
 
   it("falls back to image_meaningfulness model", () => {
@@ -102,6 +103,7 @@ describe("buildCroppingConfig", () => {
     const config = buildCroppingConfig(appConfig)
     expect(config).not.toBeNull()
     expect(config!.modelId).toBe("openai:gpt-4.1")
+    expect(config!.maxRetries).toBe(5)
   })
 
   it("uses explicit prompt name when provided", () => {
@@ -109,15 +111,24 @@ describe("buildCroppingConfig", () => {
       text_types: { section_text: "Main body text" },
       text_group_types: { paragraph: "Paragraph" },
       image_filters: { cropping: true },
-      image_cropping: { model: "openai:gpt-4.1", prompt: "custom_crop" },
+      image_cropping: {
+        model: "openai:gpt-4.1",
+        prompt: "custom_crop",
+        max_retries: 14,
+      },
     }
     const config = buildCroppingConfig(appConfig)
     expect(config!.promptName).toBe("custom_crop")
+    expect(config!.maxRetries).toBe(14)
   })
 })
 
 describe("cropPageImages", () => {
-  const config = { promptName: "image_cropping", modelId: "openai:gpt-4.1" }
+  const config = {
+    promptName: "image_cropping",
+    modelId: "openai:gpt-4.1",
+    maxRetries: 5,
+  }
 
   it("returns empty crops when no images", async () => {
     const llm = makeFakeLLMModel([])

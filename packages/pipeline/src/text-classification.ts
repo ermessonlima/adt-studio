@@ -3,6 +3,7 @@ import {
   buildTextClassificationLLMSchema,
   type TypeDef,
   type AppConfig,
+  DEFAULT_LLM_MAX_RETRIES,
 } from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 
@@ -12,6 +13,7 @@ export interface ClassifyConfig {
   prunedTextTypes: string[]
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 export interface PageInput {
@@ -61,7 +63,7 @@ export async function classifyPageText(
       text_group_types: config.textGroupTypes,
     },
     validate: validateTextClassification,
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 16384,
     log: {
       taskType: "text-classification",
@@ -138,5 +140,7 @@ export function buildClassifyConfig(appConfig: AppConfig): ClassifyConfig {
     prunedTextTypes: appConfig.pruned_text_types ?? [],
     promptName: appConfig.text_classification?.prompt ?? "text_classification",
     modelId: appConfig.text_classification?.model ?? "openai:gpt-5.2",
+    maxRetries:
+      appConfig.text_classification?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }

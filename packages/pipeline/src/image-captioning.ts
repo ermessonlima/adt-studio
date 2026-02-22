@@ -1,6 +1,9 @@
 import { parseDocument, DomUtils } from "htmlparser2"
 import type { AppConfig, ImageCaptioningOutput } from "@adt/types"
-import { imageCaptioningLLMSchema } from "@adt/types"
+import {
+  imageCaptioningLLMSchema,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 import { buildLanguageContext } from "./language-context.js"
 
@@ -15,6 +18,7 @@ export interface CaptionPageInput {
 export interface CaptionConfig {
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 /**
@@ -49,6 +53,8 @@ export function buildCaptionConfig(appConfig: AppConfig): CaptionConfig {
       appConfig.image_captioning?.model ??
       appConfig.text_classification?.model ??
       "openai:gpt-4.1",
+    maxRetries:
+      appConfig.image_captioning?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }
 
@@ -109,7 +115,7 @@ export async function captionPageImages(
       }
       return { valid: errors.length === 0, errors }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 4096,
     log: {
       taskType: "image-captioning",

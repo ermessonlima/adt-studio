@@ -50,7 +50,7 @@ describe("buildGlossaryConfig", () => {
     const config = buildGlossaryConfig(appConfig, "English")
     expect(config.promptName).toBe("glossary")
     expect(config.modelId).toBe("openai:gpt-4.1")
-    expect(config.maxRetries).toBe(2)
+    expect(config.maxRetries).toBe(5)
     expect(config.language).toBe("English")
     expect(config.batchSize).toBe(10)
   })

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { TextClassificationOutput, AppConfig } from "@adt/types"
+import { DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 import {
   buildTranslationLanguageContext,
@@ -12,6 +13,7 @@ export interface TranslationConfig {
   targetLanguage: string
   promptName: string
   modelId: string
+  maxRetries: number
 }
 
 export { normalizeLocale, getBaseLanguage } from "./language-context.js"
@@ -45,6 +47,7 @@ export function buildTranslationConfig(
       appConfig.translation?.model ??
       appConfig.text_classification?.model ??
       "openai:gpt-4.1",
+    maxRetries: appConfig.translation?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }
 
@@ -94,7 +97,7 @@ export async function translatePageText(
       }
       return { valid: true, errors: [] }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 16384,
     log: {
       taskType: "translation",

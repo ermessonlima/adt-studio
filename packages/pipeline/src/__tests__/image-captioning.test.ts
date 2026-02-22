@@ -98,6 +98,7 @@ describe("buildCaptionConfig", () => {
     const config = buildCaptionConfig(appConfig)
     expect(config.promptName).toBe("image_captioning")
     expect(config.modelId).toBe("openai:gpt-4.1")
+    expect(config.maxRetries).toBe(5)
   })
 
   it("falls back to text_classification model", () => {
@@ -108,6 +109,7 @@ describe("buildCaptionConfig", () => {
     }
     const config = buildCaptionConfig(appConfig)
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(5)
   })
 
   it("uses explicit image_captioning config", () => {
@@ -117,11 +119,13 @@ describe("buildCaptionConfig", () => {
       image_captioning: {
         prompt: "custom_caption",
         model: "openai:gpt-5.2",
+        max_retries: 12,
       },
     }
     const config = buildCaptionConfig(appConfig)
     expect(config.promptName).toBe("custom_caption")
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(12)
   })
 })
 
@@ -135,7 +139,7 @@ describe("captionPageImages", () => {
         images: [],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
     expect(result.captions).toEqual([])
@@ -163,7 +167,7 @@ describe("captionPageImages", () => {
         images: [{ imageId: "pg001_im001", imageBase64: "base64img1" }],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -206,7 +210,7 @@ describe("captionPageImages", () => {
         language: "en",
         bookSummary: "A grade 3 science textbook about the water cycle.",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -239,7 +243,7 @@ describe("captionPageImages", () => {
         ],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -273,7 +277,7 @@ describe("captionPageImages", () => {
         ],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -312,7 +316,7 @@ describe("captionPageImages", () => {
         images: [{ imageId: "pg001_im001", imageBase64: "base64a" }],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -351,7 +355,7 @@ describe("captionPageImages", () => {
         images: [{ imageId: "pg001_im001", imageBase64: "base64a" }],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 
@@ -389,7 +393,7 @@ describe("captionPageImages", () => {
         images: [{ imageId: "pg001_im001", imageBase64: "base64a" }],
         language: "en",
       },
-      { promptName: "image_captioning", modelId: "openai:gpt-4.1" },
+      { promptName: "image_captioning", modelId: "openai:gpt-4.1", maxRetries: 5 },
       llm
     )
 

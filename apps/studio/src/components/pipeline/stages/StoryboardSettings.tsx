@@ -30,6 +30,7 @@ import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { TemplateViewer } from "@/components/pipeline/TemplateViewer"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 
 /** "two_column_story" → "Two Column Story" */
 function titleCase(slug: string): string {
@@ -71,9 +72,10 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const [allStrategyNames, setAllStrategyNames] = useState<string[]>([])
   const [renderStrategyNames, setRenderStrategyNames] = useState<string[]>([])
   const [activityModel, setActivityModel] = useState("")
+  const [activityRetries, setActivityRetries] = useState("")
   const [sectioningMode, setSectioningMode] = useState("section")
-  const [sectioningModel, setSectioningModel] = useState("")
   const [renderingModel, setRenderingModel] = useState("")
+  const [renderingRetries, setRenderingRetries] = useState("")
   const [renderingPromptName, setRenderingPromptName] = useState("web_generation_html")
   const [renderingRenderType, setRenderingRenderType] = useState<string>("llm")
   const [renderingTemplateName, setRenderingTemplateName] = useState("")
@@ -92,17 +94,18 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
 
   // Derive activity strategies directly from merged config (synchronous)
   const activityStrategies = useMemo(() => {
-    if (!activeConfigData) return {} as Record<string, { prompt: string; answer_prompt?: string; model?: string }>
+    if (!activeConfigData) return {} as Record<string, { prompt: string; answer_prompt?: string; model?: string; max_retries?: number }>
     const merged = activeConfigData.merged as Record<string, unknown>
-    const strategies = merged.render_strategies as Record<string, { render_type?: string; config?: { prompt?: string; answer_prompt?: string; model?: string } }> | undefined
-    if (!strategies || typeof strategies !== "object") return {} as Record<string, { prompt: string; answer_prompt?: string; model?: string }>
-    const activityMap: Record<string, { prompt: string; answer_prompt?: string; model?: string }> = {}
+    const strategies = merged.render_strategies as Record<string, { render_type?: string; config?: { prompt?: string; answer_prompt?: string; model?: string; max_retries?: number } }> | undefined
+    if (!strategies || typeof strategies !== "object") return {} as Record<string, { prompt: string; answer_prompt?: string; model?: string; max_retries?: number }>
+    const activityMap: Record<string, { prompt: string; answer_prompt?: string; model?: string; max_retries?: number }> = {}
     for (const [name, strat] of Object.entries(strategies)) {
       if (strat.render_type === "activity" && strat.config?.prompt) {
         activityMap[name] = {
           prompt: strat.config.prompt,
           answer_prompt: strat.config.answer_prompt,
           model: strat.config.model,
+          max_retries: strat.config.max_retries,
         }
       }
     }
@@ -143,6 +146,9 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const sectioning = useStepConfig(merged, "page_sectioning", markDirty)
+
   // Load section types, pruned types, render strategy, and models from active (merged) config
   useEffect(() => {
     if (!activeConfigData) return
@@ -168,7 +174,6 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
     }
     if (merged.page_sectioning && typeof merged.page_sectioning === "object") {
       const ps = merged.page_sectioning as Record<string, unknown>
-      if (ps.model) setSectioningModel(String(ps.model))
       if (ps.mode) setSectioningMode(String(ps.mode))
     }
     // Styleguide
@@ -177,7 +182,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
     setApplyBodyBackground(merged.apply_body_background !== false)
     // Rendering config comes from the default render strategy
     if (merged.render_strategies && merged.default_render_strategy) {
-      const strategies = merged.render_strategies as Record<string, { render_type?: string; config?: { model?: string; prompt?: string; template?: string; temperature?: number } }>
+      const strategies = merged.render_strategies as Record<string, { render_type?: string; config?: { model?: string; prompt?: string; template?: string; temperature?: number; max_retries?: number } }>
       const defaultStrategy = strategies[String(merged.default_render_strategy)]
       if (defaultStrategy?.render_type) setRenderingRenderType(defaultStrategy.render_type)
       if (defaultStrategy?.config?.model) setRenderingModel(String(defaultStrategy.config.model))
@@ -187,6 +192,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
         setTemplateTabName(String(defaultStrategy.config.template))
       }
       setRenderingTemperature(defaultStrategy?.config?.temperature != null ? String(defaultStrategy.config.temperature) : "")
+      setRenderingRetries(defaultStrategy?.config?.max_retries != null ? String(defaultStrategy.config.max_retries) : "")
     }
   }, [activeConfigData])
 
@@ -291,7 +297,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
     }
     if (shouldWrite("page_sectioning")) {
       const existing = (bookConfigData?.config?.page_sectioning ?? {}) as Record<string, unknown>
-      overrides.page_sectioning = { ...existing, model: sectioningModel.trim() || undefined, mode: sectioningMode }
+      overrides.page_sectioning = { ...existing, ...sectioning.configOverrides, mode: sectioningMode }
     }
     if (shouldWrite("styleguide")) {
       overrides.styleguide = styleguide || undefined
@@ -299,26 +305,28 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
     if (shouldWrite("apply_body_background")) {
       overrides.apply_body_background = applyBodyBackground
     }
-    // Write rendering temperature into the default render strategy config
-    if (shouldWrite("rendering_temperature") && defaultRenderStrategy) {
+    // Write rendering temperature / retries into the default render strategy config
+    if ((shouldWrite("rendering_temperature") || shouldWrite("rendering_retries")) && defaultRenderStrategy) {
       const existingStrategies = (overrides.render_strategies ?? merged?.render_strategies ?? {}) as Record<string, Record<string, unknown>>
       const stratCopy = JSON.parse(JSON.stringify(existingStrategies)) as Record<string, Record<string, unknown>>
       if (stratCopy[defaultRenderStrategy]) {
         const cfg = (stratCopy[defaultRenderStrategy].config ?? {}) as Record<string, unknown>
-        cfg.temperature = renderingTemperature.trim() ? Number(renderingTemperature) : undefined
+        if (shouldWrite("rendering_temperature")) cfg.temperature = renderingTemperature.trim() ? Number(renderingTemperature) : undefined
+        if (shouldWrite("rendering_retries")) cfg.max_retries = renderingRetries.trim() ? Number(renderingRetries) : undefined
         stratCopy[defaultRenderStrategy].config = cfg
         overrides.render_strategies = stratCopy
       }
     }
-    // Write activity model into the activity render strategy config
-    if (shouldWrite("activity_model") && activityStrategyName) {
+    // Write activity model / retries into the activity render strategy config
+    if ((shouldWrite("activity_model") || shouldWrite("activity_retries")) && activityStrategyName) {
       if (!overrides.render_strategies) {
         overrides.render_strategies = JSON.parse(JSON.stringify(merged?.render_strategies ?? {}))
       }
       const stratCopy = overrides.render_strategies as Record<string, Record<string, unknown>>
       if (stratCopy[activityStrategyName]) {
         const cfg = (stratCopy[activityStrategyName].config ?? {}) as Record<string, unknown>
-        cfg.model = activityModel.trim() || undefined
+        if (shouldWrite("activity_model")) cfg.model = activityModel.trim() || undefined
+        if (shouldWrite("activity_retries")) cfg.max_retries = activityRetries.trim() ? Number(activityRetries) : undefined
         stratCopy[activityStrategyName].config = cfg
       }
     }
@@ -592,8 +600,10 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
               bookLabel={bookLabel}
               title="Page Sectioning Prompt"
               description="The prompt template used to split each page into logical sections. This is a Liquid template processed with page context."
-              model={sectioningModel}
-              onModelChange={(v) => { setSectioningModel(v); markDirty("page_sectioning") }}
+              model={sectioning.model}
+              onModelChange={sectioning.onModelChange}
+              maxRetries={sectioning.maxRetries}
+              onMaxRetriesChange={sectioning.onMaxRetriesChange}
               onContentChange={setSectioningPromptDraft}
             />
           </div>
@@ -708,6 +718,8 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
               description="The prompt template used to generate HTML for each section. This is a Liquid template processed with section context."
               model={renderingModel}
               onModelChange={(v) => { setRenderingModel(v); markDirty("rendering_model") }}
+              maxRetries={renderingRetries}
+              onMaxRetriesChange={(v) => { setRenderingRetries(v); markDirty("rendering_retries") }}
               onContentChange={setRenderingPromptDraft}
             />
           </div>
@@ -836,6 +848,7 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
                 setActivityPromptDraft(null)
                 setActivityAnswerDraft(null)
                 setActivityModel(name ? (activityStrategies[name]?.model ?? "") : "")
+                setActivityRetries(name && activityStrategies[name]?.max_retries != null ? String(activityStrategies[name].max_retries) : "")
               }}
             >
               <SelectTrigger className="w-72">
@@ -863,6 +876,8 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
                   description="Generates the interactive HTML for this activity type."
                   model={activityModel}
                   onModelChange={(v) => { setActivityModel(v); markDirty("activity_model") }}
+                  maxRetries={activityRetries}
+                  onMaxRetriesChange={(v) => { setActivityRetries(v); markDirty("activity_retries") }}
                   onContentChange={setActivityPromptDraft}
                 />
               </div>
@@ -876,6 +891,8 @@ export function StoryboardSettings({ bookLabel, headerTarget, tab = "general" }:
                     description="Extracts the correct answer key from the generated activity HTML."
                     model={activityModel}
                     onModelChange={(v) => { setActivityModel(v); markDirty("activity_model") }}
+                    maxRetries={activityRetries}
+                    onMaxRetriesChange={(v) => { setActivityRetries(v); markDirty("activity_retries") }}
                     onContentChange={setActivityAnswerDraft}
                   />
                 </div>

@@ -23,7 +23,7 @@ render_strategies:
     config:
       prompt: web_generation_html
       model: openai:gpt-5.2
-      max_retries: 25
+      max_retries: 5
       timeout: 180
 
 section_render_strategies: {}

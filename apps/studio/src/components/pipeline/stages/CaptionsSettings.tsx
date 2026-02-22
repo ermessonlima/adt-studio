@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { createPortal } from "react-dom"
 import { useNavigate } from "@tanstack/react-router"
 import { Play } from "lucide-react"
@@ -17,6 +17,7 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 
 export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
@@ -26,21 +27,13 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
   const { queueRun } = useBookRun()
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
-
-  const [model, setModel] = useState("")
   const [promptDraft, setPromptDraft] = useState<string | null>(null)
 
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
-  useEffect(() => {
-    if (!activeConfigData) return
-    const merged = activeConfigData.merged as Record<string, unknown>
-    if (merged.image_captioning && typeof merged.image_captioning === "object") {
-      const ic = merged.image_captioning as Record<string, unknown>
-      if (ic.model) setModel(String(ic.model))
-    }
-  }, [activeConfigData])
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const caption = useStepConfig(merged, "image_captioning", markDirty)
 
   const shouldWrite = (field: string) =>
     dirty[field] || (bookConfigData?.config && field in bookConfigData.config)
@@ -51,10 +44,7 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
 
     if (shouldWrite("image_captioning")) {
       const existing = (bookConfigData?.config?.image_captioning ?? {}) as Record<string, unknown>
-      overrides.image_captioning = {
-        ...existing,
-        model: model.trim() || undefined,
-      }
+      overrides.image_captioning = { ...existing, ...caption.configOverrides }
     }
     return overrides
   }
@@ -86,8 +76,10 @@ export function CaptionsSettings({ bookLabel, headerTarget }: { bookLabel: strin
         bookLabel={bookLabel}
         title="Caption Prompt"
         description="The prompt template used to generate captions for images in the book."
-        model={model}
-        onModelChange={(v) => { setModel(v); markDirty("image_captioning") }}
+        model={caption.model}
+        onModelChange={caption.onModelChange}
+        maxRetries={caption.maxRetries}
+        onMaxRetriesChange={caption.onMaxRetriesChange}
         onContentChange={setPromptDraft}
       />
 
