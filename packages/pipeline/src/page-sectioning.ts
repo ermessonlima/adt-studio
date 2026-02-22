@@ -7,7 +7,10 @@ import type {
   TypeDef,
   SectioningMode,
 } from "@adt/types"
-import { buildPageSectioningLLMSchema } from "@adt/types"
+import {
+  buildPageSectioningLLMSchema,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 
 export interface SectioningConfig {
@@ -15,6 +18,7 @@ export interface SectioningConfig {
   prunedSectionTypes: string[]
   promptName: string
   modelId: string
+  maxRetries: number
   mode: SectioningMode
 }
 
@@ -115,7 +119,7 @@ export async function sectionPage(
       section_types: config.sectionTypes,
     },
     validate: validatePageSectioning,
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 16384,
     log: {
       taskType: "page-sectioning",
@@ -270,6 +274,8 @@ export function buildSectioningConfig(appConfig: AppConfig): SectioningConfig {
     prunedSectionTypes: appConfig.pruned_section_types ?? [],
     promptName: appConfig.page_sectioning?.prompt ?? "page_sectioning",
     modelId: appConfig.page_sectioning?.model ?? "openai:gpt-5.2",
+    maxRetries:
+      appConfig.page_sectioning?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     mode: appConfig.page_sectioning?.mode ?? "section",
   }
 }

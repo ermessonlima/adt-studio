@@ -2,6 +2,8 @@ import { z } from "zod"
 import { ImageFilters } from "./image-filtering.js"
 import { SpeechConfig } from "./speech.js"
 
+export const DEFAULT_LLM_MAX_RETRIES = 5
+
 export const RateLimitConfig = z.object({
   requests_per_minute: z.number().int().min(1),
 })

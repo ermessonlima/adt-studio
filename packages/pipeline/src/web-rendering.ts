@@ -1,8 +1,9 @@
-import type {
-  PageSectioningOutput,
-  AppConfig,
-  SectionRendering,
-  WebRenderingOutput,
+import {
+  type PageSectioningOutput,
+  type AppConfig,
+  type SectionRendering,
+  type WebRenderingOutput,
+  DEFAULT_LLM_MAX_RETRIES,
 } from "@adt/types"
 import type { LLMModel } from "@adt/llm"
 import { renderSectionLlm } from "./render-llm.js"
@@ -183,7 +184,7 @@ export async function renderPage(
 const DEFAULT_RENDER_CONFIG = {
   prompt: "web_generation_html",
   model: "openai:gpt-5.2",
-  max_retries: 25,
+  max_retries: DEFAULT_LLM_MAX_RETRIES,
   timeout: 180,
   temperature: 0.3,
 }

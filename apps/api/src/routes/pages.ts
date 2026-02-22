@@ -4,7 +4,7 @@ import path from "node:path"
 import { z } from "zod"
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, PageSectioningOutput, WebRenderingOutput, ImageCaptioningOutput, ImageSegmentRegion } from "@adt/types"
+import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, PageSectioningOutput, WebRenderingOutput, ImageCaptioningOutput, ImageSegmentRegion, DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import { openBookDb } from "@adt/storage"
 import { createBookStorage } from "@adt/storage"
 import { reRenderPage, aiEditSection } from "../services/page-edit-service.js"
@@ -827,6 +827,8 @@ export function createPageRoutes(
       const config = loadBookConfig(safeLabel, booksDir, configPath)
       const modelId = config.image_segmentation?.model || "openai:gpt-5.2"
       const promptName = config.image_segmentation?.prompt ?? "image_segmentation"
+      const maxRetries =
+        config.image_segmentation?.max_retries ?? DEFAULT_LLM_MAX_RETRIES
 
       const bookPromptsDir = path.join(path.resolve(booksDir), safeLabel, "prompts")
       const promptEngine = createPromptEngine([bookPromptsDir, promptsDir])
@@ -852,7 +854,7 @@ export function createPageRoutes(
             height: imageMeta.height,
           }],
         },
-        { promptName, modelId },
+        { promptName, modelId, maxRetries },
         llmModel
       )
 

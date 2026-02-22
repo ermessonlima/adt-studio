@@ -1,5 +1,8 @@
 import type { AppConfig, ImageSegmentationOutput } from "@adt/types"
-import { imageSegmentationLLMSchema } from "@adt/types"
+import {
+  imageSegmentationLLMSchema,
+  DEFAULT_LLM_MAX_RETRIES,
+} from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 import { applyCrop } from "./image-cropping.js"
 
@@ -12,6 +15,7 @@ export interface SegmentationPageInput {
 export interface SegmentationConfig {
   promptName: string
   modelId: string
+  maxRetries: number
   minSide?: number
 }
 
@@ -30,6 +34,8 @@ export function buildSegmentationConfig(
   return {
     promptName: appConfig.image_segmentation?.prompt ?? "image_segmentation",
     modelId: appConfig.image_segmentation?.model || DEFAULT_SEGMENTATION_MODEL,
+    maxRetries:
+      appConfig.image_segmentation?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     minSide: appConfig.image_segmentation?.min_side,
   }
 }
@@ -138,7 +144,7 @@ export async function segmentPageImages(
       }
       return { valid: errors.length === 0, errors }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 4096,
     log: {
       taskType: "image-segmentation",

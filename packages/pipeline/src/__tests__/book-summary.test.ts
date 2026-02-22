@@ -21,6 +21,7 @@ describe("generateBookSummary", () => {
   const config: BookSummaryConfig = {
     promptName: "book_summary",
     modelId: "openai:gpt-4o",
+    maxRetries: 5,
     outputLanguage: "fr-FR",
   }
 
@@ -86,12 +87,17 @@ describe("buildBookSummaryConfig", () => {
       text_types: { heading: "Heading" },
       text_group_types: { paragraph: "Paragraph" },
       editing_language: "pt_br",
-      book_summary: { prompt: "custom_summary", model: "openai:gpt-4.1-mini" },
+      book_summary: {
+        prompt: "custom_summary",
+        model: "openai:gpt-4.1-mini",
+        max_retries: 10,
+      },
     }
 
     const config = buildBookSummaryConfig(appConfig)
     expect(config.promptName).toBe("custom_summary")
     expect(config.modelId).toBe("openai:gpt-4.1-mini")
+    expect(config.maxRetries).toBe(10)
     expect(config.outputLanguage).toBe("pt-BR")
   })
 
@@ -104,6 +110,7 @@ describe("buildBookSummaryConfig", () => {
     const config = buildBookSummaryConfig(appConfig)
     expect(config.promptName).toBe("book_summary")
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(5)
     expect(config.outputLanguage).toBe("en")
   })
 })

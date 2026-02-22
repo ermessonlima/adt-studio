@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { AppConfig, TextCatalogEntry, TextCatalogOutput } from "@adt/types"
+import { DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import type { LLMModel, ValidationResult } from "@adt/llm"
 import {
   buildTranslationLanguageContext,
@@ -11,6 +12,7 @@ export interface CatalogTranslationConfig {
   sourceLanguage: string
   promptName: string
   modelId: string
+  maxRetries: number
   batchSize: number
 }
 
@@ -25,6 +27,7 @@ export function buildCatalogTranslationConfig(
       appConfig.translation?.model ??
       appConfig.text_classification?.model ??
       "openai:gpt-4.1",
+    maxRetries: appConfig.translation?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     batchSize: 50,
   }
 }
@@ -86,7 +89,7 @@ export async function translateCatalogBatch(
       }
       return { valid: true, errors: [] }
     },
-    maxRetries: 2,
+    maxRetries: config.maxRetries,
     maxTokens: 16384,
     log: {
       taskType: "catalog-translation",

@@ -85,7 +85,7 @@ describe("buildRenderStrategyResolver", () => {
     expect(config.renderType).toBe("llm")
     expect(config.promptName).toBe("web_generation_html")
     expect(config.modelId).toBe("openai:gpt-5.2")
-    expect(config.maxRetries).toBe(25)
+    expect(config.maxRetries).toBe(5)
     expect(config.timeoutMs).toBe(180000)
     expect(config.templateName).toBe("")
   })
@@ -783,7 +783,7 @@ describe("renderPage", () => {
       renderType: "activity",
       promptName: "activity_multiple_choice",
       modelId: "openai:gpt-5.2",
-      maxRetries: 25,
+      maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "activity_multiple_choice_answers",
       templateName: "",
@@ -849,7 +849,7 @@ describe("renderPage", () => {
       renderType: "activity",
       promptName: "activity_open_ended_answer",
       modelId: "openai:gpt-5.2",
-      maxRetries: 25,
+      maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "",
       templateName: "",
@@ -912,7 +912,7 @@ describe("renderPage", () => {
       renderType: "llm",
       promptName: "web_generation_html",
       modelId: "openai:gpt-5.2",
-      maxRetries: 25,
+      maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "activity_true_false_answers",
       templateName: "",
@@ -1028,7 +1028,7 @@ describe("buildRenderStrategyResolver — activity", () => {
             prompt: "activity_multiple_choice",
             answer_prompt: "activity_multiple_choice_answers",
             model: "openai:gpt-5.2",
-            max_retries: 25,
+            max_retries: 5,
             timeout: 180,
           },
         },
@@ -1045,7 +1045,7 @@ describe("buildRenderStrategyResolver — activity", () => {
     expect(config.promptName).toBe("activity_multiple_choice")
     expect(config.answerPromptName).toBe("activity_multiple_choice_answers")
     expect(config.modelId).toBe("openai:gpt-5.2")
-    expect(config.maxRetries).toBe(25)
+    expect(config.maxRetries).toBe(5)
     expect(config.timeoutMs).toBe(180000)
   })
 

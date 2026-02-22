@@ -10,12 +10,14 @@ describe("buildClassifyConfig", () => {
       text_classification: {
         prompt: "custom_prompt",
         model: "openai:gpt-4.1-mini",
+        max_retries: 8,
       },
     }
 
     const config = buildClassifyConfig(appConfig)
     expect(config.promptName).toBe("custom_prompt")
     expect(config.modelId).toBe("openai:gpt-4.1-mini")
+    expect(config.maxRetries).toBe(8)
   })
 
   it("defaults text classification model and prompt", () => {
@@ -27,5 +29,6 @@ describe("buildClassifyConfig", () => {
     const config = buildClassifyConfig(appConfig)
     expect(config.promptName).toBe("text_classification")
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(5)
   })
 })

@@ -248,7 +248,7 @@ describe("buildQuizGenerationConfig", () => {
       quizSectionTypes: FALLBACK_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
       modelId: "openai:gpt-5.2",
-      maxRetries: 2,
+      maxRetries: 5,
       timeoutMs: 90_000,
     })
   })

@@ -162,15 +162,18 @@ export function createStageRoutes(
         }
       }
 
-      // Compute per-stage state: DB completion wins over run state
-      // (a stage whose steps all completed is "done" even if the run range includes it)
+      // Compute per-stage state with precedence:
+      // queued/error (explicit run intent/failure) > done (DB) > running/idle
       const stages: Record<string, string> = {}
       for (const stage of PIPELINE) {
+        const runState = runStates[stage.name]
         const allDone = stage.steps.length > 0 && stage.steps.every((s) => completedSteps.has(s.name))
-        if (allDone) {
+        if (runState === "queued" || runState === "error") {
+          stages[stage.name] = runState
+        } else if (allDone) {
           stages[stage.name] = "done"
         } else {
-          stages[stage.name] = runStates[stage.name] ?? "idle"
+          stages[stage.name] = runState ?? "idle"
         }
       }
 

@@ -19,6 +19,7 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 
 export function QuizzesSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
   const { data: bookConfigData } = useBookConfig(bookLabel)
@@ -29,7 +30,6 @@ export function QuizzesSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
-  const [model, setModel] = useState("")
   const [pagesPerQuiz, setPagesPerQuiz] = useState("")
   const [promptDraft, setPromptDraft] = useState<string | null>(null)
   const [sectionTypes, setSectionTypes] = useState<Record<string, string>>({})
@@ -38,21 +38,23 @@ export function QuizzesSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const quiz = useStepConfig(merged, "quiz_generation", markDirty)
+
   useEffect(() => {
     if (!activeConfigData) return
     setSectionTypes({})
     setQuizSectionTypes(new Set())
-    const merged = activeConfigData.merged as Record<string, unknown>
-    if (merged.quiz_generation && typeof merged.quiz_generation === "object") {
-      const qg = merged.quiz_generation as Record<string, unknown>
-      if (qg.model) setModel(String(qg.model))
+    const m = activeConfigData.merged as Record<string, unknown>
+    if (m.quiz_generation && typeof m.quiz_generation === "object") {
+      const qg = m.quiz_generation as Record<string, unknown>
       if (qg.pages_per_quiz != null) setPagesPerQuiz(String(qg.pages_per_quiz))
       if (Array.isArray(qg.quiz_section_types)) {
         setQuizSectionTypes(new Set(qg.quiz_section_types as string[]))
       }
     }
-    if (merged.section_types && typeof merged.section_types === "object") {
-      setSectionTypes(merged.section_types as Record<string, string>)
+    if (m.section_types && typeof m.section_types === "object") {
+      setSectionTypes(m.section_types as Record<string, string>)
     }
   }, [activeConfigData])
 
@@ -78,7 +80,7 @@ export function QuizzesSettings({ bookLabel, headerTarget, tab = "general" }: { 
       const existing = (bookConfigData?.config?.quiz_generation ?? {}) as Record<string, unknown>
       const nextQuizGeneration: Record<string, unknown> = {
         ...existing,
-        model: model.trim() || undefined,
+        ...quiz.configOverrides,
         pages_per_quiz: pagesPerQuiz ? Number(pagesPerQuiz) : undefined,
       }
       if (dirty.quiz_section_types || "quiz_section_types" in existing) {
@@ -167,8 +169,10 @@ export function QuizzesSettings({ bookLabel, headerTarget, tab = "general" }: { 
           bookLabel={bookLabel}
           title="Quiz Generation Prompt"
           description="The prompt template used to generate quiz questions from page content."
-          model={model}
-          onModelChange={(v) => { setModel(v); markDirty("quiz_generation") }}
+          model={quiz.model}
+          onModelChange={quiz.onModelChange}
+          maxRetries={quiz.maxRetries}
+          onMaxRetriesChange={quiz.onMaxRetriesChange}
           onContentChange={setPromptDraft}
           enabled={tab === "prompt"}
         />

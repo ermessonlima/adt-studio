@@ -897,11 +897,9 @@ function AddBookPage() {
                 <Button
                   size="sm"
                   onClick={handleSubmit}
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || createMutation.isSuccess}
                 >
-                  {createMutation.isPending
-                    ? "Creating..."
-                    : "Create Storyboard"}
+                  Create Storyboard
                 </Button>
               </div>
             </div>

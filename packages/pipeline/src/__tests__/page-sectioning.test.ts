@@ -20,12 +20,14 @@ describe("buildSectioningConfig", () => {
       page_sectioning: {
         prompt: "custom_sectioning",
         model: "openai:gpt-4.1-mini",
+        max_retries: 7,
       },
     }
 
     const config = buildSectioningConfig(appConfig)
     expect(config.promptName).toBe("custom_sectioning")
     expect(config.modelId).toBe("openai:gpt-4.1-mini")
+    expect(config.maxRetries).toBe(7)
     expect(config.sectionTypes).toEqual([
       { key: "text_only", description: "Reading section with only text" },
       { key: "images_only", description: "Section with only images" },
@@ -42,6 +44,7 @@ describe("buildSectioningConfig", () => {
     const config = buildSectioningConfig(appConfig)
     expect(config.promptName).toBe("page_sectioning")
     expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.maxRetries).toBe(5)
     expect(config.sectionTypes).toEqual([])
     expect(config.prunedSectionTypes).toEqual([])
   })

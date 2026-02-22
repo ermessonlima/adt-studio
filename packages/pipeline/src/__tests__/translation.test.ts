@@ -78,6 +78,7 @@ describe("translation", () => {
       targetLanguage: "fr",
       promptName: "custom_translation",
       modelId: "openai:gpt-5.2",
+      maxRetries: 5,
     })
   })
 
@@ -168,6 +169,7 @@ describe("translation", () => {
       targetLanguage: "fr",
       promptName: "translation",
       modelId: "openai:gpt-4.1",
+      maxRetries: 5,
     }
 
     let called = false

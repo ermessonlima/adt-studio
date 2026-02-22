@@ -987,7 +987,12 @@ Stage/step status comes from a **single source of truth**: the `GET /books/:labe
 2. **`step_completions` DB table** — persistent record of which steps have completed (survives page refresh)
 3. **`StageService.getStageStates()` in-memory state** — which stages are currently running, queued, or errored (based on the active job's from→to range)
 
-For stages, DB completion wins over run state: if all steps in a stage are done in the DB, the stage is `"done"` even if the active run range includes it. This prevents completed stages from showing as `"running"` just because the overall run hasn't finished yet.
+For stages, precedence is:
+- `queued` / `error` run states win (explicit run intent/failure should remain visible)
+- then DB completion (`"done"`) for fully-complete stages
+- then run-derived `"running"` / `"idle"`
+
+This prevents completed stages from showing as `"running"` just because the active run range includes them, while still showing reruns (`"queued"`) and failures (`"error"`) clearly.
 
 The merged response:
 ```json

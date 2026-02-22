@@ -20,6 +20,7 @@ import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/PromptViewer"
 import { LanguagePicker } from "@/components/LanguagePicker"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useStepConfig } from "@/hooks/use-step-config"
 import { normalizeLocale } from "@/lib/languages"
 import { SpeechPromptsEditor } from "./SpeechPromptsEditor"
 import { VoiceMappingsEditor } from "./VoiceMappingsEditor"
@@ -33,7 +34,6 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
 
-  const [model, setModel] = useState("")
   const [outputLanguages, setOutputLanguages] = useState<Set<string>>(new Set())
   const [promptDraft, setPromptDraft] = useState<string | null>(null)
 
@@ -52,19 +52,18 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
   const [dirty, setDirty] = useState<Record<string, boolean>>({})
   const markDirty = (field: string) => setDirty((prev) => ({ ...prev, [field]: true }))
 
+  const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const translation = useStepConfig(merged, "translation", markDirty)
+
   useEffect(() => {
     if (!activeConfigData) return
-    const merged = activeConfigData.merged as Record<string, unknown>
-    if (merged.translation && typeof merged.translation === "object") {
-      const t = merged.translation as Record<string, unknown>
-      if (t.model) setModel(String(t.model))
-    }
-    if (Array.isArray(merged.output_languages)) {
-      const normalized = (merged.output_languages as string[]).map((code) => normalizeLocale(code))
+    const m = activeConfigData.merged as Record<string, unknown>
+    if (Array.isArray(m.output_languages)) {
+      const normalized = (m.output_languages as string[]).map((code) => normalizeLocale(code))
       setOutputLanguages(new Set(normalized))
     }
-    if (merged.speech && typeof merged.speech === "object") {
-      const s = merged.speech as Record<string, unknown>
+    if (m.speech && typeof m.speech === "object") {
+      const s = m.speech as Record<string, unknown>
       if (s.model) setSpeechModel(String(s.model))
       if (s.voice) setVoice(String(s.voice))
       if (s.format) setFormat(String(s.format))
@@ -94,10 +93,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
 
     if (shouldWrite("translation")) {
       const existing = (bookConfigData?.config?.translation ?? {}) as Record<string, unknown>
-      overrides.translation = {
-        ...existing,
-        model: model.trim() || undefined,
-      }
+      overrides.translation = { ...existing, ...translation.configOverrides }
     }
     if (shouldWrite("output_languages")) {
       const normalized = Array.from(outputLanguages).map((code) => normalizeLocale(code))
@@ -183,8 +179,10 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           bookLabel={bookLabel}
           title="Translation Prompt"
           description="The prompt template used to translate text catalog entries."
-          model={model}
-          onModelChange={(v) => { setModel(v); markDirty("translation") }}
+          model={translation.model}
+          onModelChange={translation.onModelChange}
+          maxRetries={translation.maxRetries}
+          onMaxRetriesChange={translation.onMaxRetriesChange}
           onContentChange={setPromptDraft}
           enabled={tab === "prompt"}
         />
