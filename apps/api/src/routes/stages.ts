@@ -25,24 +25,30 @@ function makeBeforeRun(label: string, fromStage: StageName, booksDir: string): (
     const storage = createBookStorage(label, booksDir)
     try {
       if (fromStage === "extract") {
-        // clearExtractedData also clears step_completions
+        // clearExtractedData also clears step_runs
         storage.clearExtractedData()
       } else {
         const nodes = getStageClearNodes(fromStage)
         if (nodes.length > 0) {
           storage.clearNodesByType(nodes)
         }
-        // Clear step completion records for all downstream stages
+        // Clear step run records for all downstream stages
         const stagesToClear = getStageClearOrder(fromStage)
         const stepsToClear = PIPELINE
           .filter((s) => stagesToClear.includes(s.name))
           .flatMap((s) => s.steps.map((step) => step.name))
-        storage.clearStepCompletions(stepsToClear)
+        storage.clearStepRuns(stepsToClear)
       }
     } finally {
       storage.close()
     }
   }
+}
+
+function formatStepErrors(stepErrors: Record<string, string>): string {
+  const entries = Object.entries(stepErrors)
+  if (entries.length === 1) return entries[0][1]
+  return entries.map(([step, err]) => `${step}: ${err}`).join("\n")
 }
 
 export function createStageRoutes(
@@ -110,7 +116,8 @@ export function createStageRoutes(
   })
 
   // GET /books/:label/step-status — Unified stage + step status
-  // Merges DB step_completions with in-memory StageService run state.
+  // DB step_runs is the single source of truth for step/stage state.
+  // Only "queued" comes from the in-memory run queue.
   app.get("/books/:label/step-status", (c) => {
     const { label } = c.req.param()
     let safeLabel: string
@@ -123,68 +130,87 @@ export function createStageRoutes(
     const resolvedDir = path.resolve(booksDir)
     const dbPath = path.join(resolvedDir, safeLabel, `${safeLabel}.db`)
 
-    // Run-derived states from the in-memory service
-    const runStates = stageService.getStageStates(label)
-    const activeSteps = stageService.getRunningSteps(label)
     const { active } = stageService.getStatus(label)
-
-    if (!fs.existsSync(dbPath)) {
-      // No DB yet — only return run states
-      const stages: Record<string, string> = {}
-      for (const stage of STAGE_ORDER) {
-        stages[stage] = runStates[stage] ?? "idle"
-      }
-      const steps: Record<string, string> = {}
-      for (const stage of PIPELINE) {
-        for (const step of stage.steps) {
-          steps[step.name] = activeSteps.has(step.name) ? "running" : "idle"
+    // Explicitly queued stages (waiting behind the active run) — always
+    // override "done" so re-runs show as queued before data is cleared.
+    const queuedStages = new Set(stageService.getQueuedStages(label))
+    // Stages in the active run's range that haven't started yet — should
+    // show as "queued" only if their steps aren't already done.
+    const activeRunRange = new Set<string>()
+    if (active?.status === "running") {
+      const from = STAGE_ORDER.indexOf(active.fromStage as StageName)
+      const to = STAGE_ORDER.indexOf(active.toStage as StageName)
+      if (from !== -1 && to !== -1) {
+        for (let i = from; i <= to; i++) {
+          activeRunRange.add(STAGE_ORDER[i])
         }
       }
-      return c.json({ stages, steps, error: active?.error ?? null })
     }
 
-    const db = openBookDb(dbPath)
-    try {
-      const rows = db.all("SELECT step FROM step_completions") as Array<{ step: string }>
-      const completedSteps = new Set(rows.map((r) => r.step))
-
-      // Compute per-step state: running (in-memory) > done (DB) > idle
-      const steps: Record<string, string> = {}
-      for (const stage of PIPELINE) {
-        for (const step of stage.steps) {
-          if (activeSteps.has(step.name)) {
-            steps[step.name] = "running"
-          } else if (completedSteps.has(step.name)) {
-            steps[step.name] = "done"
-          } else {
-            steps[step.name] = "idle"
-          }
-        }
+    // Read step_runs from DB (or empty if no DB)
+    let stepRunRows: Array<{ step: string; status: string; error: string | null; message: string | null }> = []
+    if (fs.existsSync(dbPath)) {
+      const db = openBookDb(dbPath)
+      try {
+        stepRunRows = db.all("SELECT step, status, error, message FROM step_runs") as typeof stepRunRows
+      } finally {
+        db.close()
       }
-
-      // Compute per-stage state with precedence:
-      // queued/error (explicit run intent/failure) > done (DB) > running/idle
-      const stages: Record<string, string> = {}
-      for (const stage of PIPELINE) {
-        const runState = runStates[stage.name]
-        const allDone = stage.steps.length > 0 && stage.steps.every((s) => completedSteps.has(s.name))
-        if (runState === "queued" || runState === "error") {
-          stages[stage.name] = runState
-        } else if (allDone) {
-          stages[stage.name] = "done"
-        } else {
-          stages[stage.name] = runState ?? "idle"
-        }
-      }
-
-      // Check if ADT is packaged (preview stage)
-      const adtDir = path.join(resolvedDir, safeLabel, "adt")
-      if (fs.existsSync(adtDir)) stages.preview = "done"
-
-      return c.json({ stages, steps, error: active?.error ?? null })
-    } finally {
-      db.close()
     }
+
+    const stepRunMap = new Map(stepRunRows.map((r) => [r.step, r]))
+
+    // Build steps
+    const steps: Record<string, string> = {}
+    const stepErrors: Record<string, string> = {}
+    for (const stage of PIPELINE) {
+      for (const step of stage.steps) {
+        const row = stepRunMap.get(step.name)
+        steps[step.name] = row?.status ?? "idle"
+        if (row?.status === "error" && row.error) {
+          stepErrors[step.name] = row.error
+        }
+      }
+    }
+
+    // Derive stage state from steps.
+    // Two sources of "queued":
+    //   queuedStages — explicit queue items waiting behind the active run.
+    //     These always override done (re-run data not yet cleared).
+    //   activeRunRange — stages within the currently executing job.
+    //     These only show as queued if their steps haven't completed yet.
+    const stages: Record<string, string> = {}
+    for (const stage of PIPELINE) {
+      const ss = stage.steps.map((s) => steps[s.name])
+      const allComplete = ss.length > 0 && ss.every((s) => s === "done" || s === "skipped")
+      if (ss.some((s) => s === "running")) {
+        stages[stage.name] = "running"
+      } else if (queuedStages.has(stage.name)) {
+        stages[stage.name] = "queued"
+      } else if (allComplete) {
+        stages[stage.name] = "done"
+      } else if (activeRunRange.has(stage.name)) {
+        stages[stage.name] = "queued"
+      } else if (ss.some((s) => s === "error")) {
+        stages[stage.name] = "error"
+      } else {
+        stages[stage.name] = "idle"
+      }
+    }
+
+    // Check if ADT is packaged (preview stage)
+    const adtDir = path.join(resolvedDir, safeLabel, "adt")
+    if (fs.existsSync(adtDir)) stages.preview = "done"
+
+    const hasStepErrors = Object.keys(stepErrors).length > 0
+    const error = active?.error ?? (hasStepErrors ? formatStepErrors(stepErrors) : null)
+
+    return c.json({
+      stages,
+      steps,
+      error,
+      stepErrors: hasStepErrors ? stepErrors : null,
+    })
   })
 
   // GET /books/:label/stages/status — Always-on SSE stream for stage run events.

@@ -5,7 +5,7 @@ import path from "node:path"
 import { openBookDb, createBookStorage } from "@adt/storage"
 import { SCHEMA_VERSION } from "@adt/types"
 import type { StageName } from "@adt/types"
-import type { StageService, RunStageState, StageRunJob } from "../services/stage-service.js"
+import type { StageService, StageRunJob } from "../services/stage-service.js"
 import { createBookRoutes } from "./books.js"
 import { createStageRoutes } from "./stages.js"
 
@@ -456,7 +456,7 @@ describe("GET /books/:label/step-status", () => {
     const storage = createBookStorage(label, tmpDir)
     try {
       for (const step of extractStageSteps) {
-        storage.markStepComplete(step)
+        storage.markStepCompleted(step)
       }
     } finally {
       storage.close()
@@ -473,16 +473,15 @@ describe("GET /books/:label/step-status", () => {
     }
   }
 
-  /** Minimal mock StageService — configurable run states/running steps/error */
+  /** Minimal mock StageService — DB is the source of truth for step/stage state.
+   *  Only queuedStages and active run error come from in-memory. */
   function mockStageService(options?: {
-    runStates?: Partial<Record<StageName, RunStageState>>
-    runningSteps?: string[]
+    queuedStages?: StageName[]
     active?: StageRunJob | null
   }): StageService {
     return {
       getStatus: () => ({ active: options?.active ?? null, queue: [] }),
-      getStageStates: () => options?.runStates ?? {},
-      getRunningSteps: () => new Set<string>(options?.runningSteps ?? []),
+      getQueuedStages: () => options?.queuedStages ?? [],
       addListener: () => () => {},
       startStageRun: () => ({ status: "started" as const, id: "mock" }),
     }
@@ -501,30 +500,22 @@ describe("GET /books/:label/step-status", () => {
     expect(body.steps.metadata).toBe("idle")
     expect(body.steps["package-web"]).toBe("idle")
     expect(body.error).toBeNull()
+    expect(body.stepErrors).toBeNull()
   })
 
-  it("uses in-memory run states and running steps when DB is missing", async () => {
+  it("returns queued stages from in-memory queue", async () => {
     const app = createStageRoutes(
-      mockStageService({
-        runStates: {
-          extract: "running",
-          storyboard: "queued",
-          quizzes: "error",
-        },
-        runningSteps: ["metadata"],
-      }),
+      mockStageService({ queuedStages: ["extract", "storyboard"] }),
       tmpDir,
       ""
     )
-    const res = await app.request("/books/missing-db-active/step-status")
+    const res = await app.request("/books/missing-db-queued/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
 
-    expect(body.stages.extract).toBe("running")
+    expect(body.stages.extract).toBe("queued")
     expect(body.stages.storyboard).toBe("queued")
-    expect(body.stages.quizzes).toBe("error")
-    expect(body.steps.metadata).toBe("running")
-    expect(body.steps.extract).toBe("idle")
+    expect(body.stages.quizzes).toBe("idle")
   })
 
   it("returns active run error in response", async () => {
@@ -546,8 +537,8 @@ describe("GET /books/:label/step-status", () => {
     createTestBook("extract-incomplete")
     const storage = createBookStorage("extract-incomplete", tmpDir)
     try {
-      storage.markStepComplete("extract")
-      storage.markStepComplete("metadata")
+      storage.markStepCompleted("extract")
+      storage.markStepCompleted("metadata")
     } finally {
       storage.close()
     }
@@ -580,9 +571,7 @@ describe("GET /books/:label/step-status", () => {
     markExtractStageComplete("extract-complete-queued")
 
     const app = createStageRoutes(
-      mockStageService({
-        runStates: { extract: "queued" },
-      }),
+      mockStageService({ queuedStages: ["extract"] }),
       tmpDir,
       ""
     )
@@ -593,86 +582,138 @@ describe("GET /books/:label/step-status", () => {
     expect(body.stages.extract).toBe("queued")
   })
 
-  it("keeps stage error even when all stage steps are complete in DB", async () => {
-    createTestBook("extract-complete-error")
-    markExtractStageComplete("extract-complete-error")
+  it("shows stage error when a step has error status in DB", async () => {
+    createTestBook("step-error-test")
+    const storage = createBookStorage("step-error-test", tmpDir)
+    try {
+      storage.markStepCompleted("extract")
+      storage.markStepCompleted("metadata")
+      storage.recordStepError("image-filtering", "LLM rate limit exceeded")
+    } finally {
+      storage.close()
+    }
+    const app = createStageRoutes(mockStageService(), tmpDir, "")
 
-    const app = createStageRoutes(
-      mockStageService({
-        runStates: { extract: "error" },
-      }),
-      tmpDir,
-      ""
-    )
-
-    const res = await app.request("/books/extract-complete-error/step-status")
+    const res = await app.request("/books/step-error-test/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.stages.extract).toBe("error")
+    expect(body.steps["image-filtering"]).toBe("error")
+    expect(body.stepErrors["image-filtering"]).toBe("LLM rate limit exceeded")
   })
 
-  it("keeps stage done when run state is running but DB already has all stage steps", async () => {
-    createTestBook("extract-complete-running")
-    markExtractStageComplete("extract-complete-running")
-
-    const app = createStageRoutes(
-      mockStageService({
-        runStates: { extract: "running" },
-      }),
-      tmpDir,
-      ""
-    )
-
-    const res = await app.request("/books/extract-complete-running/step-status")
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.stages.extract).toBe("done")
-  })
-
-  it("shows stage running when stage is not complete in DB and run state is running", async () => {
-    createTestBook("extract-partial-running")
-    const storage = createBookStorage("extract-partial-running", tmpDir)
+  it("shows stage running when a step has running status in DB", async () => {
+    createTestBook("step-running-test")
+    const storage = createBookStorage("step-running-test", tmpDir)
     try {
-      storage.markStepComplete("extract")
+      storage.markStepCompleted("extract")
+      storage.markStepStarted("metadata")
     } finally {
       storage.close()
     }
+    const app = createStageRoutes(mockStageService(), tmpDir, "")
 
-    const app = createStageRoutes(
-      mockStageService({
-        runStates: { extract: "running" },
-      }),
-      tmpDir,
-      ""
-    )
-
-    const res = await app.request("/books/extract-partial-running/step-status")
+    const res = await app.request("/books/step-running-test/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.stages.extract).toBe("running")
+    expect(body.steps.metadata).toBe("running")
   })
 
-  it("prioritizes running step over DB completion for the same step", async () => {
-    createTestBook("running-step-over-db")
-    const storage = createBookStorage("running-step-over-db", tmpDir)
+  it("shows active run range: running extract, queued storyboard", async () => {
+    createTestBook("active-range")
+    const storage = createBookStorage("active-range", tmpDir)
     try {
-      storage.markStepComplete("metadata")
+      storage.markStepStarted("extract")
     } finally {
       storage.close()
     }
-
+    // Active run from extract→storyboard, extract step is running in DB
     const app = createStageRoutes(
       mockStageService({
-        runningSteps: ["metadata"],
+        active: makeActiveRun({ fromStage: "extract", toStage: "storyboard" }),
       }),
       tmpDir,
       ""
     )
 
-    const res = await app.request("/books/running-step-over-db/step-status")
+    const res = await app.request("/books/active-range/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.steps.metadata).toBe("running")
+    // Running DB state takes priority for extract
+    expect(body.stages.extract).toBe("running")
+    // Storyboard in active range with idle steps → queued
+    expect(body.stages.storyboard).toBe("queued")
+  })
+
+  it("shows done for completed stage within active run range", async () => {
+    createTestBook("active-range-done")
+    markExtractStageComplete("active-range-done")
+    // Active run from extract→storyboard, but extract is already done in DB
+    const app = createStageRoutes(
+      mockStageService({
+        active: makeActiveRun({ fromStage: "extract", toStage: "storyboard" }),
+      }),
+      tmpDir,
+      ""
+    )
+
+    const res = await app.request("/books/active-range-done/step-status")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    // Extract steps all done → "done" despite being in active run range
+    expect(body.stages.extract).toBe("done")
+    // Storyboard steps all idle + in active range → queued
+    expect(body.stages.storyboard).toBe("queued")
+  })
+
+  it("returns null stepErrors when no errors exist", async () => {
+    createTestBook("no-errors")
+    markExtractStageComplete("no-errors")
+    const app = createStageRoutes(mockStageService(), tmpDir, "")
+
+    const res = await app.request("/books/no-errors/step-status")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.stepErrors).toBeNull()
+  })
+
+  it("derives error from step errors when no active run error", async () => {
+    createTestBook("derived-error")
+    const storage = createBookStorage("derived-error", tmpDir)
+    try {
+      storage.recordStepError("metadata", "API key invalid")
+    } finally {
+      storage.close()
+    }
+    const app = createStageRoutes(mockStageService(), tmpDir, "")
+
+    const res = await app.request("/books/derived-error/step-status")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.error).toBe("API key invalid")
+  })
+
+  it("treats skipped steps as done for stage completion", async () => {
+    createTestBook("skipped-steps")
+    const storage = createBookStorage("skipped-steps", tmpDir)
+    try {
+      for (const step of extractStageSteps) {
+        if (step === "image-segmentation" || step === "translation") {
+          storage.markStepSkipped(step)
+        } else {
+          storage.markStepCompleted(step)
+        }
+      }
+    } finally {
+      storage.close()
+    }
+    const app = createStageRoutes(mockStageService(), tmpDir, "")
+
+    const res = await app.request("/books/skipped-steps/step-status")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.stages.extract).toBe("done")
   })
 
   it("marks preview done when adt directory exists", async () => {
