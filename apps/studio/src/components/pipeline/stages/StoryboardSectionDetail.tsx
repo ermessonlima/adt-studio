@@ -929,7 +929,7 @@ export function StoryboardSectionDetail({
               const segImgs = result.segments
                 .map(
                   (seg) =>
-                    `<img data-id="${seg.imageId}" src="/api/books/${bookLabel}/images/${seg.imageId}" width="${seg.width}" height="${seg.height}" alt="${seg.label}" class="w-full" />`
+                    `<img data-id="${seg.imageId}" src="${BASE_URL}/books/${bookLabel}/images/${seg.imageId}" width="${seg.width}" height="${seg.height}" alt="${seg.label}" class="w-full" />`
                 )
                 .join("\n")
               const imgPattern = new RegExp(

@@ -31,8 +31,6 @@ pub fn run() {
             let config_path = resource_dir.join("config.yaml");
             let adt_resources_zip = resource_dir.join("assets").join("adt-resources.zip");
 
-            let adt_resources_zip = resource_dir.join("assets").join("adt-resources.zip");
-
             let sidecar_cmd = shell
                 .sidecar("api-server")
                 .expect("failed to create sidecar command")
