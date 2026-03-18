@@ -39,6 +39,37 @@ function createWebAssets(webAssetsDir: string): void {
   )
 }
 
+function createMinimalStorage(): Storage {
+  return createMockStorage(
+    [{ pageId: "pg001", pageNumber: 1, text: "Page one" }],
+    {
+      "web-rendering": {
+        pg001: {
+          sections: [
+            { sectionIndex: 0, sectionType: "content", reasoning: "ok", html: "<div>Hello</div>" },
+          ],
+        },
+      },
+      "page-sectioning": {
+        pg001: {
+          reasoning: "ok",
+          sections: [
+            {
+              sectionId: "pg001_sec001",
+              sectionType: "content",
+              parts: [],
+              backgroundColor: "#fff",
+              textColor: "#000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+      },
+    },
+  )
+}
+
 describe("renderPageHtml", () => {
   it("includes font preload links before stylesheet links", () => {
     const html = renderPageHtml({
@@ -516,6 +547,109 @@ describe("packageAdtWeb", () => {
       { section_id: "pg001_sec001", href: "index.html", page_number: 1 },
       { section_id: "pg001_sec002", href: "pg001_sec002.html", page_number: 1 },
     ])
+  })
+
+  it("builds IIFE bundle via esbuild when only pre-built ESM exists", async () => {
+    const bookDir = path.join(tmpDir, "book")
+    const webAssetsDir = path.join(tmpDir, "assets-web")
+    fs.mkdirSync(bookDir, { recursive: true })
+    createWebAssets(webAssetsDir)
+
+    // Simulate partial pre-build: only ESM pre-built, no IIFE
+    const preBuiltContent = '/* pre-built ESM marker */\nconsole.log("esm");'
+    fs.writeFileSync(path.join(webAssetsDir, "base.bundle.min.js"), preBuiltContent)
+
+    const storage = createMinimalStorage()
+    await packageAdtWeb(storage, {
+      bookDir,
+      label: "book",
+      language: "en",
+      outputLanguages: ["en"],
+      title: "Test",
+      webAssetsDir,
+    })
+
+    const assetsDir = path.join(bookDir, "adt", "assets")
+
+    // ESM was copied (matches pre-built content exactly)
+    const esmOutput = fs.readFileSync(path.join(assetsDir, "base.bundle.min.js"), "utf-8")
+    expect(esmOutput).toBe(preBuiltContent)
+
+    // IIFE was built by esbuild (exists, has content from base.js)
+    const iifePath = path.join(assetsDir, "base.bundle.local.js")
+    expect(fs.existsSync(iifePath)).toBe(true)
+    const iifeContent = fs.readFileSync(iifePath, "utf-8")
+    expect(iifeContent.length).toBeGreaterThan(0)
+    expect(iifeContent).toContain("__ADT_BUNDLE_TEST__")
+    expect(iifeContent).not.toContain("pre-built ESM marker")
+  })
+
+  it("builds ESM bundle via esbuild when only pre-built IIFE exists", async () => {
+    const bookDir = path.join(tmpDir, "book")
+    const webAssetsDir = path.join(tmpDir, "assets-web")
+    fs.mkdirSync(bookDir, { recursive: true })
+    createWebAssets(webAssetsDir)
+
+    // Simulate partial pre-build: only IIFE pre-built, no ESM
+    const preBuiltContent = '/* pre-built IIFE marker */\nconsole.log("iife");'
+    fs.writeFileSync(path.join(webAssetsDir, "base.bundle.local.js"), preBuiltContent)
+
+    const storage = createMinimalStorage()
+    await packageAdtWeb(storage, {
+      bookDir,
+      label: "book",
+      language: "en",
+      outputLanguages: ["en"],
+      title: "Test",
+      webAssetsDir,
+    })
+
+    const assetsDir = path.join(bookDir, "adt", "assets")
+
+    // IIFE was copied (matches pre-built content exactly)
+    const iifeOutput = fs.readFileSync(path.join(assetsDir, "base.bundle.local.js"), "utf-8")
+    expect(iifeOutput).toBe(preBuiltContent)
+
+    // ESM was built by esbuild (exists, has content from base.js, has sourcemap)
+    const esmPath = path.join(assetsDir, "base.bundle.min.js")
+    expect(fs.existsSync(esmPath)).toBe(true)
+    const esmContent = fs.readFileSync(esmPath, "utf-8")
+    expect(esmContent.length).toBeGreaterThan(0)
+    expect(esmContent).toContain("__ADT_BUNDLE_TEST__")
+    expect(fs.existsSync(`${esmPath}.map`)).toBe(true)
+    expect(esmContent).not.toContain("pre-built IIFE marker")
+  })
+
+  it("copies both bundles without rebuilding when both pre-built files exist", async () => {
+    const bookDir = path.join(tmpDir, "book")
+    const webAssetsDir = path.join(tmpDir, "assets-web")
+    fs.mkdirSync(bookDir, { recursive: true })
+    createWebAssets(webAssetsDir)
+
+    // Both pre-built
+    const esmContent = '/* pre-built ESM */\nconsole.log("esm");'
+    const iifeContent = '/* pre-built IIFE */\nconsole.log("iife");'
+    fs.writeFileSync(path.join(webAssetsDir, "base.bundle.min.js"), esmContent)
+    fs.writeFileSync(path.join(webAssetsDir, "base.bundle.local.js"), iifeContent)
+
+    const storage = createMinimalStorage()
+    await packageAdtWeb(storage, {
+      bookDir,
+      label: "book",
+      language: "en",
+      outputLanguages: ["en"],
+      title: "Test",
+      webAssetsDir,
+    })
+
+    const assetsDir = path.join(bookDir, "adt", "assets")
+
+    // Both files are exact copies of pre-built content
+    expect(fs.readFileSync(path.join(assetsDir, "base.bundle.min.js"), "utf-8")).toBe(esmContent)
+    expect(fs.readFileSync(path.join(assetsDir, "base.bundle.local.js"), "utf-8")).toBe(iifeContent)
+
+    // No sourcemap — esbuild was not invoked
+    expect(fs.existsSync(path.join(assetsDir, "base.bundle.min.js.map"))).toBe(false)
   })
 })
 
