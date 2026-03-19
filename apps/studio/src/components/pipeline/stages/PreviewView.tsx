@@ -3,32 +3,46 @@ import { Loader2, AlertCircle } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { api, getAdtUrl } from "@/api/client"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useBookTasks } from "@/hooks/use-book-tasks"
 
 export function PreviewView({ bookLabel }: { bookLabel: string }) {
   const queryClient = useQueryClient()
   const { stageState } = useBookRun()
+  const { isTaskRunning, tasks } = useBookTasks(bookLabel)
   const storyboardDone = stageState("storyboard") === "done"
-  const [packaging, setPackaging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
-  const [version, setVersion] = useState(0)
   const ranRef = useRef(false)
 
+  const packaging = isTaskRunning("package-adt")
+
+  // Track task completion to trigger ready state
+  const prevPackagingRef = useRef(false)
+  useEffect(() => {
+    if (prevPackagingRef.current && !packaging) {
+      // Packaging just finished — check if it succeeded
+      const packagingTask = tasks.find((t) => t.kind === "package-adt")
+      if (packagingTask?.status === "failed") {
+        setError(packagingTask.error ?? "Packaging failed")
+      } else {
+        // completed (or removed) — show preview
+        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] })
+        setReady(true)
+      }
+    }
+    prevPackagingRef.current = packaging
+  }, [packaging, tasks, bookLabel, queryClient])
+
   const runPackage = useCallback(async () => {
-    setPackaging(true)
     setError(null)
     setReady(false)
     try {
       await api.packageAdt(bookLabel)
-      await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] })
-      setVersion((v) => v + 1)
-      setReady(true)
+      // Task is now submitted — SSE events will update the packaging state
     } catch (e) {
       setError(e instanceof Error ? e.message : "Packaging failed")
-    } finally {
-      setPackaging(false)
     }
-  }, [bookLabel, queryClient])
+  }, [bookLabel])
 
   // Only trigger packaging when storyboard is done
   useEffect(() => {

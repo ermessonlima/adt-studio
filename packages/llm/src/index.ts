@@ -12,6 +12,12 @@ export type {
 
 export { createLLMModel, type CreateLLMModelOptions } from "./client.js"
 
+export {
+  generateImageWithCache,
+  type GenerateImageWithCacheOptions,
+  type GenerateImageWithCacheResult,
+} from "./image.js"
+
 export { computeHash, readCache, writeCache, bustCache } from "./cache.js"
 
 export {

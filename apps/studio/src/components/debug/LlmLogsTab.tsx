@@ -115,7 +115,7 @@ function LogDetail({ data, label }: { data: LlmLogEntry["data"]; label: string }
         {data.system && (
           <div>
             <div className="font-medium text-muted-foreground mb-1">System Prompt</div>
-            <pre className="bg-muted p-3 rounded text-[11px] whitespace-pre-wrap max-h-48 overflow-auto">
+            <pre className="bg-muted p-3 rounded text-[11px] whitespace-pre-wrap">
               {data.system}
             </pre>
           </div>
@@ -133,7 +133,7 @@ function LogDetail({ data, label }: { data: LlmLogEntry["data"]; label: string }
                   {msg.content.map((part, j) => (
                     <div key={j}>
                       {part.type === "text" ? (
-                        <pre className="text-[11px] whitespace-pre-wrap max-h-40 overflow-auto">
+                        <pre className="text-[11px] whitespace-pre-wrap">
                           {part.text}
                         </pre>
                       ) : (
@@ -240,8 +240,8 @@ export function LlmLogsTab({ label, isRunning }: LlmLogsTabProps) {
   }, [isRunning, refetch])
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border shrink-0">
+    <div>
+      <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border sticky top-0 bg-background z-20">
         {isRunning && (
           <span className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -287,7 +287,7 @@ export function LlmLogsTab({ label, isRunning }: LlmLogsTabProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto min-h-0">
+      <div>
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm z-10">
             <tr className="border-b border-border/50 text-[10px] text-muted-foreground font-medium">
@@ -325,7 +325,7 @@ export function LlmLogsTab({ label, isRunning }: LlmLogsTabProps) {
         </table>
 
         {data && data.total > limit && (
-          <div className="flex items-center justify-between px-4 py-2 border-t border-border text-xs sticky bottom-0 bg-background">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border text-xs">
             <span className="text-muted-foreground tabular-nums">
               {offset + 1}-{Math.min(offset + limit, data.total)} of {data.total}
             </span>

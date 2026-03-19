@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { Check, Eye, EyeOff, LayoutGrid, Loader2, ChevronDown, Sparkles, ChevronRight, PanelRightOpen, PanelRightClose, Play, PenLine, Save, Merge, X, Code, GripHorizontal } from "lucide-react"
+import { Check, Eye, EyeOff, LayoutGrid, Loader2, ChevronDown, Sparkles, PanelRightOpen, PanelRightClose, Play, PenLine, Save, Merge, X, Code, GripHorizontal } from "lucide-react"
 import { SectionDataPanel } from "./SectionDataPanel"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, BASE_URL } from "@/api/client"
 import type { PageDetail, VersionEntry } from "@/api/client"
 import { useApiKey } from "@/hooks/use-api-key"
 import { useActiveConfig } from "@/hooks/use-debug"
+import { useBookTasks } from "@/hooks/use-book-tasks"
 import { useStepHeader } from "../StepViewRouter"
 import { BookPreviewFrame, type BookPreviewFrameHandle } from "./BookPreviewFrame"
 import { SectionEditToolbar } from "./SectionEditToolbar"
@@ -30,21 +31,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-
-// -- AI loading messages --
-
-const AI_MESSAGES = [
-  "Rewriting the story of this section...",
-  "Teaching the pixels new tricks...",
-  "Asking the AI to put on its creative hat...",
-  "Rearranging atoms of HTML...",
-  "Consulting the style council...",
-  "Sprinkling some digital fairy dust...",
-  "The AI is having a think...",
-  "Brewing a fresh batch of HTML...",
-  "Polishing paragraphs to perfection...",
-  "Untangling nested divs with care...",
-]
 
 // -- VersionPicker (same as ExtractPageDetail) --
 
@@ -305,7 +291,6 @@ export function StoryboardSectionDetail({
 
   const [saving, setSaving] = useState(false)
   const [cloning, setCloning] = useState(false)
-  const [rerendering, setRerendering] = useState(false)
   const [merging, setMerging] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteSection, setConfirmDeleteSection] = useState(false)
@@ -326,8 +311,6 @@ export function StoryboardSectionDetail({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Track current pageId so async callbacks can detect stale closures
-  const pageIdRef = useRef(pageId)
-  pageIdRef.current = pageId
 
   // Section data panel state
   const [panelOpen, setPanelOpen] = useState(false)
@@ -349,14 +332,50 @@ export function StoryboardSectionDetail({
   // Image crop state
   const [cropTarget, setCropTarget] = useState<string | null>(null)
 
-  // Image replace / AI image state
+  // Image replace / AI image state — tracked via unified task system
   const [aiImageDialogTarget, setAiImageDialogTarget] = useState<string | null>(null)
-  const [aiImageGen, setAiImageGen] = useState<{
+  const { tasks: bookTasks } = useBookTasks(bookLabel)
+  // Track the task we submitted from this component (for done/error dismiss)
+  const [aiImageTaskId, setAiImageTaskId] = useState<string | null>(null)
+  // Also track what image this task was targeting (for swap vs add)
+  const [aiImageTargetInfo, setAiImageTargetInfo] = useState<{
     targetImageId: string
-    status: "generating" | "done" | "error"
-    error?: string
+    mode: "swap" | "add"
   } | null>(null)
-  const aiImageAbortRef = useRef<AbortController | null>(null)
+
+  // Find the active image-generate task for this page:
+  // prefer the one we submitted, otherwise pick any running one (reconnect after navigation)
+  const aiImageTask = useMemo(() => {
+    if (aiImageTaskId) {
+      return bookTasks.find((t) => t.taskId === aiImageTaskId) ?? null
+    }
+    return bookTasks.find(
+      (t) => t.kind === "image-generate" && t.pageId === pageId && t.status === "running"
+    ) ?? null
+  }, [bookTasks, aiImageTaskId, pageId])
+
+  // Derive pill status
+  const aiImageGen = useMemo(() => {
+    if (!aiImageTask) return null
+    // For tasks we submitted, require aiImageTargetInfo; for reconnected tasks, synthesize it
+    const target = aiImageTargetInfo?.targetImageId ?? "__reconnected__"
+    if (aiImageTask.status === "running") {
+      return { targetImageId: target, status: "generating" as const }
+    }
+    if (aiImageTask.status === "completed") {
+      return { targetImageId: target, status: "done" as const }
+    }
+    if (aiImageTask.status === "failed") {
+      return { targetImageId: target, status: "error" as const, error: aiImageTask.error }
+    }
+    return null
+  }, [aiImageTask, aiImageTargetInfo])
+  // Derive re-rendering state from task system (auto-reconnects on navigation)
+  const rerendering = useMemo(
+    () => bookTasks.some((t) => t.kind === "re-render" && t.pageId === pageId && t.status === "running"),
+    [bookTasks, pageId]
+  )
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replaceTargetRef = useRef<string | null>(null)
 
@@ -384,26 +403,16 @@ export function StoryboardSectionDetail({
 
   // AI edit state
   const [aiInstruction, setAiInstruction] = useState("")
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiReasoning, setAiReasoning] = useState<string | null>(null)
-  const [aiReasoningOpen, setAiReasoningOpen] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
-  const aiAbortRef = useRef<AbortController | null>(null)
 
-  const [aiMessageIdx, setAiMessageIdx] = useState(0)
+  // Derive AI editing state from active tasks
+  const aiEditing = useMemo(
+    () => bookTasks.some((t) => t.kind === "ai-edit" && t.pageId === pageId && t.status === "running"),
+    [bookTasks, pageId]
+  )
 
-  // Rotating witty messages during AI generation
-  useEffect(() => {
-    if (!aiLoading) {
-      setAiMessageIdx(Math.floor(Math.random() * AI_MESSAGES.length))
-      return
-    }
-    const rotate = setInterval(
-      () => setAiMessageIdx((i) => (i + 1) % AI_MESSAGES.length),
-      3000
-    )
-    return () => clearInterval(rotate)
-  }, [aiLoading])
+  // Any task running on this page — used to mask the section and prevent stacking operations
+  const hasActiveTask = aiEditing || rerendering || (aiImageGen?.status === "generating")
 
   // Fetch active config for type dropdowns
   const configQuery = useQuery({
@@ -420,15 +429,7 @@ export function StoryboardSectionDetail({
     ? Object.fromEntries(Object.entries(allSectionTypes).filter(([key]) => !disabledSectionTypes.has(key)))
     : undefined
 
-  // Abort in-flight requests when the component unmounts
-  useEffect(() => {
-    return () => {
-      aiAbortRef.current?.abort()
-      aiImageAbortRef.current?.abort()
-    }
-  }, [])
-
-  // Clear pending state and abort ALL in-flight requests when page changes
+  // Clear pending state when page changes
   useEffect(() => {
     setPendingSectioning(null)
     setPendingRendering(null)
@@ -436,15 +437,12 @@ export function StoryboardSectionDetail({
     setCropTarget(null)
     setAiImageDialogTarget(null)
     setAddImageDialogOpen(false)
-    aiAbortRef.current?.abort()
-    aiImageAbortRef.current?.abort()
-    setAiImageGen(null)
+    // Don't cancel running tasks — they continue server-side.
+    // Just detach tracking so the result won't be applied to the wrong page.
+    setAiImageTaskId(null)
+    setAiImageTargetInfo(null)
     setAiInstruction("")
-    setAiLoading(false)
-    setAiReasoning(null)
-    setAiReasoningOpen(false)
     setAiError(null)
-    setRerendering(false)
     setSaving(false)
     setActivityPreviewMode(false)
     needsRerenderRef.current = false
@@ -525,7 +523,6 @@ export function StoryboardSectionDetail({
 
       setPendingSectioning(null)
       setPendingRendering(null)
-      setAiReasoning(null)
       needsRerenderRef.current = false
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
       await minDelay
@@ -533,20 +530,7 @@ export function StoryboardSectionDetail({
       // Only re-render when changes require LLM (e.g., unprune, type change, reorder)
       // Skip for pure prune/delete — those are already handled by local HTML removal
       if (shouldRerender && hasApiKey) {
-        setRerendering(true)
-        const capturedPageId = pageId
-        api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex)
-          .then(() => {
-            if (pageIdRef.current !== capturedPageId) return
-            queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", capturedPageId] })
-            queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
-          })
-          .catch(() => {})
-          .finally(() => {
-            if (pageIdRef.current === capturedPageId) {
-              setRerendering(false)
-            }
-          })
+        api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex).catch(() => {})
       }
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Save failed")
@@ -584,7 +568,6 @@ export function StoryboardSectionDetail({
 
       setPendingRendering(null)
       setPendingSectioning(null)
-      setAiReasoning(null)
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
       await minDelay
     } catch (err) {
@@ -622,20 +605,7 @@ export function StoryboardSectionDetail({
 
       // Auto re-render the merged section so the LLM generates proper HTML for the combined content
       if (hasApiKey) {
-        setRerendering(true)
-        const capturedPageId = pageId
-        api.reRenderPage(bookLabel, pageId, apiKey, result.mergedSectionIndex)
-          .then(() => {
-            if (pageIdRef.current !== capturedPageId) return
-            queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", capturedPageId] })
-            queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
-          })
-          .catch(() => {})
-          .finally(() => {
-            if (pageIdRef.current === capturedPageId) {
-              setRerendering(false)
-            }
-          })
+        api.reRenderPage(bookLabel, pageId, apiKey, result.mergedSectionIndex).catch(() => {})
       }
     } catch (err) {
       setAiError(err instanceof Error ? err.message : "Merge failed")
@@ -666,26 +636,12 @@ export function StoryboardSectionDetail({
   }
 
   // Manually trigger a re-render of the current section
-  const handleRerender = (prompt?: string) => {
-    if (rerendering || dirty || renderingDirty || saving || !hasApiKey) return
-    setRerendering(true)
+  const handleRerender = () => {
+    if (hasActiveTask || dirty || renderingDirty || saving || !hasApiKey) return
     setPanelOpen(false)
-    const capturedPageId = pageId
-    api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex, prompt)
-      .then(() => {
-        if (pageIdRef.current !== capturedPageId) return
-        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", capturedPageId] })
-        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
-      })
+    api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex)
       .catch((err) => {
-        if (pageIdRef.current === capturedPageId) {
-          setAiError(err instanceof Error ? err.message : "Re-render failed")
-        }
-      })
-      .finally(() => {
-        if (pageIdRef.current === capturedPageId) {
-          setRerendering(false)
-        }
+        setAiError(err instanceof Error ? err.message : "Re-render failed")
       })
   }
 
@@ -1639,6 +1595,32 @@ export function StoryboardSectionDetail({
     [bookLabel, sectionIndex]
   )
 
+  // Refresh page data when AI image task completes (server auto-saves new version)
+  const prevAiTaskStatusRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!aiImageTask) {
+      prevAiTaskStatusRef.current = null
+      return
+    }
+    const prev = prevAiTaskStatusRef.current
+    prevAiTaskStatusRef.current = aiImageTask.status
+
+    // Only act on the transition to "completed"
+    if (prev === "completed" || aiImageTask.status !== "completed") return
+
+    // Server already saved new sectioning/rendering versions — just refresh
+    void queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
+
+    // Auto-dismiss success after 3s
+    setTimeout(() => {
+      setAiImageTaskId((prev) => {
+        if (prev === aiImageTask.taskId) return null
+        return prev
+      })
+      setAiImageTargetInfo(null)
+    }, 3000)
+  }, [aiImageTask?.status, bookLabel, pageId, queryClient])
+
   // Handlers for AddImageDialog
   const handleAddExistingImage = useCallback(
     (imageIds: string[]) => {
@@ -1664,126 +1646,68 @@ export function StoryboardSectionDetail({
   )
 
   const handleAddImageGenerate = useCallback(
-    (prompt: string) => {
+    async (prompt: string) => {
       setAddImageDialogOpen(false)
-      setAiImageGen({ targetImageId: "__adding__", status: "generating" })
-
-      const controller = new AbortController()
-      aiImageAbortRef.current = controller
-
-      api
-        .aiGenerateImage(bookLabel, pageId, prompt, apiKey, pageId, undefined, controller.signal)
-        .then((result) => {
-          addImageToSection(result.imageId, { w: result.width, h: result.height })
-          setAiImageGen({ targetImageId: "__adding__", status: "done" })
-          setTimeout(() => setAiImageGen((prev) => prev?.status === "done" ? null : prev), 3000)
+      try {
+        const result = await api.aiGenerateImage(bookLabel, pageId, prompt, apiKey, pageId, undefined, undefined, {
+          sectionIndex,
+          mode: "add",
         })
-        .catch((err) => {
-          if (err instanceof DOMException && err.name === "AbortError") {
-            setAiImageGen(null)
-          } else {
-            setAiImageGen({
-              targetImageId: "__adding__",
-              status: "error",
-              error: err instanceof Error ? err.message : "Image generation failed",
-            })
-          }
-        })
-        .finally(() => {
-          aiImageAbortRef.current = null
-        })
+        if (result.taskId) {
+          setAiImageTaskId(result.taskId)
+          setAiImageTargetInfo({ targetImageId: "__adding__", mode: "add" })
+        }
+      } catch (err) {
+        // Submission failed (not generation — that happens async)
+        console.error("[ai-image] Task submission failed:", err)
+      }
     },
-    [bookLabel, pageId, apiKey, addImageToSection]
+    [bookLabel, pageId, apiKey, sectionIndex]
   )
 
-  // Submit from AI image dialog: close dialog, run generation in background
+  // Submit from AI image dialog: close dialog, submit task for generation
   const handleAiImageSubmit = useCallback(
-    (prompt: string, referenceImageId?: string, options?: { style?: string; imageType?: string; styleImageId?: string }) => {
+    async (prompt: string, referenceImageId?: string, options?: { style?: string; imageType?: string; styleImageId?: string }) => {
       const targetId = aiImageDialogTarget
       if (!targetId) return
       setAiImageDialogTarget(null)
-      setAiImageGen({ targetImageId: targetId, status: "generating" })
 
-      const controller = new AbortController()
-      aiImageAbortRef.current = controller
-
-      api
-        .aiGenerateImage(bookLabel, pageId, prompt, apiKey, targetId, referenceImageId, controller.signal, options)
-        .then((result) => {
-          swapImage(targetId, result.imageId, { w: result.originalWidth, h: result.originalHeight })
-          setAiImageGen({ targetImageId: targetId, status: "done" })
-          // Auto-dismiss success after 3s
-          setTimeout(() => setAiImageGen((prev) => prev?.status === "done" ? null : prev), 3000)
+      try {
+        const result = await api.aiGenerateImage(bookLabel, pageId, prompt, apiKey, targetId, referenceImageId, undefined, {
+          ...options,
+          sectionIndex,
+          mode: "swap",
         })
-        .catch((err) => {
-          if (err instanceof DOMException && err.name === "AbortError") {
-            setAiImageGen(null)
-          } else {
-            setAiImageGen({
-              targetImageId: targetId,
-              status: "error",
-              error: err instanceof Error ? err.message : "Image generation failed",
-            })
-          }
-        })
-        .finally(() => {
-          aiImageAbortRef.current = null
-        })
+        if (result.taskId) {
+          setAiImageTaskId(result.taskId)
+          setAiImageTargetInfo({ targetImageId: targetId, mode: "swap" })
+        }
+      } catch (err) {
+        console.error("[ai-image] Task submission failed:", err)
+      }
     },
-    [aiImageDialogTarget, bookLabel, pageId, apiKey, swapImage]
+    [aiImageDialogTarget, bookLabel, pageId, apiKey, sectionIndex]
   )
 
   // AI edit handler
   const handleAiEdit = async () => {
-    if (!aiInstruction.trim() || !hasApiKey || aiLoading) return
-    setAiLoading(true)
+    if (!aiInstruction.trim() || !hasApiKey || hasActiveTask) return
     setAiError(null)
-    setAiReasoning(null)
 
-    const controller = new AbortController()
-    aiAbortRef.current = controller
+    const currentHtml = renderedSection?.html
+    const instruction = aiInstruction.trim()
+    setAiInstruction("")
 
-    try {
-      // Send current HTML so successive AI edits build on pending changes
-      const currentHtml = renderedSection?.html
-      const result = await api.aiEditSection(
-        bookLabel,
-        pageId,
-        sectionIndex,
-        aiInstruction.trim(),
-        apiKey,
-        currentHtml,
-        controller.signal
-      )
-
-      // Discard result if user navigated to a different page during the request
-      if (pageIdRef.current !== pageId) return
-
-      // Apply the AI edit as pending rendering
-      const base = pendingRendering ?? page.rendering
-      if (!base) return
-      const updated: RenderingData = {
-        ...base,
-        sections: base.sections.map((s) => {
-          if (s.sectionIndex !== sectionIndex) return s
-          return { ...s, html: result.html }
-        }),
-      }
-      setPendingRendering(updated)
-      setAiReasoning(result.reasoning)
-      setAiInstruction("")
-      // Regenerate Tailwind CSS so new classes from the AI edit render immediately
-      previewFrameRef.current?.refreshCss(result.html)
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        // User cancelled — not an error
-      } else {
-        setAiError(err instanceof Error ? err.message : "AI edit failed")
-      }
-    } finally {
-      aiAbortRef.current = null
-      setAiLoading(false)
-    }
+    api.aiEditSection(
+      bookLabel,
+      pageId,
+      sectionIndex,
+      instruction,
+      apiKey,
+      currentHtml,
+    ).catch((err) => {
+      setAiError(err instanceof Error ? err.message : "AI edit failed")
+    })
   }
 
   // Compute toolbar info for selected element
@@ -1925,7 +1849,6 @@ export function StoryboardSectionDetail({
         onSave={saveRendering}
         onDiscard={() => {
           setPendingRendering(null)
-          setAiReasoning(null)
         }}
       />
       {renderedSection?.html && hasApiKey ? (
@@ -1940,9 +1863,9 @@ export function StoryboardSectionDetail({
                 handleAiEdit()
               }
             }}
-            placeholder={aiLoading ? "Generating..." : "Ask AI to edit..."}
-            disabled={aiLoading}
-            className={`pl-7 h-7 text-[11px] bg-white border-white/40 text-gray-900 placeholder:text-gray-400 focus-visible:ring-white/50 ${aiLoading ? "opacity-60" : ""}`}
+            placeholder={hasActiveTask ? "Task running..." : "Ask AI to edit..."}
+            disabled={hasActiveTask}
+            className={`pl-7 h-7 text-[11px] bg-white border-white/40 text-gray-900 placeholder:text-gray-400 focus-visible:ring-white/50 ${hasActiveTask ? "opacity-60" : ""}`}
           />
         </div>
       ) : (
@@ -1991,31 +1914,10 @@ export function StoryboardSectionDetail({
     <>
     {headerSlotEl && createPortal(headerControls, headerSlotEl)}
     <div className="h-full flex flex-col relative overflow-hidden">
-      {/* AI reasoning/error — slim bar below header */}
-      {(aiError || aiReasoning) && (
+      {/* Error bar below header */}
+      {aiError && (
         <div className="px-4 py-1.5 border-b shrink-0 text-xs bg-muted/30">
-          {aiError && (
-            <p className="text-[10px] text-destructive">{aiError}</p>
-          )}
-          {aiReasoning && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setAiReasoningOpen(!aiReasoningOpen)}
-                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronRight
-                  className={`h-3 w-3 transition-transform ${aiReasoningOpen ? "rotate-90" : ""}`}
-                />
-                AI reasoning
-              </button>
-              {aiReasoningOpen && (
-                <p className="text-[10px] text-muted-foreground mt-1 pl-4 whitespace-pre-wrap max-h-20 overflow-auto">
-                  {aiReasoning}
-                </p>
-              )}
-            </div>
-          )}
+          <p className="text-[10px] text-destructive">{aiError}</p>
         </div>
       )}
 
@@ -2043,7 +1945,7 @@ export function StoryboardSectionDetail({
                   html={renderedSection.html}
                   bookLabel={bookLabel}
                   className="w-full rounded border"
-                  editable={!aiLoading && !rerendering}
+                  editable={!hasActiveTask}
                   prunedDataIds={prunedDataIds}
                   changedElements={changedElements}
                   onSelectElement={handleSelectElement}
@@ -2063,7 +1965,7 @@ export function StoryboardSectionDetail({
         )}
 
         {/* Pruned section overlay */}
-        {section?.isPruned && !aiLoading && !rerendering && (
+        {section?.isPruned && !hasActiveTask && (
           <div className="absolute inset-0 z-30 bg-background/60 backdrop-blur-[1px] flex items-center justify-center">
             <div className="flex flex-col items-center gap-3 text-center max-w-xs">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
@@ -2081,43 +1983,60 @@ export function StoryboardSectionDetail({
           </div>
         )}
 
-        {/* AI loading overlay — blocks all interaction during HTML edit */}
-        {aiLoading && (
-          <div className="absolute inset-0 z-40 bg-background/70 backdrop-blur-[2px] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-5 text-center max-w-xs">
-              {/* Bouncing dots */}
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-bounce [animation-delay:0ms]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-bounce [animation-delay:150ms]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-300 animate-bounce [animation-delay:300ms]" />
-              </div>
-              <p className="text-sm font-medium text-foreground animate-pulse">
-                {AI_MESSAGES[aiMessageIdx]}
-              </p>
-              <button
-                type="button"
-                onClick={() => aiAbortRef.current?.abort()}
-                className="text-xs font-medium rounded px-3 py-1.5 bg-muted hover:bg-accent transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+        {/* Task mask + status pills */}
+        {hasActiveTask && (
+          <div className="absolute inset-0 z-[35] bg-background/50 backdrop-blur-[1px]" />
         )}
-
-        {/* Re-rendering overlay — shown while reRenderPage is running after a sectioning save */}
-        {rerendering && !saving && (
-          <div className="absolute inset-0 z-40 bg-background/70 backdrop-blur-[2px] flex items-center justify-center">
-            <div className="flex flex-col items-center gap-5 text-center max-w-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/20 animate-bounce [animation-delay:300ms]" />
+        {(aiEditing || (rerendering && !saving) || aiImageGen) && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            {aiEditing && (
+              <div className="flex items-center gap-2 rounded-full px-3.5 py-2 shadow-lg text-white text-xs font-medium bg-purple-600">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>AI editing...</span>
               </div>
-              <p className="text-sm font-medium text-foreground animate-pulse">
-                Re-rendering page...
-              </p>
-            </div>
+            )}
+            {rerendering && !saving && (
+              <div className="flex items-center gap-2 rounded-full px-3.5 py-2 shadow-lg text-white text-xs font-medium bg-blue-600">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Re-rendering...</span>
+              </div>
+            )}
+            {aiImageGen && (
+              <div
+                className={`flex items-center gap-2 rounded-full px-3.5 py-2 shadow-lg text-white text-xs font-medium ${
+                  aiImageGen.status === "generating"
+                    ? "bg-purple-600"
+                    : aiImageGen.status === "done"
+                      ? "bg-green-600"
+                      : "bg-destructive"
+                }`}
+              >
+                {aiImageGen.status === "generating" && (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Generating image...</span>
+                  </>
+                )}
+                {aiImageGen.status === "done" && (
+                  <>
+                    <Sparkles className="h-3 w-3" />
+                    <span>Image generated</span>
+                  </>
+                )}
+                {aiImageGen.status === "error" && (
+                  <>
+                    <span>{aiImageGen.error ?? "Generation failed"}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setAiImageTaskId(null); setAiImageTargetInfo(null) }}
+                      className="p-0.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -2178,56 +2097,6 @@ export function StoryboardSectionDetail({
         </div>
       )}
 
-      {/* Background image generation indicator — absolute to outer panel so it stays visible while scrolling */}
-      {aiImageGen && (
-        <div className="absolute top-3 right-3 z-40 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div
-            className={`flex items-center gap-2 rounded-full px-3.5 py-2 shadow-lg text-white text-xs font-medium ${
-              aiImageGen.status === "generating"
-                ? "bg-purple-600"
-                : aiImageGen.status === "done"
-                  ? "bg-green-600"
-                  : "bg-destructive"
-            }`}
-          >
-            {aiImageGen.status === "generating" && (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Generating image...</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    aiImageAbortRef.current?.abort()
-                    setAiImageGen(null)
-                  }}
-                  className="p-0.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </>
-            )}
-            {aiImageGen.status === "done" && (
-              <>
-                <Sparkles className="h-3 w-3" />
-                <span>Image generated</span>
-              </>
-            )}
-            {aiImageGen.status === "error" && (
-              <>
-                <span>{aiImageGen.error ?? "Generation failed"}</span>
-                <button
-                  type="button"
-                  onClick={() => setAiImageGen(null)}
-                  className="p-0.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Activity preview toggle — absolute on outer wrapper, sits left of the debug console button */}
       {section.sectionType.startsWith("activity_") && renderedSection?.html && (
         <div className="absolute bottom-4 right-16 z-30 flex items-center gap-2">
@@ -2277,7 +2146,6 @@ export function StoryboardSectionDetail({
                 onClick={() => {
                   setPendingSectioning(null)
                   setPendingRendering(null)
-                  setAiReasoning(null)
                 }}
                 className="flex items-center gap-1 text-xs font-medium rounded px-3 py-1.5 bg-muted hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
               >
@@ -2365,7 +2233,7 @@ export function StoryboardSectionDetail({
         cloning={cloning}
         deleting={deleting}
         saving={saving}
-        rerendering={rerendering}
+        rerendering={hasActiveTask}
         dirty={dirty}
         renderingDirty={renderingDirty}
         hasApiKey={hasApiKey}

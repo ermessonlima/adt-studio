@@ -56,16 +56,16 @@ function DebugPage() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">
-          <TabsContent value="stats" className="m-0 h-full">
+          <TabsContent value="stats" className="m-0">
             <StatsTab label={label} isRunning={isRunning} />
           </TabsContent>
-          <TabsContent value="logs" className="m-0 h-full">
+          <TabsContent value="logs" className="m-0">
             <LlmLogsTab label={label} isRunning={isRunning} />
           </TabsContent>
-          <TabsContent value="config" className="m-0 h-full">
+          <TabsContent value="config" className="m-0">
             <ConfigTab label={label} />
           </TabsContent>
-          <TabsContent value="versions" className="m-0 h-full">
+          <TabsContent value="versions" className="m-0">
             <VersionsTab label={label} />
           </TabsContent>
         </div>

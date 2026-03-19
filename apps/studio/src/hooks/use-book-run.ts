@@ -1,9 +1,10 @@
 import { useEffect, useCallback, useRef, createContext, useContext, useState } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
-import { api, BASE_URL } from "@/api/client"
+import { api, BASE_URL, type TaskInfoResponse } from "@/api/client"
 import { STEP_TO_STAGE, PIPELINE, getStageClearOrder } from "@adt/types"
 import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
+import { bookTasksKey } from "./use-book-tasks"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -214,6 +215,52 @@ export function useBookRunStatus(label: string): BookRunContextValue {
       }
       // Refetch to get the authoritative state
       queryClient.invalidateQueries({ queryKey: stepStatusKey(label) })
+    })
+
+    // Handle ad-hoc task events (image generation, packaging, etc.)
+    es.addEventListener("task", (e) => {
+      const d = JSON.parse(e.data) as { type: string; taskId: string; kind?: string; description?: string; pageId?: string; url?: string; error?: string; result?: unknown; message?: string; percent?: number }
+      const tasksKey = bookTasksKey(label)
+
+      queryClient.setQueryData<{ tasks: TaskInfoResponse[] }>(tasksKey, (old) => {
+        const tasks = [...(old?.tasks ?? [])]
+        const idx = tasks.findIndex((t) => t.taskId === d.taskId)
+
+        if (d.type === "task-start") {
+          if (idx === -1) {
+            tasks.push({
+              taskId: d.taskId,
+              kind: d.kind ?? "package-adt",
+              status: "running",
+              description: d.description ?? "",
+              pageId: d.pageId,
+              url: d.url,
+              startedAt: Date.now(),
+            })
+          }
+        } else if (d.type === "task-complete") {
+          if (idx !== -1) {
+            tasks[idx] = { ...tasks[idx], status: "completed", result: d.result, completedAt: Date.now() }
+          }
+          // Invalidate related data — use cache entry if available, fall back to polling
+          const completedTask = idx !== -1 ? tasks[idx] : undefined
+          if (completedTask?.kind === "package-adt") {
+            queryClient.invalidateQueries({ queryKey: ["books", label, "step-status"] })
+          }
+          if ((completedTask?.kind === "image-generate" || completedTask?.kind === "re-render" || completedTask?.kind === "ai-edit") && completedTask.pageId) {
+            queryClient.invalidateQueries({ queryKey: ["books", label, "pages", completedTask.pageId] })
+          }
+          // Always refetch tasks so we pick up the final state even if we missed start
+          queryClient.invalidateQueries({ queryKey: bookTasksKey(label) })
+        } else if (d.type === "task-error") {
+          if (idx !== -1) {
+            tasks[idx] = { ...tasks[idx], status: "failed", error: d.error, completedAt: Date.now() }
+          }
+        }
+        // task-progress: no status change needed, could update description
+
+        return { tasks }
+      })
     })
 
     return () => {

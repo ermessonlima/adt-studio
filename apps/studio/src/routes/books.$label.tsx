@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo, createContext, useCo
 import { createFileRoute, Outlet, useParams, useNavigate, Link, useMatchRoute } from "@tanstack/react-router"
 import { Home, Terminal } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { DebugPanel } from "@/components/debug/DebugPanel"
 import { StageSidebar } from "@/components/pipeline/StageSidebar"
 import { useBook } from "@/hooks/use-books"
 import { useBookRunStatus, BookRunProvider } from "@/hooks/use-book-run"
@@ -31,18 +30,21 @@ function BookLayout() {
 
   return (
     <BookRunProvider value={bookRun}>
-      <BookLayoutInner label={label} isRunning={bookRun.isRunning} />
+      <BookLayoutInner label={label} />
     </BookRunProvider>
   )
 }
 
-function BookLayoutInner({ label, isRunning }: { label: string; isRunning: boolean }) {
+function BookLayoutInner({ label }: { label: string }) {
   const { step, pageId } = useParams({ strict: false }) as { step?: string; pageId?: string }
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
   const { data: book } = useBook(label)
-  const [debugOpen, setDebugOpen] = useState(false)
   const isDebugRoute = !!matchRoute({ to: "/books/$label/debug", params: { label } })
+
+  const openDebugWindow = useCallback(() => {
+    window.open(`/books/${label}/debug`, `debug-${label}`, "width=900,height=700")
+  }, [label])
 
   const activeStep = step ?? "book"
 
@@ -87,9 +89,9 @@ function BookLayoutInner({ label, isRunning }: { label: string; isRunning: boole
     if (isDebugRoute) return
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "d") {
       e.preventDefault()
-      setDebugOpen((prev) => !prev)
+      openDebugWindow()
     }
-  }, [isDebugRoute])
+  }, [isDebugRoute, openDebugWindow])
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown)
@@ -140,21 +142,14 @@ function BookLayoutInner({ label, isRunning }: { label: string; isRunning: boole
           </div>
         </div>
 
-        {debugOpen && !isDebugRoute && (
-          <DebugPanel
-            label={label}
-            isRunning={isRunning}
-            onClose={() => setDebugOpen(false)}
-          />
-        )}
       </div>
 
-      {!debugOpen && !isDebugRoute && (
+      {!isDebugRoute && (
         <Button
           variant="outline"
           size="icon"
           className="fixed bottom-4 right-4 h-8 w-8 rounded-full shadow-md z-50 opacity-60 hover:opacity-100"
-          onClick={() => setDebugOpen(true)}
+          onClick={openDebugWindow}
           title="Debug Panel (Cmd+Shift+D)"
         >
           <Terminal className="h-4 w-4" />

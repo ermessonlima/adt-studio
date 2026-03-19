@@ -6,7 +6,8 @@ import { HTTPException } from "hono/http-exception"
 import { z } from "zod"
 import { createBookStorage, openBookDb } from "@adt/storage"
 import { StageName, STAGE_ORDER, PIPELINE, parseBookLabel, getStageClearNodes, getStageClearOrder } from "@adt/types"
-import type { StageService, StageSSEEvent } from "../services/stage-service.js"
+import type { StageService } from "../services/stage-service.js"
+import type { BookEventBus, BookSSEEvent } from "../services/book-event-bus.js"
 
 const StageRunBody = z
   .object({
@@ -66,6 +67,7 @@ function formatStepErrors(stepErrors: Record<string, string>): string {
 
 export function createStageRoutes(
   stageService: StageService,
+  eventBus: BookEventBus,
   booksDir: string,
   promptsDir: string,
   webAssetsDir: string,
@@ -238,10 +240,10 @@ export function createStageRoutes(
 
     if (accept.includes("text/event-stream")) {
       return streamSSE(c, async (stream) => {
-        const eventQueue: StageSSEEvent[] = []
+        const eventQueue: BookSSEEvent[] = []
         let done = false
 
-        const unsubscribe = stageService.addListener(label, (event) => {
+        const unsubscribe = eventBus.addListener(label, (event) => {
           if (done) return
           eventQueue.push(event)
         })
@@ -281,6 +283,11 @@ export function createStageRoutes(
                     label: event.label,
                     error: event.error,
                   }),
+                })
+              } else if (event.type === "task") {
+                await stream.writeSSE({
+                  event: "task",
+                  data: JSON.stringify(event.data),
                 })
               }
             } catch {

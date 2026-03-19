@@ -1,5 +1,6 @@
 import { STAGE_ORDER, type ProgressEvent } from "@adt/types"
 import type { StageName } from "@adt/types"
+import type { BookEventBus } from "./book-event-bus.js"
 
 export type StageRunStatus = "idle" | "running" | "completed" | "failed"
 
@@ -29,14 +30,6 @@ export interface BookRunStatus {
   active: StageRunJob | null
   queue: Array<{ id: string; fromStage: string; toStage: string }>
 }
-
-export type StageSSEEvent =
-  | { type: "progress"; data: ProgressEvent }
-  | { type: "stage-run-complete"; label: string }
-  | { type: "stage-run-error"; label: string; error: string }
-  | { type: "queue-next"; label: string; fromStage: string; toStage: string }
-
-export type StageEventListener = (event: StageSSEEvent) => void
 
 export interface StageRunOptions {
   booksDir: string
@@ -69,7 +62,6 @@ export interface StageService {
   getStatus(label: string): BookRunStatus
   /** Get stage names that are queued (waiting to run). */
   getQueuedStages(label: string): StageName[]
-  addListener(label: string, listener: StageEventListener): () => void
   startStageRun(
     label: string,
     options: StageRunOptions
@@ -79,10 +71,10 @@ export interface StageService {
 let nextId = 1
 
 export function createStageService(
-  runner: StageRunner
+  runner: StageRunner,
+  eventBus: BookEventBus
 ): StageService {
   const books = new Map<string, BookRunState>()
-  const listeners = new Map<string, Set<StageEventListener>>()
 
   function getOrCreateState(label: string): BookRunState {
     let state = books.get(label)
@@ -93,18 +85,6 @@ export function createStageService(
     return state
   }
 
-  function emit(label: string, event: StageSSEEvent): void {
-    const set = listeners.get(label)
-    if (!set) return
-    for (const listener of set) {
-      try {
-        listener(event)
-      } catch {
-        // Listener errors should not crash the stage run
-      }
-    }
-  }
-
   async function executeJob(
     label: string,
     job: StageRunJob,
@@ -112,7 +92,7 @@ export function createStageService(
   ): Promise<void> {
     const progress: StageRunProgress = {
       emit(event: ProgressEvent) {
-        emit(label, { type: "progress", data: event })
+        eventBus.emit(label, { type: "progress", data: event })
       },
     }
 
@@ -121,14 +101,14 @@ export function createStageService(
       await runner.run(label, options, progress)
       job.status = "completed"
       job.completedAt = Date.now()
-      emit(label, { type: "stage-run-complete", label })
+      eventBus.emit(label, { type: "stage-run-complete", label })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error(`[stage-run] ${label} failed:`, message)
       job.status = "failed"
       job.error = message
       job.completedAt = Date.now()
-      emit(label, { type: "stage-run-error", label, error: message })
+      eventBus.emit(label, { type: "stage-run-error", label, error: message })
     }
 
     drainQueue(label)
@@ -156,7 +136,7 @@ export function createStageService(
     }
     state.active = job
 
-    emit(label, {
+    eventBus.emit(label, {
       type: "queue-next",
       label,
       fromStage: next.fromStage,
@@ -196,25 +176,6 @@ export function createStageService(
       }
 
       return [...queued]
-    },
-
-    addListener(
-      label: string,
-      listener: StageEventListener
-    ): () => void {
-      let set = listeners.get(label)
-      if (!set) {
-        set = new Set()
-        listeners.set(label, set)
-      }
-      set.add(listener)
-
-      return () => {
-        set!.delete(listener)
-        if (set!.size === 0) {
-          listeners.delete(label)
-        }
-      }
     },
 
     startStageRun(

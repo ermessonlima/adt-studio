@@ -2,12 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { Link, useMatchRoute, useSearch } from "@tanstack/react-router"
 import {
+  Loader2,
   RotateCcw,
   Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useBookTasks } from "@/hooks/use-book-tasks"
 import { StepProgressRing } from "./StepProgressRing"
 import { usePages, usePageImage } from "@/hooks/use-pages"
 import {
@@ -16,6 +18,7 @@ import {
   toCamelLabel,
 } from "./stage-config"
 import { useSettingsDialog } from "@/routes/__root"
+import type { TaskInfoResponse } from "@/api/client"
 
 const EXTRACT_SETTINGS_TABS = [
   { key: "general", label: "General" },
@@ -269,6 +272,8 @@ export function StageSidebar({
             <div className="flex flex-col pt-1.5 pb-2 gap-0.5 flex-1 overflow-y-auto overflow-x-hidden">
               {stageItems}
             </div>
+            {/* Task indicator */}
+            <TaskIndicator bookLabel={bookLabel} />
             {/* Right edge — follows the expanding rail */}
             <div className="absolute inset-y-0 right-0 w-px border-r" />
           </div>
@@ -292,6 +297,81 @@ export function StageSidebar({
       </div>
 
     </nav>
+  )
+}
+
+/* ---------- TaskIndicator ---------- */
+
+const TASK_KIND_LABELS: Record<string, string> = {
+  "package-adt": "Packaging",
+  "image-generate": "Image Gen",
+  "re-render": "Re-render",
+  "ai-edit": "AI Edit",
+}
+
+function TaskIndicator({ bookLabel }: { bookLabel: string }) {
+  const { runningTasks, runningCount } = useBookTasks(bookLabel)
+
+  if (runningCount === 0) return null
+
+  return (
+    <div className="border-t group/tasks">
+      {/* Task list — visible on hover */}
+      <div className="hidden group-hover/tasks:block px-2 pt-1.5 pb-0.5 flex-col gap-0.5">
+        {runningTasks.map((task) => (
+          <TaskRow key={task.taskId} task={task} />
+        ))}
+      </div>
+
+      {/* Indicator row */}
+      <div className="flex items-center gap-2.5 px-2.5 py-2 overflow-hidden">
+        <div className="relative shrink-0 flex items-center justify-center w-7 h-7">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 text-white">
+            <span className="text-xs font-bold leading-none">{runningCount}</span>
+          </div>
+          <StepProgressRing size={28} state="running" colorClass="bg-violet-600" />
+        </div>
+        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+          {runningCount === 1 ? "Task" : "Tasks"} Running
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function TaskRow({ task }: { task: TaskInfoResponse }) {
+  const kindLabel = TASK_KIND_LABELS[task.kind] ?? task.kind
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const id = window.setInterval(() => tick((n) => n + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const elapsed = task.startedAt ? Math.round((Date.now() - task.startedAt) / 1000) : 0
+  const elapsedStr = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+
+  const content = (
+    <>
+      <Loader2 className="w-3 h-3 animate-spin text-violet-500 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium truncate">{kindLabel}</p>
+        <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>
+      </div>
+      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{elapsedStr}</span>
+    </>
+  )
+
+  if (task.url) {
+    return (
+      <Link to={task.url} className="flex items-center gap-2 px-1 py-1 rounded hover:bg-muted/50 transition-colors">
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-1 py-1">
+      {content}
+    </div>
   )
 }
 

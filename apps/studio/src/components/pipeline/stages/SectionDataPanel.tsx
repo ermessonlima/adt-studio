@@ -56,7 +56,7 @@ interface SectionDataPanelProps {
   onMergeSection: (dir: "prev" | "next") => void
   onCloneSection: () => void
   onDeleteSection: () => void
-  onRerender: (prompt?: string) => void
+  onRerender: () => void
   onAddImage: () => void
   // Version picker
   versionPickerNode: ReactNode
@@ -173,10 +173,6 @@ export function SectionDataPanel({
 
   const hasTextParts = parts.some((p) => p.type === "text_group")
   const hasImageParts = parts.some((p) => p.type === "image")
-
-  // Re-render prompt popover state
-  const [rerenderOpen, setRerenderOpen] = useState(false)
-  const [rerenderPrompt, setRerenderPrompt] = useState("")
 
   // -- Group drag state --
   const [dragGroupIdx, setDragGroupIdx] = useState<number | null>(null)
@@ -364,62 +360,25 @@ export function SectionDataPanel({
             <span className="font-medium">{section.sectionType}</span>
           )}
           {/* Re-render button — right next to section type */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setRerenderOpen(!rerenderOpen)}
-              disabled={rerendering || dirty || renderingDirty || saving || !hasApiKey}
-              className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              title={
-                !hasApiKey
-                  ? "API key required to re-render"
-                  : dirty || renderingDirty
-                    ? "Save changes before re-rendering"
-                    : "Re-render this section"
-              }
-            >
-              {rerendering ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
-              )}
-            </button>
-            {rerenderOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-lg border bg-popover p-3 shadow-lg">
-                <p className="text-xs font-medium mb-2">Re-render section</p>
-                <textarea
-                  value={rerenderPrompt}
-                  onChange={(e) => setRerenderPrompt(e.target.value)}
-                  placeholder="Optional instructions for the LLM..."
-                  className="w-full text-xs rounded border bg-background px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                  rows={3}
-                />
-                <div className="flex items-center justify-end gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRerenderOpen(false)
-                      setRerenderPrompt("")
-                    }}
-                    className="text-xs px-2 py-1 rounded hover:bg-accent transition-colors cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onRerender(rerenderPrompt.trim() || undefined)
-                      setRerenderOpen(false)
-                      setRerenderPrompt("")
-                    }}
-                    className="text-xs px-2.5 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                  >
-                    Re-render
-                  </button>
-                </div>
-              </div>
+          <button
+            type="button"
+            onClick={() => onRerender()}
+            disabled={rerendering || dirty || renderingDirty || saving || !hasApiKey}
+            className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
+            title={
+              !hasApiKey
+                ? "API key required to re-render"
+                : dirty || renderingDirty
+                  ? "Save changes before re-rendering"
+                  : "Re-render this section"
+            }
+          >
+            {rerendering ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
             )}
-          </div>
+          </button>
           <div className="ml-auto flex items-center gap-1.5">
             <button
               type="button"

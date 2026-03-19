@@ -342,6 +342,21 @@ export interface LlmLogsParams {
   offset?: number
 }
 
+// --- Task types ---
+
+export interface TaskInfoResponse {
+  taskId: string
+  kind: string
+  status: "queued" | "running" | "completed" | "failed"
+  description: string
+  pageId?: string
+  url?: string
+  error?: string
+  result?: unknown
+  startedAt?: number
+  completedAt?: number
+}
+
 export const api = {
   getBooks: () => request<BookSummary[]>("/books"),
 
@@ -421,13 +436,13 @@ export const api = {
     }),
 
   reRenderPage: (label: string, pageId: string, apiKey: string, sectionIndex?: number, prompt?: string) =>
-    request<{ version: number; rendering: { sections: SectionRendering[] } }>(
+    request<{ taskId?: string; status?: string; version?: number; rendering?: { sections: SectionRendering[] } }>(
       `/books/${label}/pages/${pageId}/re-render${sectionIndex !== undefined ? `?sectionIndex=${sectionIndex}` : ""}`,
       {
         method: "POST",
         headers: { "X-OpenAI-Key": apiKey },
         ...(prompt ? { body: JSON.stringify({ prompt }) } : {}),
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(30_000), // Just submitting a task now
       }
     ),
 
@@ -438,15 +453,14 @@ export const api = {
     instruction: string,
     apiKey: string,
     currentHtml?: string,
-    signal?: AbortSignal
   ) =>
-    request<{ html: string; reasoning: string }>(
+    request<{ taskId?: string; status?: string; html?: string; reasoning?: string }>(
       `/books/${label}/pages/${pageId}/sections/${sectionIndex}/ai-edit`,
       {
         method: "POST",
         headers: { "X-OpenAI-Key": apiKey },
         body: JSON.stringify({ instruction, currentHtml }),
-        signal: signal ?? AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(30_000),
       }
     ),
 
@@ -508,9 +522,9 @@ export const api = {
     targetImageId: string,
     referenceImageId?: string,
     signal?: AbortSignal,
-    options?: { style?: string; imageType?: string; styleImageId?: string },
+    options?: { style?: string; imageType?: string; styleImageId?: string; sectionIndex?: number; mode?: "swap" | "add" },
   ) =>
-    request<{ imageId: string; width: number; height: number; originalWidth: number; originalHeight: number }>(
+    request<{ taskId: string; status: string }>(
       `/books/${label}/images/ai-generate?pageId=${pageId}`,
       {
         method: "POST",
@@ -522,8 +536,10 @@ export const api = {
           ...(options?.style && { style: options.style }),
           ...(options?.imageType && { imageType: options.imageType }),
           ...(options?.styleImageId && { styleImageId: options.styleImageId }),
+          ...(options?.sectionIndex !== undefined && { sectionIndex: options.sectionIndex }),
+          ...(options?.mode && { mode: options.mode }),
         }),
-        signal: signal ?? AbortSignal.timeout(180_000),
+        signal: signal ?? AbortSignal.timeout(30_000), // Just submitting — no need for 180s
       }
     ),
 
@@ -653,10 +669,13 @@ export const api = {
     request<TTSResponse>(`/books/${label}/tts`),
 
   packageAdt: (label: string) =>
-    request<{ status: string; label: string }>(
+    request<{ status: string; label: string; taskId?: string }>(
       `/books/${label}/package-adt`,
       { method: "POST" }
     ),
+
+  getTasks: (label: string) =>
+    request<{ tasks: TaskInfoResponse[] }>(`/books/${label}/tasks`),
 
   getPackageAdtStatus: (label: string) =>
     request<{ label: string; hasAdt: boolean }>(

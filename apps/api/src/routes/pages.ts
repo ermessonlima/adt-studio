@@ -8,8 +8,9 @@ import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, Pa
 import { openBookDb } from "@adt/storage"
 import { createBookStorage } from "@adt/storage"
 import { reRenderPage, aiEditSection } from "../services/page-edit-service.js"
+import type { TaskService } from "../services/task-service.js"
 import { segmentPageImages, getSegmentedImageId, loadBookConfig, applyCrop, generateStyleguide, buildStyleguideGenerationConfig } from "@adt/pipeline"
-import { createLLMModel, createPromptEngine, renderLiquidTemplate } from "@adt/llm"
+import { createLLMModel, createPromptEngine, renderLiquidTemplate, generateImageWithCache } from "@adt/llm"
 
 interface PageSummary {
   pageId: string
@@ -54,11 +55,280 @@ function validateImageId(id: string): string {
   return id
 }
 
+function imageFileExtension(mimeType: string | undefined): string {
+  switch (mimeType) {
+    case "image/jpeg":
+      return "jpg"
+    case "image/webp":
+      return "webp"
+    default:
+      return "png"
+  }
+}
+
+interface AiImageGenParams {
+  safeLabel: string
+  bookDir: string
+  dbPath: string
+  apiKey: string
+  pageId: string
+  prompt: string
+  referenceImageId?: string
+  targetImageId?: string
+  style?: string
+  imageType?: string
+  styleImageId?: string
+  promptsDir: string
+  /** Section index for auto-saving updated sectioning/rendering */
+  sectionIndex?: number
+  /** "swap" replaces targetImageId, "add" appends to section */
+  mode?: "swap" | "add"
+  booksDir: string
+}
+
+async function executeAiImageGeneration(params: AiImageGenParams): Promise<{
+  imageId: string; width: number; height: number; originalWidth: number; originalHeight: number
+}> {
+  const {
+    bookDir, dbPath, apiKey, pageId, prompt,
+    referenceImageId, targetImageId, style, imageType, styleImageId, promptsDir,
+  } = params
+
+  // Choose the correct prompt template: edit vs generate
+  const isEditMode = !!referenceImageId
+  const promptName = isEditMode ? "ai_image_edit" : "ai_image_generation"
+  const bookPromptPath = path.join(bookDir, "prompts", `${promptName}.liquid`)
+  const globalPromptPath = path.join(path.resolve(promptsDir), `${promptName}.liquid`)
+  let templateContent: string | null = null
+  if (fs.existsSync(bookPromptPath)) {
+    templateContent = fs.readFileSync(bookPromptPath, "utf-8")
+  } else if (fs.existsSync(globalPromptPath)) {
+    templateContent = fs.readFileSync(globalPromptPath, "utf-8")
+  }
+  let finalPrompt: string
+  if (templateContent) {
+    finalPrompt = await renderLiquidTemplate(templateContent.trim(), {
+      user_prompt: prompt,
+      style: style || null,
+      image_type: imageType || null,
+    })
+  } else {
+    finalPrompt = prompt
+  }
+
+  // Look up target image dimensions
+  let originalWidth = 0
+  let originalHeight = 0
+  let referenceImagePath: string | undefined
+  let styleImagePath: string | undefined
+  if (targetImageId || referenceImageId || styleImageId) {
+    const db0 = openBookDb(dbPath)
+    try {
+      if (targetImageId) {
+        const row = db0.get(
+          "SELECT width, height FROM images WHERE image_id = ?",
+          [targetImageId]
+        ) as { width: number; height: number } | undefined
+        if (row) {
+          originalWidth = row.width
+          originalHeight = row.height
+        }
+      }
+      if (referenceImageId) {
+        const row = db0.get(
+          "SELECT path FROM images WHERE image_id = ?",
+          [referenceImageId]
+        ) as { path: string } | undefined
+        if (row) referenceImagePath = path.join(bookDir, row.path)
+      }
+      if (styleImageId) {
+        const row = db0.get(
+          "SELECT path FROM images WHERE image_id = ?",
+          [styleImageId]
+        ) as { path: string } | undefined
+        if (row) styleImagePath = path.join(bookDir, row.path)
+      }
+    } finally {
+      db0.close()
+    }
+  }
+
+  // Pick size that best matches the original aspect ratio
+  let size = "1024x1024"
+  if (originalWidth > 0 && originalHeight > 0) {
+    const ratio = originalWidth / originalHeight
+    if (ratio > 1.2) size = "1536x1024"
+    else if (ratio < 0.8) size = "1024x1536"
+  }
+
+  const referenceImages: Array<{ data: Buffer; name: string }> = []
+  if (referenceImagePath && fs.existsSync(referenceImagePath)) {
+    referenceImages.push({
+      data: fs.readFileSync(referenceImagePath),
+      name: `${referenceImageId}.png`,
+    })
+  }
+  if (styleImagePath && fs.existsSync(styleImagePath)) {
+    referenceImages.push({
+      data: fs.readFileSync(styleImagePath),
+      name: `${styleImageId}.png`,
+    })
+  }
+
+  const logStorage = createBookStorage(params.safeLabel, params.booksDir)
+  let generated: Awaited<ReturnType<typeof generateImageWithCache>>
+  try {
+    generated = await generateImageWithCache({
+      apiKey,
+      modelId: "openai:gpt-image-1.5",
+      prompt: finalPrompt,
+      size: size as `${number}x${number}`,
+      referenceImages,
+      cacheDir: path.join(bookDir, ".cache"),
+      timeoutMs: 180_000,
+      log: {
+        taskType: "image-generation",
+        pageId,
+        promptName: referenceImageId ? "ai-image-edit" : "ai-image-generate",
+      },
+      onLog: (entry) => logStorage.appendLlmLog(entry),
+    })
+  } finally {
+    logStorage.close()
+  }
+
+  const buffer = Buffer.from(generated.base64, "base64")
+  const hash = crypto.createHash("sha256").update(buffer).digest("hex").slice(0, 16)
+
+  const [widthStr, heightStr] = size.split("x")
+  const width = parseInt(widthStr, 10) || 1024
+  const height = parseInt(heightStr, 10) || 1024
+
+  if (originalWidth === 0) originalWidth = width
+  if (originalHeight === 0) originalHeight = height
+
+  const db = openBookDb(dbPath)
+  try {
+    const prefix = referenceImageId ?? pageId
+    const existing = db.all(
+      "SELECT image_id FROM images WHERE image_id LIKE ?",
+      [`${prefix}_ai%`]
+    ) as Array<{ image_id: string }>
+    let maxN = 0
+    for (const row of existing) {
+      const m = row.image_id.match(/_ai(\d+)$/)
+      if (m) maxN = Math.max(maxN, parseInt(m[1], 10))
+    }
+    const newImageId = `${prefix}_ai${maxN + 1}`
+
+    const extension = imageFileExtension(generated.mimeType)
+    const filename = `${newImageId}.${extension}`
+    const imagesDir = path.join(bookDir, "images")
+    fs.mkdirSync(imagesDir, { recursive: true })
+    fs.writeFileSync(path.join(imagesDir, filename), buffer)
+
+    db.run(
+      `INSERT INTO images (image_id, page_id, path, hash, width, height, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (image_id) DO UPDATE SET
+         page_id = excluded.page_id,
+         path = excluded.path,
+         hash = excluded.hash,
+         width = excluded.width,
+         height = excluded.height,
+         source = excluded.source`,
+      [newImageId, pageId, `images/${filename}`, hash, width, height, "crop"]
+    )
+
+    // Auto-save: update sectioning and rendering with the new image
+    if (params.sectionIndex !== undefined && params.mode) {
+      try {
+        const storage = createBookStorage(params.safeLabel, params.booksDir)
+        try {
+          const sectioningRow = storage.getLatestNodeData("page-sectioning", pageId)
+          const renderingRow = storage.getLatestNodeData("web-rendering", pageId)
+
+          if (sectioningRow) {
+            const parsed = PageSectioningOutput.safeParse(sectioningRow.data)
+            if (parsed.success) {
+              const sectioning = parsed.data
+              const si = params.sectionIndex
+              if (si < sectioning.sections.length) {
+                if (params.mode === "swap" && params.targetImageId) {
+                  const tid = params.targetImageId
+                  sectioning.sections[si].parts = sectioning.sections[si].parts.map((p) =>
+                    p.type === "image" && p.imageId === tid ? { ...p, imageId: newImageId } : p
+                  )
+                } else if (params.mode === "add") {
+                  const alreadyExists = sectioning.sections[si].parts.some(
+                    (p) => p.type === "image" && p.imageId === newImageId
+                  )
+                  if (!alreadyExists) {
+                    sectioning.sections[si].parts.push({ type: "image", imageId: newImageId, isPruned: false })
+                  }
+                }
+                storage.putNodeData("page-sectioning", pageId, sectioning)
+              }
+            }
+          }
+
+          if (renderingRow) {
+            const parsed = WebRenderingOutput.safeParse(renderingRow.data)
+            if (parsed.success) {
+              const rendering = parsed.data
+              const si = params.sectionIndex
+              const urlPrefix = `/api/books/${params.safeLabel}/images`
+              rendering.sections = rendering.sections.map((s) => {
+                if (s.sectionIndex !== si) return s
+                let html = s.html
+                if (params.mode === "swap" && params.targetImageId) {
+                  const tid = params.targetImageId
+                  html = html.replace(new RegExp(`data-id="${tid}"`, "g"), `data-id="${newImageId}"`)
+                  html = html.replace(new RegExp(`${urlPrefix}/${tid}`, "g"), `${urlPrefix}/${newImageId}`)
+                  // Update width/height to match original dimensions
+                  const escaped = newImageId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                  html = html.replace(
+                    new RegExp(`(<img[^>]*data-id="${escaped}"[^>]*?)(/?>)`, "g"),
+                    (_, before, close) => {
+                      let tag = before as string
+                      tag = tag.replace(/\s+width="[^"]*"/, "")
+                      tag = tag.replace(/\s+height="[^"]*"/, "")
+                      return `${tag} width="${originalWidth}" height="${originalHeight}"${close}`
+                    }
+                  )
+                } else if (params.mode === "add") {
+                  const imgTag = `<img data-id="${newImageId}" src="${urlPrefix}/${newImageId}" width="${width}" height="${height}" alt="${newImageId}" class="w-full" />`
+                  const closingIdx = html.lastIndexOf("</section>")
+                  html = closingIdx >= 0
+                    ? html.slice(0, closingIdx) + imgTag + html.slice(closingIdx)
+                    : html + imgTag
+                }
+                return { ...s, html }
+              })
+              storage.putNodeData("web-rendering", pageId, rendering)
+            }
+          }
+        } finally {
+          storage.close()
+        }
+      } catch (err) {
+        // Non-critical: image was generated successfully, just version bump failed
+        console.error("[ai-image] Auto-save sectioning/rendering failed:", err)
+      }
+    }
+
+    return { imageId: newImageId, width, height, originalWidth, originalHeight }
+  } finally {
+    db.close()
+  }
+}
+
 export function createPageRoutes(
   booksDir: string,
   promptsDir: string,
   webAssetsDir: string,
-  configPath?: string
+  configPath?: string,
+  taskService?: TaskService
 ): Hono {
   const app = new Hono()
 
@@ -500,6 +770,34 @@ export function createPageRoutes(
       storage.close()
     }
 
+    // Submit as task if TaskService is available
+    if (taskService) {
+      const desc = sectionIndex !== undefined
+        ? `Re-rendering section ${sectionIndex + 1} of ${pageId}`
+        : `Re-rendering ${pageId}`
+      const { taskId } = taskService.submitTask(
+        safeLabel,
+        "re-render",
+        desc,
+        async () => {
+          return await reRenderPage({
+            label: safeLabel,
+            pageId,
+            sectionIndex,
+            prompt,
+            booksDir,
+            promptsDir,
+            webAssetsDir,
+            configPath,
+            apiKey,
+          })
+        },
+        { pageId, url: `/books/${safeLabel}/storyboard/${pageId}` }
+      )
+      return c.json({ taskId, status: "submitted" })
+    }
+
+    // Fallback: run synchronously
     const result = await reRenderPage({
       label: safeLabel,
       pageId,
@@ -536,6 +834,52 @@ export function createPageRoutes(
       throw new HTTPException(400, { message: "Missing instruction in request body" })
     }
 
+    // Submit as task if TaskService is available
+    if (taskService) {
+      const desc = `AI editing section ${idx + 1} of ${pageId}`
+      const { taskId } = taskService.submitTask(
+        safeLabel,
+        "ai-edit",
+        desc,
+        async () => {
+          const result = await aiEditSection({
+            label: safeLabel,
+            pageId,
+            sectionIndex: idx,
+            instruction,
+            currentHtml: typeof body.currentHtml === "string" ? body.currentHtml : undefined,
+            booksDir,
+            promptsDir,
+            webAssetsDir,
+            configPath,
+            apiKey,
+          })
+
+          // Save the edited HTML as a new rendering version
+          const storage = createBookStorage(safeLabel, booksDir)
+          try {
+            const renderingRow = storage.getLatestNodeData("web-rendering", pageId)
+            const renderingParsed = renderingRow ? WebRenderingOutput.safeParse(renderingRow.data) : null
+            if (renderingParsed?.success) {
+              const updated = {
+                sections: renderingParsed.data.sections.map((s) =>
+                  s.sectionIndex === idx ? { ...s, html: result.html } : s
+                ),
+              }
+              storage.putNodeData("web-rendering", pageId, updated)
+            }
+          } finally {
+            storage.close()
+          }
+
+          return result
+        },
+        { pageId, url: `/books/${safeLabel}/storyboard/${pageId}` }
+      )
+      return c.json({ taskId, status: "submitted" })
+    }
+
+    // Fallback: run synchronously
     const result = await aiEditSection({
       label: safeLabel,
       pageId,
@@ -948,231 +1292,55 @@ export function createPageRoutes(
       // Optional style reference image — sent alongside the reference image for edit mode
       const styleImageId =
         typeof body.styleImageId === "string" ? validateImageId(body.styleImageId) : undefined
+      // Section index and mode for auto-saving sectioning/rendering after generation
+      const sectionIndex = typeof body.sectionIndex === "number" ? body.sectionIndex : undefined
+      const mode = body.mode === "swap" || body.mode === "add" ? body.mode : undefined
 
-      // Choose the correct prompt template: edit vs generate
-      const isEditMode = !!referenceImageId
-      const promptName = isEditMode ? "ai_image_edit" : "ai_image_generation"
-      const bookPromptPath = path.join(bookDir, "prompts", `${promptName}.liquid`)
-      const globalPromptPath = path.join(path.resolve(promptsDir), `${promptName}.liquid`)
-      let templateContent: string | null = null
-      if (fs.existsSync(bookPromptPath)) {
-        templateContent = fs.readFileSync(bookPromptPath, "utf-8")
-      } else if (fs.existsSync(globalPromptPath)) {
-        templateContent = fs.readFileSync(globalPromptPath, "utf-8")
-      }
-      // Render the template with Liquid to support conditionals ({% if style %}, etc.)
-      let finalPrompt: string
-      if (templateContent) {
-        finalPrompt = await renderLiquidTemplate(templateContent.trim(), {
-          user_prompt: prompt,
-          style: style ?? "",
-          image_type: imageType ?? "",
-        })
-      } else {
-        finalPrompt = prompt
-      }
-
-      // Look up target image dimensions once — used for both aspect ratio size selection
-      // and returning originalWidth/originalHeight to the frontend
-      let originalWidth = 0
-      let originalHeight = 0
-      let referenceImagePath: string | undefined
-      let styleImagePath: string | undefined
-      if (targetImageId || referenceImageId || styleImageId) {
+      // Validate reference images exist before submitting task
+      if (referenceImageId) {
         const db0 = openBookDb(dbPath)
         try {
-          if (targetImageId) {
-            const row = db0.get(
-              "SELECT width, height FROM images WHERE image_id = ?",
-              [targetImageId]
-            ) as { width: number; height: number } | undefined
-            if (row) {
-              originalWidth = row.width
-              originalHeight = row.height
-            }
-          }
-          if (referenceImageId) {
-            const row = db0.get(
-              "SELECT path FROM images WHERE image_id = ?",
-              [referenceImageId]
-            ) as { path: string } | undefined
-            if (row) referenceImagePath = path.join(bookDir, row.path)
-          }
-          if (styleImageId) {
-            const row = db0.get(
-              "SELECT path FROM images WHERE image_id = ?",
-              [styleImageId]
-            ) as { path: string } | undefined
-            if (row) styleImagePath = path.join(bookDir, row.path)
+          const row = db0.get("SELECT path FROM images WHERE image_id = ?", [referenceImageId]) as { path: string } | undefined
+          if (!row || !fs.existsSync(path.join(bookDir, row.path))) {
+            return c.json({ error: `Reference image not found: ${referenceImageId}` }, 404)
           }
         } finally {
           db0.close()
         }
       }
 
-      // Pick size that best matches the original aspect ratio
-      let size = "1024x1024"
-      if (originalWidth > 0 && originalHeight > 0) {
-        const ratio = originalWidth / originalHeight
-        if (ratio > 1.2) size = "1536x1024"       // landscape
-        else if (ratio < 0.8) size = "1024x1536"   // portrait
-      }
+      // Build description for task indicator
+      const desc = referenceImageId
+        ? `Editing image ${referenceImageId}`
+        : `Generating image for ${pageId}`
 
-      const startTime = Date.now()
-      let openaiRes: Response
-
-      if (referenceImageId) {
-        // Edit mode: send the source image to /v1/images/edits
-        if (!referenceImagePath || !fs.existsSync(referenceImagePath)) {
-          return c.json({ error: `Reference image not found: ${referenceImageId}` }, 404)
-        }
-        const imageBuffer = fs.readFileSync(referenceImagePath)
-
-        const formData = new FormData()
-        formData.append("model", "gpt-image-1.5")
-        formData.append("prompt", finalPrompt)
-        formData.append("size", size)
-        formData.append("image[]", new Blob([imageBuffer], { type: "image/png" }), `${referenceImageId}.png`)
-        // Attach style reference image if provided — the model will use it as visual style guidance
-        if (styleImagePath && fs.existsSync(styleImagePath)) {
-          const styleBuffer = fs.readFileSync(styleImagePath)
-          formData.append("image[]", new Blob([styleBuffer], { type: "image/png" }), `${styleImageId}.png`)
-        }
-
-        openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${apiKey}` },
-          body: formData,
-          signal: AbortSignal.timeout(180_000),
-        })
-      } else {
-        // Generate mode: text-to-image
-        // If a style reference image is provided, use the edits endpoint so the model can see it
-        if (styleImagePath && fs.existsSync(styleImagePath)) {
-          const styleBuffer = fs.readFileSync(styleImagePath)
-          const formData = new FormData()
-          formData.append("model", "gpt-image-1.5")
-          formData.append("prompt", finalPrompt)
-          formData.append("size", size)
-          formData.append("image[]", new Blob([styleBuffer], { type: "image/png" }), `${styleImageId}.png`)
-          openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
-            method: "POST",
-            headers: { Authorization: `Bearer ${apiKey}` },
-            body: formData,
-            signal: AbortSignal.timeout(180_000),
-          })
-        } else {
-          openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model: "gpt-image-1.5",
-              prompt: finalPrompt,
-              size,
-            }),
-            signal: AbortSignal.timeout(180_000),
-          })
-        }
-      }
-
-      const responseText = await openaiRes.text()
-
-      if (!openaiRes.ok) {
-        let errMsg = `OpenAI API error: ${openaiRes.status}`
-        try {
-          const errBody = JSON.parse(responseText)
-          errMsg = errBody?.error?.message ?? errMsg
-        } catch {}
-        return c.json({ error: errMsg }, 502)
-      }
-
-      const openaiData = JSON.parse(responseText) as {
-        data: Array<{ b64_json?: string; url?: string }>
-      }
-      const b64 = openaiData.data?.[0]?.b64_json
-      if (!b64) {
-        return c.json({ error: "No image data returned from OpenAI" }, 502)
-      }
-
-      const buffer = Buffer.from(b64, "base64")
-      const hash = crypto.createHash("sha256").update(buffer).digest("hex").slice(0, 16)
-
-      // Parse width/height from the size string (e.g. "1024x1024")
-      const [widthStr, heightStr] = size.split("x")
-      const width = parseInt(widthStr, 10) || 1024
-      const height = parseInt(heightStr, 10) || 1024
-
-      // If we didn't find original dimensions, fall back to generated size
-      if (originalWidth === 0) originalWidth = width
-      if (originalHeight === 0) originalHeight = height
-
-      // Generate imageId and save
-      const db = openBookDb(dbPath)
-      try {
-        const prefix = referenceImageId ?? pageId
-        const existing = db.all(
-          "SELECT image_id FROM images WHERE image_id LIKE ?",
-          [`${prefix}_ai%`]
-        ) as Array<{ image_id: string }>
-        let maxN = 0
-        for (const row of existing) {
-          const m = row.image_id.match(/_ai(\d+)$/)
-          if (m) maxN = Math.max(maxN, parseInt(m[1], 10))
-        }
-        const newImageId = `${prefix}_ai${maxN + 1}`
-
-        const filename = `${newImageId}.png`
-        const imagesDir = path.join(bookDir, "images")
-        fs.mkdirSync(imagesDir, { recursive: true })
-        fs.writeFileSync(path.join(imagesDir, filename), buffer)
-
-        db.run(
-          `INSERT INTO images (image_id, page_id, path, hash, width, height, source)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
-           ON CONFLICT (image_id) DO UPDATE SET
-             page_id = excluded.page_id,
-             path = excluded.path,
-             hash = excluded.hash,
-             width = excluded.width,
-             height = excluded.height,
-             source = excluded.source`,
-          [newImageId, pageId, `images/${filename}`, hash, width, height, "crop"]
+      // Submit as task if TaskService is available
+      if (taskService) {
+        const { taskId } = taskService.submitTask(
+          safeLabel,
+          "image-generate",
+          desc,
+          async () => {
+            return await executeAiImageGeneration({
+              safeLabel, bookDir, dbPath, apiKey, pageId,
+              prompt, referenceImageId, targetImageId,
+              style, imageType, styleImageId, promptsDir,
+              sectionIndex, mode, booksDir,
+            })
+          },
+          { pageId, url: `/books/${safeLabel}/storyboard/${pageId}` }
         )
-
-        // Log to debug panel (reuse existing db connection)
-        try {
-          const logEntry = {
-            requestId: crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-            taskType: "image-generation",
-            pageId,
-            promptName: referenceImageId ? "ai-image-edit" : "ai-image-generate",
-            modelId: "openai:gpt-image-1.5",
-            cacheHit: false,
-            success: true,
-            errorCount: 0,
-            attempt: 1,
-            durationMs: Date.now() - startTime,
-            messages: [
-              { role: "user", content: [{ type: "text", text: finalPrompt }] },
-              { role: "assistant", content: [{ type: "text", text: `Generated image: ${newImageId} (${width}x${height})` }] },
-            ],
-          }
-          db.run(
-            "INSERT INTO llm_log (request_id, timestamp, step, item_id, success, error_count, data) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [logEntry.requestId, logEntry.timestamp, logEntry.taskType, logEntry.pageId, 1, 0, JSON.stringify(logEntry)]
-          )
-        } catch {
-          // Non-critical — don't fail the request if logging fails
-        }
-
-        return c.json({ imageId: newImageId, width, height, originalWidth, originalHeight })
-      } finally {
-        db.close()
+        return c.json({ taskId, status: "submitted" })
       }
+
+      // Fallback: run synchronously
+      const result = await executeAiImageGeneration({
+        safeLabel, bookDir, dbPath, apiKey, pageId,
+        prompt, referenceImageId, targetImageId,
+        style, imageType, styleImageId, promptsDir,
+        sectionIndex, mode, booksDir,
+      })
+      return c.json(result)
     } catch (err) {
       if (err instanceof HTTPException) {
         return c.json({ error: err.message }, err.status)

@@ -17,8 +17,11 @@ import { createPromptRoutes } from "./routes/prompts.js"
 import { createTextCatalogRoutes } from "./routes/text-catalog.js"
 import { createTTSRoutes } from "./routes/tts.js"
 import { createStageRoutes } from "./routes/stages.js"
+import { createTaskRoutes } from "./routes/tasks.js"
+import { createBookEventBus } from "./services/book-event-bus.js"
 import { createStageService } from "./services/stage-service.js"
 import { createStageRunner } from "./services/stage-runner.js"
+import { createTaskService } from "./services/task-service.js"
 import { createPresetRoutes } from "./routes/presets.js"
 import { createAdtPreviewRoutes } from "./routes/adt-preview.js"
 import { createSpeechConfigRoutes } from "./routes/speech-config.js"
@@ -60,8 +63,10 @@ if (adtResourcesZip && fs.existsSync(adtResourcesZip)) {
   )
 }
 
+const eventBus = createBookEventBus()
 const stageRunner = createStageRunner()
-const stageService = createStageService(stageRunner)
+const stageService = createStageService(stageRunner, eventBus)
+const taskService = createTaskService(eventBus)
 
 const app = new Hono()
 
@@ -83,15 +88,16 @@ app.onError(errorHandler)
 
 app.route("/api", healthRoutes)
 app.route("/api", createBookRoutes(booksDir, webAssetsDir, configPath))
-app.route("/api", createPageRoutes(booksDir, promptsDir, webAssetsDir, configPath))
+app.route("/api", createPageRoutes(booksDir, promptsDir, webAssetsDir, configPath, taskService))
 app.route("/api", createGlossaryRoutes(booksDir))
 app.route("/api", createDebugRoutes(booksDir, promptsDir, configPath))
 app.route("/api", createQuizRoutes(booksDir))
-app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath))
+app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath, taskService))
 app.route("/api", createPromptRoutes(promptsDir, booksDir))
 app.route("/api", createTextCatalogRoutes(booksDir))
 app.route("/api", createTTSRoutes(booksDir))
-app.route("/api", createStageRoutes(stageService, booksDir, promptsDir, webAssetsDir, configPath))
+app.route("/api", createStageRoutes(stageService, eventBus, booksDir, promptsDir, webAssetsDir, configPath))
+app.route("/api", createTaskRoutes(taskService))
 app.route("/api", createPresetRoutes(configPath))
 app.route("/api", createAdtPreviewRoutes(booksDir, webAssetsDir, configPath))
 app.route("/api", createSpeechConfigRoutes(configPath))
