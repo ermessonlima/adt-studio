@@ -10,6 +10,7 @@ import type {
   BookSummaryOutput,
   BookMetadata,
   TTSOutput,
+  TocGenerationOutput,
   Quiz,
 } from "@adt/types"
 import { WebRenderingOutput as WebRenderingOutputSchema } from "@adt/types"
@@ -103,12 +104,16 @@ export async function packageAdtWeb(
   const summaryRow = storage.getLatestNodeData("book-summary", "book")
   const bookSummary = (summaryRow?.data as BookSummaryOutput | undefined)?.summary
 
+  const tocRow = storage.getLatestNodeData("toc-generation", "book")
+  const llmToc = tocRow?.data as TocGenerationOutput | undefined
+
   // ------------------------------------------------------------------
   // Process pages
   // ------------------------------------------------------------------
   progress.emit({ type: "step-progress", step, message: "Processing pages..." })
 
   const pageList: PageEntry[] = []
+  const tocEntries: Array<{ section_id: string; href: string; title: string; chapter_id: string }> = []
   let hasMath = false
   let hasActivitySections = false
   const copiedImages = new Set<string>()
@@ -193,6 +198,19 @@ export async function packageAdtWeb(
             entry.page_number = sectionMeta.pageNumber
           }
           pageList.push(entry)
+
+          // Build TOC entry from first heading text in this section
+          if (sectionMeta) {
+            const headingText = findHeadingText(sectionMeta)
+            if (headingText) {
+              tocEntries.push({
+                section_id: sectionId,
+                href: filename,
+                title: headingText.text,
+                chapter_id: headingText.textId,
+              })
+            }
+          }
         }
       }
     }
@@ -231,10 +249,22 @@ export async function packageAdtWeb(
 
   writeJson(path.join(contentDir, "pages.json"), pageList)
 
-  // Table of contents — built from first section per page that has a heading
-  // For now, write an empty toc (the Python version uses plate.table_of_contents
-  // which we don't have; the runner handles empty toc gracefully)
-  writeJson(path.join(contentDir, "toc.json"), [])
+  // Table of contents — prefer LLM-generated TOC, fallback to heading-based
+  if (llmToc && llmToc.entries.length > 0) {
+    // Map LLM entries to the flat format expected by the runtime, resolving
+    // hrefs from the page list (the first page is always index.html)
+    const hrefMap = new Map(pageList.map((p) => [p.section_id, p.href]))
+    const tocJson = llmToc.entries.map((e) => ({
+      section_id: e.sectionId,
+      href: hrefMap.get(e.sectionId) ?? e.href,
+      title: e.title,
+      chapter_id: e.chapterId,
+      level: e.level,
+    }))
+    writeJson(path.join(contentDir, "toc.json"), tocJson)
+  } else {
+    writeJson(path.join(contentDir, "toc.json"), tocEntries)
+  }
 
   // ------------------------------------------------------------------
   // Cover image
@@ -1675,6 +1705,34 @@ function collectActivityIds(adtDir: string, pageList: PageEntry[]): string[] {
 // File utilities
 // ---------------------------------------------------------------------------
 
+/** Heading-level text types that should appear in the table of contents */
+const HEADING_TEXT_TYPES = new Set([
+  "section_heading",
+  "chapter_title",
+  "book_title",
+  "activity_title",
+])
+
+/**
+ * Find the first heading text entry in a section's parts.
+ * Returns the textId and text of the first heading-type text found, or null.
+ */
+function findHeadingText(
+  section: import("@adt/types").PageSection,
+): { textId: string; text: string } | null {
+  for (const part of section.parts) {
+    if (part.type !== "text_group" || part.isPruned) continue
+    // Check if this is a heading group type OR contains heading text types
+    for (const t of part.texts) {
+      if (t.isPruned) continue
+      if (HEADING_TEXT_TYPES.has(t.textType)) {
+        return { textId: t.textId, text: t.text }
+      }
+    }
+  }
+  return null
+}
+
 function writeJson(filePath: string, data: unknown): void {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2))
 }
@@ -1747,7 +1805,7 @@ function escapeAttr(s: string): string {
 // Static HTML: Navigation component
 // ---------------------------------------------------------------------------
 
-export const NAV_HTML = `<nav aria-label="Content Index Menu" aria-labelledby="navPopupTitle" aria-hidden="true" inert class="fixed w-64 sm:w-80 bg-white shadow-lg p-5 border-r border-gray-300 transform -translate-x-full transition-transform duration-300 ease-in-out z-20 hidden rounded-lg top-2 left-0 bottom-2 h-[calc(100vh-5rem)] flex flex-col" id="navPopup" role="navigation">
+export const NAV_HTML = `<nav aria-label="Content Index Menu" aria-labelledby="navPopupTitle" aria-hidden="true" inert class="fixed w-64 sm:w-80 bg-white shadow-lg p-5 border-r border-gray-300 -translate-x-full z-20 hidden rounded-lg top-2 left-0 bottom-2 h-[calc(100vh-5rem)] flex flex-col" id="navPopup" role="navigation">
     <div class="nav__toggle flex flex-col gap-4 mb-4">
         <div class="flex justify-between items-center">
             <h3 class="text-xl font-semibold" data-id="toc-title" id="navPopupTitle">Contents</h3>

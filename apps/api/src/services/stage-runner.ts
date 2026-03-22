@@ -28,6 +28,8 @@ import {
   extractImageIds,
   generateGlossary,
   buildGlossaryConfig,
+  generateToc,
+  buildTocGenerationConfig,
   generateAllQuizzes,
   buildQuizGenerationConfig,
   // Master step imports
@@ -141,6 +143,7 @@ const STAGE_RUNNERS: Record<StageName, RunFn> = {
   "quizzes": runQuizzesStep,
   "captions": runCaptionsStep,
   "glossary": runGlossaryStep,
+  "toc": runTocStep,
   "text-and-speech": runTextAndSpeechStep,
   "package": async () => { /* packaging handled separately */ },
 }
@@ -1222,6 +1225,92 @@ async function runGlossaryStep(
     })
     progress.emit({ type: "step-complete", step: "glossary" })
     console.log(`[stage-run] ${label}: glossary complete (${glossary.items.length} terms)`)
+  } finally {
+    storage.close()
+    if (previousKey !== undefined) {
+      process.env.OPENAI_API_KEY = previousKey
+    } else {
+      delete process.env.OPENAI_API_KEY
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TOC step
+// ---------------------------------------------------------------------------
+
+async function runTocStep(
+  label: string,
+  options: StageRunOptions,
+  progress: StageRunProgress
+): Promise<void> {
+  const { booksDir, apiKey, promptsDir, configPath } = options
+
+  const previousKey = process.env.OPENAI_API_KEY
+  process.env.OPENAI_API_KEY = apiKey
+
+  const storage = createBookStorage(label, booksDir)
+
+  try {
+    const config = loadBookConfig(label, booksDir, configPath)
+    const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
+    const bookPromptsDir = path.join(path.resolve(booksDir), label, "prompts")
+    const promptEngine = createPromptEngine([bookPromptsDir, promptsDir])
+    const rateLimiter = config.rate_limit
+      ? createRateLimiter(config.rate_limit.requests_per_minute)
+      : undefined
+
+    const metadataRow = storage.getLatestNodeData("metadata", "book")
+    const metadata = metadataRow?.data as { language_code?: string | null } | null
+    const language = normalizeLocale(config.editing_language ?? metadata?.language_code ?? "en")
+
+    const onLlmLog = (entry: LlmLogEntry) => {
+      storage.appendLlmLog(entry)
+      const step = entry.taskType as StepName
+      progress.emit({
+        type: "llm-log",
+        step,
+        itemId: entry.pageId ?? "",
+        promptName: entry.promptName,
+        modelId: entry.modelId,
+        cacheHit: entry.cacheHit,
+        durationMs: entry.durationMs,
+        inputTokens: entry.usage?.inputTokens,
+        outputTokens: entry.usage?.outputTokens,
+        validationErrors: entry.validationErrors,
+      })
+    }
+
+    const tocConfig = buildTocGenerationConfig(config, language)
+    const tocModel = createLLMModel({
+      modelId: tocConfig.modelId,
+      cacheDir,
+      promptEngine,
+      rateLimiter,
+      onLog: onLlmLog,
+    })
+
+    const pages = storage.getPages()
+
+    progress.emit({ type: "step-start", step: "toc-generation" })
+
+    console.log(`[stage-run] ${label}: generating TOC from ${pages.length} pages`)
+
+    const toc = await generateToc({
+      storage,
+      pages,
+      config: tocConfig,
+      llmModel: tocModel,
+    })
+    storage.putNodeData("toc-generation", "book", toc)
+
+    progress.emit({
+      type: "step-progress",
+      step: "toc-generation",
+      message: `${toc.entries.length} entries`,
+    })
+    progress.emit({ type: "step-complete", step: "toc-generation" })
+    console.log(`[stage-run] ${label}: TOC complete (${toc.entries.length} entries)`)
   } finally {
     storage.close()
     if (previousKey !== undefined) {

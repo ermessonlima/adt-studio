@@ -117,16 +117,10 @@ export const initializeNavigation = () => {
   const navPopup = document.getElementById("navPopup");
   if (!navPopup) return;
 
-  // Load saved navigation state
+  // Restore nav open state from previous page
   const savedState = getCookie("navState");
-  const stateMode = getCookie("stateMode") === "true";
-  const isOpen = savedState === "open";
-
-  // Apply initial state
-  if (!stateMode) {
-    if (isOpen) {
-      toggleNav(isOpen);
-    }
+  if (savedState === "open") {
+    toggleNav(true);
   }
 };
 
@@ -1591,21 +1585,17 @@ export const setNavVisibility = (show) => {
   const navList = document.querySelector('.nav__list[data-nav-type="pages"]');
   if (!navPopup) return;
 
-  // Always ensure transform and transition classes are present
-  navPopup.classList.add("transform", "transition-transform", "duration-300", "ease-in-out");
+  // Remove any transition classes — instant show/hide
+  navPopup.classList.remove("transition-transform", "duration-300", "ease-in-out");
 
   if (show) {
-    // Remove translate-x-full to slide in
     navPopup.classList.remove("-translate-x-full");
     navPopup.classList.add("left-2");
     navPopup.setAttribute("aria-expanded", "true");
     navPopup.setAttribute("aria-hidden", "false");
     navPopup.removeAttribute("inert");
 
-    // Show navList
     if (navList) {
-      // navList.removeAttribute("hidden");
-      // Restore scroll position if available
       const savedPosition = getCookie("navScrollPosition");
       if (savedPosition) {
         navList.scrollTop = parseInt(savedPosition);
@@ -1613,14 +1603,12 @@ export const setNavVisibility = (show) => {
     }
     setCookie("navState", "open", 7);
   } else {
-    // Add translate-x-full to slide out
     navPopup.classList.add("-translate-x-full");
     navPopup.classList.remove("left-2");
     navPopup.setAttribute("aria-expanded", "false");
     navPopup.setAttribute("aria-hidden", "true");
     navPopup.setAttribute("inert", "");
 
-    // Hide navList and save scroll position
     if (navList) {
       const scrollPosition = navList.scrollTop;
       setCookie("navScrollPosition", scrollPosition, 7);
@@ -1628,6 +1616,5 @@ export const setNavVisibility = (show) => {
     setCookie("navState", "closed", 7);
   }
 
-  // Save current state
   interfaceCache.navigation = show;
 };

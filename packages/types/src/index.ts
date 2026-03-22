@@ -143,3 +143,9 @@ export {
 export {
   StyleguideGenerationOutput,
 } from "./styleguide-generation.js"
+
+export {
+  TocEntry,
+  TocGenerationOutput,
+  tocLLMSchema,
+} from "./toc.js"

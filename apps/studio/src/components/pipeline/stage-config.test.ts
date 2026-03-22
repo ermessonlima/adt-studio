@@ -17,6 +17,7 @@ describe("stage-config", () => {
       "quizzes",
       "captions",
       "glossary",
+      "toc",
       "text-and-speech",
       "preview",
     ])

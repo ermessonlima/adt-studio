@@ -49,6 +49,10 @@ const GLOSSARY_SETTINGS_TABS = [
   { key: "general", label: "Glossary Prompt" },
 ]
 
+const TOC_SETTINGS_TABS = [
+  { key: "general", label: "Generation Prompt" },
+]
+
 const CAPTIONS_SETTINGS_TABS = [
   { key: "general", label: "Caption Prompt" },
 ]
@@ -66,6 +70,7 @@ const SETTINGS_TABS: Record<string, { key: string; label: string }[]> = {
   storyboard: STORYBOARD_SETTINGS_TABS,
   quizzes: QUIZ_SETTINGS_TABS,
   glossary: GLOSSARY_SETTINGS_TABS,
+  toc: TOC_SETTINGS_TABS,
   captions: CAPTIONS_SETTINGS_TABS,
   "text-and-speech": TRANSLATIONS_SETTINGS_TABS,
 }

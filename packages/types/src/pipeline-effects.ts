@@ -15,6 +15,7 @@ export type PipelineCacheResource =
   | "pages"
   | "quizzes"
   | "glossary"
+  | "toc"
   | "text-catalog"
   | "tts"
   | "step-status"
@@ -31,6 +32,7 @@ export const STAGE_OUTPUT_NODES: Record<StageName, readonly PipelineNodeName[]> 
   "quizzes": [],
   "captions": [],
   "glossary": [],
+  "toc": [],
   "text-and-speech": [],
   "package": [],
 }
@@ -41,6 +43,7 @@ const STAGE_DIRECT_DEPENDENTS: Record<StageName, StageName[]> = {
   "quizzes": [],
   "captions": [],
   "glossary": [],
+  "toc": [],
   "text-and-speech": [],
   "package": [],
 }
@@ -72,6 +75,7 @@ const NODE_CACHE_RESOURCES: Record<PipelineNodeName, readonly PipelineCacheResou
   "quiz-generation": ["quizzes"],
   "image-captioning": ["pages"],
   "glossary": ["glossary"],
+  "toc-generation": ["toc"],
   "text-catalog": ["text-catalog"],
   "catalog-translation": ["text-catalog"],
   "tts": ["tts"],
@@ -85,6 +89,7 @@ const CACHE_RESOURCE_ORDER: readonly PipelineCacheResource[] = [
   "pages",
   "quizzes",
   "glossary",
+  "toc",
   "text-catalog",
   "tts",
   "step-status",

@@ -107,6 +107,7 @@ export const AppConfig = z
     image_filters: ImageFilters.optional(),
     image_meaningfulness: StepConfig.optional(),
     glossary: StepConfig.optional(),
+    toc_generation: StepConfig.optional(),
     concurrency: z.number().int().min(1).optional(),
     rate_limit: RateLimitConfig.optional(),
     editing_language: z.string().optional(),

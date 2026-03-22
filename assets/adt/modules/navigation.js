@@ -103,10 +103,58 @@ const enhancePageList = (pages) => {
   });
 };
 
+/** Highlight the active page in both TOC and page list, expanding its parent group if needed */
+const highlightActiveTocEntry = () => {
+  const currentHref = window.location.pathname.split("/").pop() || "index.html";
+
+  // Highlight in TOC
+  const tocLinks = document.querySelectorAll(`${TOC_LIST_SELECTOR} .nav__toc-link`);
+  tocLinks.forEach((link) => {
+    const isActive = link.getAttribute("href") === currentHref;
+    link.classList.toggle("bg-blue-50", isActive);
+    link.classList.toggle("text-blue-700", isActive);
+    link.classList.toggle("font-semibold", isActive);
+
+    // Auto-expand parent group if active link is inside a collapsed child list
+    if (isActive) {
+      const childList = link.closest(".nav__toc-children");
+      if (childList && childList.classList.contains("hidden")) {
+        childList.classList.remove("hidden");
+        const group = childList.closest(".nav__toc-group");
+        const toggle = group?.querySelector(".nav__toc-toggle");
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", "true");
+          toggle.setAttribute("aria-label", "Collapse section");
+          const svg = toggle.querySelector("svg");
+          if (svg) svg.style.transform = "rotate(90deg)";
+        }
+      }
+
+      // Scroll active entry into view
+      requestAnimationFrame(() => {
+        const list = link.closest(".nav__list");
+        if (list) {
+          link.scrollIntoView({ block: "center" });
+        }
+      });
+    }
+  });
+
+  // Highlight in page list
+  const pageLinks = document.querySelectorAll(`${PAGE_LIST_SELECTOR} .nav__list-link`);
+  pageLinks.forEach((link) => {
+    const isActive = link.getAttribute("href") === currentHref;
+    link.classList.toggle("bg-blue-50", isActive);
+    link.classList.toggle("text-blue-700", isActive);
+    link.classList.toggle("font-semibold", isActive);
+  });
+};
+
 const renderNavigationLists = () => {
   buildTableOfContents();
   buildPageList();
   activateNavTab(activeNavTab);
+  highlightActiveTocEntry();
 };
 
 const buildTableOfContents = () => {
@@ -114,7 +162,19 @@ const buildTableOfContents = () => {
   if (!tocList) return;
 
   tocList.innerHTML = "";
-  navigationData.toc.forEach((chapter, index) => {
+
+  const hasLevels = navigationData.toc.some((ch) => ch.level && ch.level > 0);
+
+  if (hasLevels) {
+    buildHierarchicalToc(tocList);
+  } else {
+    buildFlatToc(tocList);
+  }
+};
+
+/** Flat TOC (no level data) — simple linked list without sequential numbers */
+const buildFlatToc = (tocList) => {
+  navigationData.toc.forEach((chapter) => {
     const item = document.createElement("li");
     item.classList.add("nav__list-item", "border-b", "border-gray-300", "flex", "items-center");
 
@@ -139,11 +199,6 @@ const buildTableOfContents = () => {
     }
 
     const baseTitle = chapter.title || chapter.chapter_id || chapter.href;
-    const displayIndex = `${index + 1}.`;
-
-    const indexSpan = document.createElement("span");
-    indexSpan.classList.add("text-gray-500", "font-semibold", "mr-3", "tabular-nums");
-    indexSpan.textContent = displayIndex;
 
     const titleSpan = document.createElement("span");
     if (chapter.chapter_id) {
@@ -151,13 +206,149 @@ const buildTableOfContents = () => {
     }
     titleSpan.classList.add("inline", "text-gray-800");
     titleSpan.textContent = baseTitle;
-    link.setAttribute("aria-label", `${displayIndex} ${baseTitle}`);
+    link.setAttribute("aria-label", baseTitle);
 
-    link.appendChild(indexSpan);
     link.appendChild(titleSpan);
     item.appendChild(link);
     tocList.appendChild(item);
   });
+};
+
+/** Hierarchical TOC — collapsible sections grouped by level */
+const buildHierarchicalToc = (tocList) => {
+  // Group entries: level-1 items become parent nodes, level-2/3 nest under them
+  const groups = [];
+  let currentGroup = null;
+
+  navigationData.toc.forEach((entry) => {
+    const level = entry.level || 1;
+    if (level === 1) {
+      currentGroup = { parent: entry, children: [] };
+      groups.push(currentGroup);
+    } else if (currentGroup) {
+      currentGroup.children.push(entry);
+    } else {
+      // Orphan child before any parent — treat as top level
+      currentGroup = { parent: entry, children: [] };
+      groups.push(currentGroup);
+    }
+  });
+
+  groups.forEach((group) => {
+    const hasChildren = group.children.length > 0;
+    const item = document.createElement("li");
+    item.classList.add("nav__toc-group", "border-b", "border-gray-200");
+
+    // Parent row
+    const parentRow = document.createElement("div");
+    parentRow.classList.add("flex", "items-center");
+
+    const parentLink = buildTocLink(group.parent, true);
+    parentRow.appendChild(parentLink);
+
+    if (hasChildren) {
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.classList.add(
+        "nav__toc-toggle",
+        "shrink-0",
+        "w-7",
+        "h-7",
+        "flex",
+        "items-center",
+        "justify-center",
+        "text-gray-400",
+        "hover:text-gray-700",
+        "hover:bg-gray-100",
+        "rounded",
+        "transition"
+      );
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Expand section");
+      toggle.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 4 10 8 6 12"/></svg>';
+
+      const childList = buildChildList(group.children);
+      childList.classList.add("hidden");
+
+      toggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const expanded = toggle.getAttribute("aria-expanded") === "true";
+        toggle.setAttribute("aria-expanded", expanded ? "false" : "true");
+        toggle.setAttribute("aria-label", expanded ? "Expand section" : "Collapse section");
+        childList.classList.toggle("hidden", expanded);
+        toggle.querySelector("svg").style.transform = expanded ? "" : "rotate(90deg)";
+      });
+
+      parentRow.appendChild(toggle);
+      item.appendChild(parentRow);
+      item.appendChild(childList);
+    } else {
+      item.appendChild(parentRow);
+    }
+
+    tocList.appendChild(item);
+  });
+};
+
+/** Build a nested <ol> for child entries (level 2 and 3) */
+const buildChildList = (children) => {
+  const list = document.createElement("ol");
+  list.classList.add("nav__toc-children", "pl-7", "pb-1");
+
+  children.forEach((child) => {
+    const li = document.createElement("li");
+    li.classList.add("nav__list-item");
+
+    const link = buildTocLink(child, false);
+    // Level 3 gets extra indent
+    if (child.level >= 3) {
+      link.classList.add("pl-4");
+    }
+    li.appendChild(link);
+    list.appendChild(li);
+  });
+
+  return list;
+};
+
+/** Build a single TOC link element */
+const buildTocLink = (entry, isParent) => {
+  const link = document.createElement("a");
+  link.classList.add(
+    "nav__toc-link",
+    "flex-grow",
+    "flex",
+    "items-center",
+    "w-full",
+    "p-2",
+    "rounded",
+    "hover:bg-blue-50",
+    "transition",
+    "text-gray-700"
+  );
+  if (isParent) {
+    link.classList.add("py-3", "font-bold");
+  } else {
+    link.classList.add("py-1.5", "text-sm");
+  }
+
+  link.href = entry.href;
+  if (entry.chapter_id) {
+    link.setAttribute("data-text-id", entry.chapter_id);
+  }
+
+  const baseTitle = entry.title || entry.chapter_id || entry.href;
+
+  const titleSpan = document.createElement("span");
+  if (entry.chapter_id) {
+    titleSpan.setAttribute("data-id", entry.chapter_id);
+  }
+  titleSpan.classList.add("inline");
+  titleSpan.textContent = baseTitle;
+  link.setAttribute("aria-label", baseTitle);
+
+  link.appendChild(titleSpan);
+  return link;
 };
 
 const buildPageList = () => {
@@ -169,14 +360,13 @@ const buildPageList = () => {
     return;
   }
 
-  const chapterLookup = navigationData.toc.reduce((acc, chapter, index) => {
+  const chapterLookup = navigationData.toc.reduce((acc, chapter) => {
     if (!chapter?.section_id) {
       return acc;
     }
     acc[chapter.section_id] = {
       ...chapter,
       displayTitle: chapter.title || chapter.chapter_id || chapter.href,
-      index: index + 1,
     };
     return acc;
   }, {});
@@ -199,8 +389,7 @@ const buildPageList = () => {
         "uppercase"
       );
       headingItem.dataset.chapterId = chapterInfo.chapter_id || "";
-      const headingLabel = chapterInfo.index ? `${chapterInfo.index}. ${chapterInfo.displayTitle}` : chapterInfo.displayTitle;
-      headingItem.textContent = headingLabel;
+      headingItem.textContent = chapterInfo.displayTitle;
       pageList.appendChild(headingItem);
       renderedChapters.add(chapterInfo.section_id);
     }

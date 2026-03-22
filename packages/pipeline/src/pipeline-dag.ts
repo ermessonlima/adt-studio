@@ -37,6 +37,7 @@ import { translatePageText, buildTranslationConfig } from "./translation.js"
 import { createTemplateEngine } from "./render-template.js"
 import { captionPageImages, buildCaptionConfig, extractImageIds } from "./image-captioning.js"
 import { generateGlossary, buildGlossaryConfig } from "./glossary.js"
+import { generateToc, buildTocGenerationConfig } from "./toc-generation.js"
 import { generateAllQuizzes, buildQuizGenerationConfig, type QuizPageInput } from "./quiz-generation.js"
 import { buildTextCatalog } from "./text-catalog.js"
 import { translateCatalogBatch, buildCatalogTranslationConfig, getTargetLanguages } from "./catalog-translation.js"
@@ -674,6 +675,31 @@ export async function runFullPipeline(
         },
       })
       storage.putNodeData("glossary", "book", glossary)
+    })
+
+    // ── TOC stage ───────────────────────────────────────────────
+
+    executors.set("toc-generation", async (p) => {
+      const language = getLanguage(storage, config)
+      const tocConfig = buildTocGenerationConfig(config, language)
+      const model = getModel(tocConfig.modelId)
+      const pages = storage.getPages()
+
+      p.emit({ type: "step-progress", step: "toc-generation", message: "Analyzing book structure..." })
+
+      const toc = await generateToc({
+        storage,
+        pages,
+        config: tocConfig,
+        llmModel: model,
+      })
+      storage.putNodeData("toc-generation", "book", toc)
+
+      p.emit({
+        type: "step-progress",
+        step: "toc-generation",
+        message: `${toc.entries.length} entries`,
+      })
     })
 
     // ── Text & Speech stage ─────────────────────────────────────

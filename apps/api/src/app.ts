@@ -25,6 +25,7 @@ import { createTaskService } from "./services/task-service.js"
 import { createPresetRoutes } from "./routes/presets.js"
 import { createAdtPreviewRoutes } from "./routes/adt-preview.js"
 import { createSpeechConfigRoutes } from "./routes/speech-config.js"
+import { createTocRoutes } from "./routes/toc.js"
 
 // Resolve paths relative to monorepo root (2 levels up from apps/api/)
 const projectRoot = path.resolve(
@@ -90,6 +91,7 @@ app.route("/api", healthRoutes)
 app.route("/api", createBookRoutes(booksDir, webAssetsDir, configPath))
 app.route("/api", createPageRoutes(booksDir, promptsDir, webAssetsDir, configPath, taskService))
 app.route("/api", createGlossaryRoutes(booksDir))
+app.route("/api", createTocRoutes(booksDir))
 app.route("/api", createDebugRoutes(booksDir, promptsDir, configPath))
 app.route("/api", createQuizRoutes(booksDir))
 app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath, taskService))

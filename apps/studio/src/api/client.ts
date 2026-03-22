@@ -195,6 +195,31 @@ export interface GlossaryOutput {
   version: number
 }
 
+// --- TOC types ---
+
+export interface TocEntry {
+  id: string
+  title: string
+  sectionId: string
+  href: string
+  chapterId: string
+  level: number
+}
+
+export interface TocGenerationOutput {
+  entries: TocEntry[]
+  pageCount: number
+  generatedAt: string
+  version: number
+}
+
+export interface TocSection {
+  sectionId: string
+  href: string
+  title: string
+  pageNumber: number
+}
+
 // --- Quiz types ---
 
 export interface QuizOption {
@@ -652,6 +677,18 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  getToc: (label: string) =>
+    request<TocGenerationOutput | null>(`/books/${label}/toc`),
+
+  updateToc: (label: string, data: unknown) =>
+    request<{ version: number }>(`/books/${label}/toc`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  getTocSections: (label: string) =>
+    request<TocSection[]>(`/books/${label}/toc/sections`),
 
   getTextCatalog: (label: string) =>
     request<TextCatalogResponse | null>(`/books/${label}/text-catalog`),

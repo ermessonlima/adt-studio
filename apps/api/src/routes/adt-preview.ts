@@ -10,6 +10,7 @@ import {
   type GlossaryOutput,
   type QuizGenerationOutput,
   type TTSOutput,
+  type TocGenerationOutput,
   type Quiz,
 } from "@adt/types"
 import { createBookStorage, type Storage } from "@adt/storage"
@@ -182,6 +183,85 @@ function buildPagesManifest(storage: Storage): Array<{ section_id: string; href:
   return list
 }
 
+/** Heading-level text types that should appear in the table of contents */
+const HEADING_TEXT_TYPES = new Set([
+  "section_heading",
+  "chapter_title",
+  "book_title",
+  "activity_title",
+])
+
+/** Build toc.json — prefer LLM-generated TOC, fallback to heading-based */
+function buildTocManifest(storage: Storage): Array<{ section_id: string; href: string; title: string; chapter_id: string; level?: number }> {
+  // Check for LLM-generated TOC first
+  const tocRow = storage.getLatestNodeData("toc-generation", "book")
+  if (tocRow) {
+    const tocData = tocRow.data as TocGenerationOutput
+    if (tocData.entries.length > 0) {
+      // Build href map from pages manifest for accurate hrefs
+      const pagesManifest = buildPagesManifest(storage)
+      const hrefMap = new Map(pagesManifest.map((p) => [p.section_id, p.href]))
+      return tocData.entries.map((e) => ({
+        section_id: e.sectionId,
+        href: hrefMap.get(e.sectionId) ?? e.href,
+        title: e.title,
+        chapter_id: e.chapterId,
+        level: e.level,
+      }))
+    }
+  }
+
+  // Fallback: build from headings
+  return buildHeadingBasedToc(storage)
+}
+
+/** Fallback TOC: one entry per section that contains a heading */
+function buildHeadingBasedToc(storage: Storage): Array<{ section_id: string; href: string; title: string; chapter_id: string }> {
+  const pages = storage.getPages()
+  const toc: Array<{ section_id: string; href: string; title: string; chapter_id: string }> = []
+
+  for (const page of pages) {
+    const renderRow = storage.getLatestNodeData("web-rendering", page.pageId)
+    if (!renderRow) continue
+    const parsed = WebRenderingOutput.safeParse(renderRow.data)
+    if (!parsed.success || parsed.data.sections.length === 0) continue
+
+    const sectioningRow = storage.getLatestNodeData("page-sectioning", page.pageId)
+    const sectioningParsed = sectioningRow ? PageSectioningOutput.safeParse(sectioningRow.data) : null
+    const sectioning = sectioningParsed?.success ? sectioningParsed.data : undefined
+
+    const sections = [...parsed.data.sections].sort((a, b) => a.sectionIndex - b.sectionIndex)
+    for (const rs of sections) {
+      const sectionMeta = sectioning?.sections?.[rs.sectionIndex]
+      if (!sectionMeta || sectionMeta.isPruned) continue
+
+      const sectionId = sectionMeta.sectionId ?? `${page.pageId}_sec${String(rs.sectionIndex + 1).padStart(3, "0")}`
+
+      // Find first heading text in section parts
+      for (const part of sectionMeta.parts) {
+        if (part.type !== "text_group" || part.isPruned) continue
+        let found = false
+        for (const t of part.texts) {
+          if (t.isPruned) continue
+          if (HEADING_TEXT_TYPES.has(t.textType)) {
+            toc.push({
+              section_id: sectionId,
+              href: `${sectionId}.html`,
+              title: t.text,
+              chapter_id: t.textId,
+            })
+            found = true
+            break
+          }
+        }
+        if (found) break
+      }
+    }
+  }
+
+  return toc
+}
+
 /** Build config.json that reflects actual book capabilities */
 function buildPreviewConfig(storage: Storage, language: string) {
   const glossary = getGlossary(storage)
@@ -342,9 +422,9 @@ export function createAdtPreviewRoutes(
 
   // /content/toc.json
   app.get("/books/:label/adt-preview/content/toc.json", (c) => {
-    resolveBook(c.req.param("label"))
+    const toc = withStorage(c.req.param("label"), (storage) => buildTocManifest(storage))
     c.header("Content-Type", "application/json")
-    return c.body("[]")
+    return c.body(JSON.stringify(toc))
   })
 
   // /content/navigation/nav.html

@@ -5,6 +5,7 @@ import { ExtractSettings } from "@/components/pipeline/stages/ExtractSettings"
 import { StoryboardSettings } from "@/components/pipeline/stages/StoryboardSettings"
 import { QuizzesSettings } from "@/components/pipeline/stages/QuizzesSettings"
 import { GlossarySettings } from "@/components/pipeline/stages/GlossarySettings"
+import { TocSettings } from "@/components/pipeline/stages/TocSettings"
 import { CaptionsSettings } from "@/components/pipeline/stages/CaptionsSettings"
 import { TranslationsSettings } from "@/components/pipeline/stages/TranslationsSettings"
 import { cn } from "@/lib/utils"
@@ -76,6 +77,8 @@ function StepSettingsPage() {
           <QuizzesSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
         ) : step === "glossary" ? (
           <GlossarySettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
+        ) : step === "toc" ? (
+          <TocSettings bookLabel={label} headerTarget={headerTarget} />
         ) : step === "captions" ? (
           <CaptionsSettings bookLabel={label} headerTarget={headerTarget} tab={tab} />
         ) : step === "text-and-speech" ? (
