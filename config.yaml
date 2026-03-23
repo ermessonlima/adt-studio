@@ -29,26 +29,77 @@ text_group_types:
   other: Anything that doesn't fit the above
 
 section_types:
-  front_cover: Front cover page (first page only)
-  inside_cover: Inside cover page
-  back_cover: Back cover page (last page only)
-  separator: Separator page between logical sections
-  credits: Credits and acknowledgements
-  foreword: Introduction, overview, or author's note
-  table_of_contents: Table of contents
-  boxed_text: Text in a box or callout
-  text_only: Reading section with only text
-  text_and_single_image: Section with text and a single image
-  text_and_images: Reading section with text and multiple images
-  images_only: Section with only images
-  activity_matching: Matching activity
-  activity_fill_in_a_table: Table fill-in activity
-  activity_multiple_choice: Multiple choice activity
-  activity_true_false: True or false activity
-  activity_open_ended_answer: Open-ended text response activity
-  activity_fill_in_the_blank: Fill in the blank activity
-  activity_sorting: Sorting activity
-  other: Any other section type
+  front_cover: >
+    The very first page of the book showing the title, author, and cover artwork.
+    Only the first page qualifies — interior title pages do not.
+  inside_cover: >
+    A page immediately after the front cover or before the back cover,
+    typically containing publisher info, ISBN, copyright, or edition details.
+  back_cover: >
+    The very last page of the book, often with a summary, barcode, or publisher logo.
+    Only the final page qualifies.
+  separator: >
+    A divider page between major sections of the book. Contains minimal content —
+    usually just a title, chapter number, or decorative element. No substantive text or activities.
+  credits: >
+    A page listing contributors, acknowledgements, photo credits, or funding sources.
+    Distinct from inside_cover (which has publisher/ISBN info).
+  foreword: >
+    An introductory page such as a preface, author's note, or "about this book" section.
+    Appears before the main content begins.
+  table_of_contents: >
+    A page listing chapter or section titles with their corresponding page numbers.
+  boxed_text: >
+    Text presented inside a visible box, border, or colored callout area that
+    visually separates it from the surrounding content. Used for tips, definitions,
+    key facts, or highlighted information.
+  text_only: >
+    A reading section that contains only text — no images, no activities.
+    Paragraphs, headings, and prose passages.
+  text_and_single_image: >
+    A reading section that contains text accompanied by exactly one image.
+    The image supports or illustrates the text.
+  text_and_images: >
+    A reading section that contains text accompanied by two or more images.
+  images_only: >
+    A section that contains only images with no meaningful text content.
+    Captions or labels alone do not count as text.
+  activity_matching: >
+    Match items in a strict one-to-one relationship.
+    Each item on one side corresponds to exactly one item on the other side,
+    and both sides have the same number of elements.
+  activity_fill_in_a_table: >
+    Complete a table by filling in missing cells.
+    The structure is a grid with rows and columns, and learners must enter
+    information into specific cells.
+  activity_multiple_choice: >
+    Select the correct answer from a list of predefined options.
+    Each question presents one or more possible answers, and the learner
+    chooses the best option.
+  activity_true_false: >
+    Decide whether each statement is true or false.
+    The learner evaluates given statements and selects between two options:
+    true or false.
+  activity_open_ended_answer: >
+    Provide a free-form response without predefined options.
+    The learner must generate their own answer, typically as a sentence,
+    explanation, or short text.
+  activity_fill_in_the_blank: >
+    Complete sentences or phrases by filling in missing words or values.
+    The learner supplies the missing information directly in the blanks.
+  activity_sorting: >
+    Group multiple items into categories.
+    There are more items than categories, and each category contains
+    multiple items (many-to-one classification).
+  activity_other: >
+    An interactive activity or exercise that does not fit any of the specific
+    activity types above. Use this ONLY when the underlying learning mechanic
+    is truly unique (e.g., free drawing, crafts, physical movement).
+    Do NOT use this just because the physical action is circling, coloring,
+    or underlining — classify based on the cognitive task, not the action.
+  other: >
+    Any section that does not clearly fit any of the above types.
+    Use this only as a last resort.
 
 metadata:
   prompt: metadata_extraction

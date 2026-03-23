@@ -17,6 +17,29 @@ SECTION TYPES:
 {% for t in section_types %}- {{ t.key }}: {{ t.description }}
 {% endfor %}
 
+CLASSIFICATION RULES (use these to disambiguate activity types):
+- Classify by the COGNITIVE TASK the learner must perform, not the physical action (circling, coloring, underlining, drawing lines). Look at what the learner must DECIDE or PRODUCE, not how they mark their answer.
+- For EVERY activity section, your "reasoning" field MUST include:
+  1. What the instructions ask the learner to do
+  2. What the visual layout shows on the page image
+  3. For sorting/matching activities: an explicit count (e.g., "X total items, Y categories")
+  Then choose the activity type based on all of the above.
+- MULTIPLE CHOICE vs SORTING vs MATCHING — Gather all evidence before deciding:
+  • What do the instructions ask? (e.g., "choose the best", "connect with", "sort into", "circle by color")
+  • What does the visual layout show? (e.g., options listed per question, a shared pool with categories, two columns)
+  • What are the counts? How many total items, how many categories/targets?
+  • Does the learner pick ONE correct answer per question, or assign ALL items to categories?
+  Then apply:
+  • activity_multiple_choice — learner picks one correct answer per question from a set of options; the other options are distractors
+  • activity_matching — learner assigns ALL items to targets, and the total counts are EQUAL (one-to-one pairing)
+  • activity_sorting — learner assigns ALL items to categories, and items OUTNUMBER categories (many-to-one)
+  Hard constraint: if total items > total categories, it is activity_sorting, never activity_matching — regardless of what the instruction wording suggests.
+- If there are exactly two options (true/false, yes/no, correct/incorrect) → activity_true_false
+- If no options are provided and the learner writes freely → activity_open_ended_answer
+- If sentences have blanks to fill in with missing words → activity_fill_in_the_blank
+- If a table grid has empty cells to complete → activity_fill_in_a_table
+- activity_other is a last resort — only use it when the learning mechanic itself is truly unique (e.g., free drawing, crafts, physical movement) and no other activity type applies.
+
 RULES:
 - ONLY use IDs that are explicitly listed below in "Text groups" and "Image" entries. Do NOT invent or generate new IDs.
 {% if sectioning_mode == "page" %}
@@ -28,11 +51,13 @@ RULES:
 - DEFAULT: Keep all content in a SINGLE section. Prefer one section per page.
 - SPLIT the page into multiple sections when ANY of these conditions are true:
   1. The page contains MULTIPLE DISTINCT activity types (e.g., open-ended questions followed by a sorting activity followed by multiple choice).
-  2. The page contains MULTIPLE multiple-choice questions — each multiple-choice question (its prompt and answer choices) MUST become its own separate section so the user only sees one question at a time.
-  3. The page contains MULTIPLE true/false questions — same rule, one question per section.
-- EXCEPTION — do NOT split if the page is ENTIRELY open-ended answers or ENTIRELY fill-in-the-blank. These should always remain as ONE section even with many questions.
+  2. The page contains MULTIPLE SEPARATE activities — even if they share the same type. If two fill-in-the-blank exercises have different instructions, different topics, or are visually separated on the page, they are separate sections.
+  3. The page contains MULTIPLE multiple-choice questions — each multiple-choice question (its prompt and answer choices) MUST become its own separate section so the user only sees one question at a time.
+  4. The page contains MULTIPLE true/false questions — same rule, one question per section.
+- NOTE: A single activity with many questions (e.g., one set of fill-in-the-blank sentences under shared instructions) stays as ONE section. But two separate activities with their own instructions are separate sections, even if both are the same type.
 - When splitting multiple-choice or true/false questions: put any shared header, instructions, or passage text into the FIRST section, then give each question its own section. Include the question prompt and its answer choices together in each section.
-- When splitting mixed activity types: group consecutive content of the same activity type together.
+- When splitting: group consecutive content that belongs to the same activity together.
+- IMPORTANT: When splitting, do NOT pre-label activity types in your reasoning. First decide WHICH groups belong together, then apply the CLASSIFICATION RULES (including the 3-step count) to each section individually. The reasoning must show the per-section analysis with item counts.
 - ALL listed group IDs must be assigned to at least one section
 - ALL listed image IDs must be assigned to at least one section — assign each image to the section it visually belongs to
 - Group/image IDs may appear in multiple sections only when it makes strong pedagogical sense (e.g. shared instructions)
@@ -64,7 +89,7 @@ Text groups:
 {% if sectioning_mode == "page" %}
 Please place ALL content into a single section.
 {% elsif sectioning_mode == "dynamic" %}
-Keep this page as a single section UNLESS it contains multiple distinct activity types OR multiple multiple-choice/true-false questions. If there are multiple multiple-choice or true/false questions, split each question into its own section. Pages that are entirely open-ended or entirely fill-in-the-blank should always stay as one section.
+Keep this page as a single section UNLESS it contains multiple separate activities OR multiple multiple-choice/true-false questions. Split when activities have different types, different instructions, or are visually separate on the page — even if they share the same activity type. Each multiple-choice or true/false question gets its own section.
 {% else %}
 Please organize these into sections.
 {% endif %}

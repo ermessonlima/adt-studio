@@ -13,6 +13,7 @@ export const SECTION_TYPES = [
   { value: "activity_open_ended_answer", label: "Activity: Open-Ended Answer" },
   { value: "activity_fill_in_the_blank", label: "Activity: Fill in the Blank" },
   { value: "activity_sorting", label: "Activity: Sorting" },
+  { value: "activity_other", label: "Activity: Other" },
   // Structure
   { value: "front_cover", label: "Front Cover" },
   { value: "inside_cover", label: "Inside Cover" },
