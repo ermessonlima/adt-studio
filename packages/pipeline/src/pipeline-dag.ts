@@ -8,6 +8,7 @@ import {
   createRateLimiter,
   createTTSSynthesizer,
   createAzureTTSSynthesizer,
+  createGeminiTTSSynthesizer,
 } from "@adt/llm"
 import type { LLMModel, LlmLogEntry, LogLevel, TTSSynthesizer } from "@adt/llm"
 import type {
@@ -48,6 +49,8 @@ import {
   resolveVoice,
   resolveInstructions,
   resolveProviderForLanguage,
+  resolveSpeechModel,
+  resolveSpeechFormat,
   generateSpeechFile,
   type ProviderRouting,
 } from "./speech.js"
@@ -92,6 +95,7 @@ export interface FullPipelineOptions {
   webAssetsDir?: string
   azureSpeechKey?: string
   azureSpeechRegion?: string
+  geminiApiKey?: string
 }
 
 /**
@@ -765,10 +769,12 @@ export async function runFullPipeline(
       const azureConfig = options.azureSpeechKey && options.azureSpeechRegion
         ? { subscriptionKey: options.azureSpeechKey, region: options.azureSpeechRegion }
         : undefined
+      const geminiConfig = options.geminiApiKey
+        ? { apiKey: options.geminiApiKey }
+        : undefined
       const voiceMaps = loadVoicesConfig(configDir)
       const instructionsMap = loadSpeechInstructions(configDir)
-      const speechModel = config.speech?.model ?? "gpt-4o-mini-tts"
-      const speechFormat = config.speech?.format ?? "mp3"
+      const speechModel = config.speech?.model
       const defaultProvider = config.speech?.default_provider ?? "openai"
       const providerConfigs = config.speech?.providers ?? {}
       const routing: ProviderRouting = { providers: providerConfigs, defaultProvider }
@@ -780,6 +786,14 @@ export async function runFullPipeline(
           if (!azureConfig) throw new Error("Azure Speech key and region are required for Azure TTS provider")
           const synth = createAzureTTSSynthesizer(azureConfig, { sampleRate: config.speech?.sample_rate, bitRate: config.speech?.bit_rate })
           synthesizers.set("azure", synth)
+          return synth
+        }
+        if (providerName === "gemini") {
+          if (!geminiConfig && !process.env.GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY is required for Gemini TTS provider")
+          }
+          const synth = createGeminiTTSSynthesizer(geminiConfig)
+          synthesizers.set("gemini", synth)
           return synth
         }
         const synth = createTTSSynthesizer()
@@ -815,8 +829,9 @@ export async function runFullPipeline(
 
       await processWithConcurrency(workItems, effectiveConcurrency, async (item) => {
         const provider = resolveProviderForLanguage(item.language, routing)
-        const providerModel = providerConfigs[provider]?.model ?? (provider === "azure" ? "azure-tts" : speechModel)
-        const voice = config.speech?.voice ?? resolveVoice(provider, item.language, voiceMaps)
+        const providerModel = resolveSpeechModel(provider, providerConfigs, speechModel)
+        const outputFormat = resolveSpeechFormat(provider, config.speech?.format)
+        const voice = resolveVoice(provider, item.language, voiceMaps, config.speech?.voice)
         const instructions = provider === "openai" ? resolveInstructions(item.language, instructionsMap) : ""
         const ttsSynthesizer = getSynthesizer(provider)
         const entry = await generateSpeechFile({
@@ -826,7 +841,7 @@ export async function runFullPipeline(
           model: providerModel,
           voice,
           instructions,
-          format: speechFormat,
+          format: outputFormat,
           bookDir: path.join(path.resolve(booksRoot), label),
           cacheDir,
           ttsSynthesizer,

@@ -22,7 +22,7 @@ export function TextToSpeechSettings({ bookLabel, headerTarget }: { bookLabel: s
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const { queueRun } = useBookRun()
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
@@ -72,7 +72,15 @@ export function TextToSpeechSettings({ bookLabel, headerTarget }: { bookLabel: s
         onSuccess: async () => {
           setDirty({})
           setShowRerunDialog(false)
-          queueRun({ fromStage: "text-and-speech", toStage: "text-and-speech", apiKey, azure: { key: azureKey, region: azureRegion } })
+          queueRun({
+            fromStage: "text-and-speech",
+            toStage: "text-and-speech",
+            apiKey,
+            providerCredentials: {
+              azure: { key: azureKey, region: azureRegion },
+              geminiApiKey: geminiKey,
+            },
+          })
           navigate({ to: "/books/$label/$step", params: { label: bookLabel, step: "text-and-speech" } })
         },
       }

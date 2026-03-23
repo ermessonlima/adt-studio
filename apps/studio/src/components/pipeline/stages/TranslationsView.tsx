@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Check, ChevronDown, Languages, Loader2, Play, Pause } from "lucide-react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { Check, ChevronDown, Languages, Loader2, Play, Pause, WandSparkles } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, getAudioUrl, BASE_URL } from "@/api/client"
 import type { TextCatalogEntry, VersionEntry } from "@/api/client"
 import { useActiveConfig } from "@/hooks/use-debug"
@@ -12,6 +12,9 @@ import { StageRunCard } from "../StageRunCard"
 import { STAGE_DESCRIPTIONS } from "../stage-config"
 import { cn } from "@/lib/utils"
 import { normalizeLocale } from "@/lib/languages"
+import { languageUsesSpeechProvider } from "@/lib/speech-routing"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { resolveTranslationLanguageState } from "./translations-view-state"
 
 const IMAGE_ID_RE = /_im\d{3}/
@@ -147,17 +150,25 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const { data: book, isLoading: isBookLoading } = useBook(bookLabel)
   const queryClient = useQueryClient()
-  const { stageState, queueRun } = useBookRun()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { stageState, queueRun, error: runError } = useBookRun()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const ttsState = stageState("text-and-speech")
   const textAndSpeechDone = ttsState === "done"
+  const hasStageError = ttsState === "error"
   const isRunning = ttsState === "running" || ttsState === "queued"
-  const showRunCard = !textAndSpeechDone || isRunning
 
   const handleRunTranslations = useCallback(() => {
     if (!hasApiKey || isRunning) return
-    queueRun({ fromStage: "text-and-speech", toStage: "text-and-speech", apiKey, azure: { key: azureKey, region: azureRegion } })
-  }, [hasApiKey, isRunning, apiKey, azureKey, azureRegion, queueRun])
+    queueRun({
+      fromStage: "text-and-speech",
+      toStage: "text-and-speech",
+      apiKey,
+      providerCredentials: {
+        azure: { key: azureKey, region: azureRegion },
+        geminiApiKey: geminiKey,
+      },
+    })
+  }, [hasApiKey, isRunning, apiKey, azureKey, azureRegion, geminiKey, queueRun])
 
   const { data: catalog, isLoading } = useQuery({
     queryKey: ["books", bookLabel, "text-catalog"],
@@ -172,6 +183,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   })
 
   const merged = activeConfigData?.merged as Record<string, unknown> | undefined
+  const speechConfig = merged?.speech
   const outputLanguages = Array.from(
     new Set(((merged?.output_languages as string[] | undefined) ?? []).map((code) => normalizeLocale(code)))
   )
@@ -203,10 +215,29 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
     isBookLoading,
   })
   const isSourceLang = !hasExplicitOutputLanguages || isSelectedSourceLang
+  const audioLang = selectedLang ??
+    (hasExplicitOutputLanguages ? (outputLanguages[0] ?? editingLanguage) : editingLanguage)
+  const currentLanguageUsesGemini =
+    !!audioLang && languageUsesSpeechProvider(audioLang, "gemini", speechConfig)
+  const geminiRoutedLanguages = (
+    outputLanguages.length > 0
+      ? outputLanguages
+      : editingLanguage
+        ? [editingLanguage]
+        : []
+  ).filter((language, index, array) =>
+    languageUsesSpeechProvider(language, "gemini", speechConfig) &&
+    array.indexOf(language) === index
+  )
+  const allowGeminiPartialView =
+    hasStageError &&
+    geminiRoutedLanguages.length > 0
+  const showRunCard = (!textAndSpeechDone || isRunning) && !allowGeminiPartialView
 
   // Pending state for edits (keyed by language)
   const [pendingEntries, setPendingEntries] = useState<TextCatalogEntry[] | null>(null)
   const [saving, setSaving] = useState(false)
+  const [generateErrorById, setGenerateErrorById] = useState<Record<string, string>>({})
 
   // Get translated entries for selected language
   const translationData = selectedLang ? catalog?.translations?.[selectedLang] : undefined
@@ -251,7 +282,6 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   }
 
   // Build audio lookup — use selected language, or editing language when no output languages
-  const audioLang = selectedLang ?? editingLanguage
   const audioMap = new Map<string, { fileName: string; voice: string }>()
   if (ttsData && audioLang && ttsData.languages[audioLang]) {
     for (const e of ttsData.languages[audioLang].entries) {
@@ -261,6 +291,52 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   const totalAudioFiles = ttsData
     ? Object.values(ttsData.languages).reduce((sum, lang) => sum + lang.entries.length, 0)
     : 0
+  const generatedAudioCount = displayEntries.filter((entry) => audioMap.has(entry.id)).length
+  const missingAudioCount = Math.max(displayEntries.length - generatedAudioCount, 0)
+
+  const generateAudioMutation = useMutation({
+    mutationFn: async (variables: { textId: string; language: string }) => {
+      if (!geminiKey) {
+        throw new Error("Gemini API key is required to generate audio.")
+      }
+      return api.generateGeminiTTSForItem(
+        bookLabel,
+        variables.textId,
+        variables.language,
+        geminiKey
+      )
+    },
+    onMutate: (variables) => {
+      setGenerateErrorById((prev) => {
+        if (!(variables.textId in prev)) return prev
+        const next = { ...prev }
+        delete next[variables.textId]
+        return next
+      })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "tts"] }),
+        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] }),
+      ])
+    },
+    onError: (error, variables) => {
+      setGenerateErrorById((prev) => ({
+        ...prev,
+        [variables.textId]:
+          error instanceof Error ? error.message : String(error),
+      }))
+      queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] })
+    },
+  })
+
+  const handleGenerateAudio = useCallback(
+    (textId: string) => {
+      if (!audioLang || !currentLanguageUsesGemini) return
+      generateAudioMutation.mutate({ textId, language: audioLang })
+    },
+    [audioLang, currentLanguageUsesGemini, generateAudioMutation]
+  )
 
   useEffect(() => {
     if (!catalog) return
@@ -270,8 +346,17 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
         {outputLanguages.length > 1 && (
           <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{outputLanguages.length} languages</span>
         )}
-        {totalAudioFiles > 0 && (
+        {currentLanguageUsesGemini ? (
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">
+            {generatedAudioCount}/{displayEntries.length} audio
+          </span>
+        ) : totalAudioFiles > 0 && (
           <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{totalAudioFiles} audio</span>
+        )}
+        {currentLanguageUsesGemini && missingAudioCount > 0 && (
+          <span className="text-[10px] bg-amber-100 text-amber-900 rounded-full px-2 py-0.5">
+            {missingAudioCount} missing
+          </span>
         )}
         {selectedLang && translationVersion != null && !isSourceLang && (
           <VersionPicker
@@ -291,7 +376,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
       </div>
     )
     return () => setExtra(null)
-  }, [catalog, displayEntries.length, outputLanguages.length, selectedLang, translationVersion, saving, dirty, bookLabel, isSourceLang, totalAudioFiles, selectedPageId])
+  }, [catalog, displayEntries.length, outputLanguages.length, selectedLang, translationVersion, saving, dirty, bookLabel, isSourceLang, totalAudioFiles, selectedPageId, currentLanguageUsesGemini, generatedAudioCount, missingAudioCount])
 
   if (!showRunCard && isLoading) {
     return (
@@ -332,6 +417,14 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   // Language tabs + entries
   return (
     <div className="space-y-3">
+      {allowGeminiPartialView && runError && (
+        <Alert variant="destructive" className="rounded-md">
+          <AlertDescription className="text-xs whitespace-pre-wrap break-words">
+            {runError}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Language tabs — only when there are multiple output languages */}
       {outputLanguages.length > 1 && (
       <div className="flex gap-1.5">
@@ -402,9 +495,21 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                   <span className="text-[10px] text-muted-foreground">{entry.id}</span>
                   <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
                 </div>
-                {audio && audioLang && (
-                  <PlayButton key={audioLang} audioUrl={getAudioUrl(bookLabel, audioLang, audio.fileName)} />
-                )}
+                <AudioAction
+                  audio={audio}
+                  audioLang={audioLang}
+                  bookLabel={bookLabel}
+                  textId={entry.id}
+                  canGenerate={currentLanguageUsesGemini}
+                  hasGeminiKey={geminiKey.length > 0}
+                  onGenerate={handleGenerateAudio}
+                  isGenerating={
+                    generateAudioMutation.isPending &&
+                    generateAudioMutation.variables?.textId === entry.id &&
+                    generateAudioMutation.variables?.language === audioLang
+                  }
+                  errorMessage={generateErrorById[entry.id]}
+                />
               </div>
             )
           }
@@ -436,9 +541,21 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                     rows={1}
                   />
                 </div>
-                {audio && audioLang && (
-                  <PlayButton key={audioLang} audioUrl={getAudioUrl(bookLabel, audioLang, audio.fileName)} />
-                )}
+                <AudioAction
+                  audio={audio}
+                  audioLang={audioLang}
+                  bookLabel={bookLabel}
+                  textId={entry.id}
+                  canGenerate={currentLanguageUsesGemini}
+                  hasGeminiKey={geminiKey.length > 0}
+                  onGenerate={handleGenerateAudio}
+                  isGenerating={
+                    generateAudioMutation.isPending &&
+                    generateAudioMutation.variables?.textId === entry.id &&
+                    generateAudioMutation.variables?.language === audioLang
+                  }
+                  errorMessage={generateErrorById[entry.id]}
+                />
               </div>
             </div>
           )
@@ -489,5 +606,70 @@ function PlayButton({ audioUrl }: { audioUrl: string }) {
     >
       {playing ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5 ml-0.5" />}
     </button>
+  )
+}
+
+function AudioAction({
+  audio,
+  audioLang,
+  bookLabel,
+  textId,
+  canGenerate,
+  hasGeminiKey,
+  onGenerate,
+  isGenerating,
+  errorMessage,
+}: {
+  audio?: { fileName: string; voice: string }
+  audioLang: string | null
+  bookLabel: string
+  textId: string
+  canGenerate: boolean
+  hasGeminiKey: boolean
+  onGenerate: (textId: string) => void
+  isGenerating: boolean
+  errorMessage?: string
+}) {
+  if (audio && audioLang) {
+    return (
+      <PlayButton
+        key={audioLang}
+        audioUrl={getAudioUrl(bookLabel, audioLang, audio.fileName)}
+      />
+    )
+  }
+
+  if (!canGenerate) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1 shrink-0">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 px-2 text-[10px]"
+        disabled={isGenerating || !hasGeminiKey}
+        onClick={() => onGenerate(textId)}
+        title={
+          hasGeminiKey
+            ? "Generate missing Gemini audio"
+            : "Set a Gemini API key to generate audio"
+        }
+      >
+        {isGenerating ? (
+          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+        ) : (
+          <WandSparkles className="mr-1 h-3 w-3" />
+        )}
+        Generate
+      </Button>
+      {errorMessage && (
+        <p className="max-w-44 text-[10px] leading-tight text-red-500 text-right">
+          {errorMessage}
+        </p>
+      )}
+    </div>
   )
 }

@@ -46,12 +46,14 @@ describe("translation", () => {
   it("normalizes locale variants to dash format", () => {
     expect(normalizeLocale("en_US")).toBe("en-US")
     expect(normalizeLocale("pt-br")).toBe("pt-BR")
+    expect(normalizeLocale("ur_pk")).toBe("ur-PK")
     expect(normalizeLocale("ES")).toBe("es")
   })
 
   it("extracts base language from locale variants", () => {
     expect(getBaseLanguage("en_US")).toBe("en")
     expect(getBaseLanguage("pt-br")).toBe("pt")
+    expect(getBaseLanguage("ur_PK")).toBe("ur")
     expect(getBaseLanguage("ES")).toBe("es")
   })
 
@@ -78,6 +80,23 @@ describe("translation", () => {
       targetLanguage: "fr",
       promptName: "custom_translation",
       modelId: "openai:gpt-5.2",
+      maxRetries: 5,
+    })
+  })
+
+  it("builds translation config for Urdu locales", () => {
+    const appConfig: AppConfig = {
+      text_types: { section_text: "Main body text" },
+      text_group_types: { paragraph: "Paragraph" },
+      editing_language: "ur_pk",
+    }
+
+    const config = buildTranslationConfig(appConfig, "en_US")
+    expect(config).toEqual({
+      sourceLanguage: "en-US",
+      targetLanguage: "ur-PK",
+      promptName: "translation",
+      modelId: "openai:gpt-4.1",
       maxRetries: 5,
     })
   })

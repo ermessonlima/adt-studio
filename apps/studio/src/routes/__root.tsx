@@ -24,6 +24,8 @@ function RootLayout() {
     setAzureKey,
     azureRegion,
     setAzureRegion,
+    geminiKey,
+    setGeminiKey,
   } = useApiKey()
   const [showKeyDialog, setShowKeyDialog] = useState(!hasApiKey)
   const openSettings = useCallback(() => setShowKeyDialog(true), [])
@@ -44,6 +46,8 @@ function RootLayout() {
           onSaveAzureKey={setAzureKey}
           azureRegion={azureRegion}
           onSaveAzureRegion={setAzureRegion}
+          geminiKey={geminiKey}
+          onSaveGeminiKey={setGeminiKey}
         />
       </div>
     </SettingsContext>

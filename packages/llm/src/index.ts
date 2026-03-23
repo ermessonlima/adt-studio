@@ -38,8 +38,10 @@ export { createLogger, type LogLevel, type Logger } from "./logger.js"
 export {
   createTTSSynthesizer,
   createAzureTTSSynthesizer,
+  createGeminiTTSSynthesizer,
   type TTSSynthesizer,
   type SynthesizeSpeechOptions,
   type AzureTTSConfig,
   type AzureAudioOptions,
+  type GeminiTTSConfig,
 } from "./speech.js"

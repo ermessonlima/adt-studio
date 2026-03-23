@@ -29,7 +29,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const { queueRun } = useBookRun()
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
@@ -45,6 +45,8 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
   const [openaiLanguages, setOpenaiLanguages] = useState("")
   const [azureModel, setAzureModel] = useState("")
   const [azureLanguages, setAzureLanguages] = useState("")
+  const [geminiModel, setGeminiModel] = useState("")
+  const [geminiLanguages, setGeminiLanguages] = useState("")
   const [bitRate, setBitRate] = useState("")
   const [sampleRate, setSampleRate] = useState("")
 
@@ -78,6 +80,10 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           if (providers.azure.model) setAzureModel(String(providers.azure.model))
           if (Array.isArray(providers.azure.languages)) setAzureLanguages((providers.azure.languages as string[]).join(", "))
         }
+        if (providers.gemini) {
+          if (providers.gemini.model) setGeminiModel(String(providers.gemini.model))
+          if (Array.isArray(providers.gemini.languages)) setGeminiLanguages((providers.gemini.languages as string[]).join(", "))
+        }
       }
     }
   }, [activeConfigData])
@@ -101,6 +107,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
       const existing = (bookConfigData?.config?.speech ?? {}) as Record<string, unknown>
       const openaiLangs = openaiLanguages.split(",").map((s) => s.trim()).filter(Boolean)
       const azureLangs = azureLanguages.split(",").map((s) => s.trim()).filter(Boolean)
+      const geminiLangs = geminiLanguages.split(",").map((s) => s.trim()).filter(Boolean)
       const providers: Record<string, unknown> = {}
       if (openaiModel.trim() || openaiLangs.length > 0) {
         providers.openai = {
@@ -112,6 +119,12 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
         providers.azure = {
           model: azureModel.trim() || undefined,
           languages: azureLangs.length > 0 ? azureLangs : undefined,
+        }
+      }
+      if (geminiModel.trim() || geminiLangs.length > 0) {
+        providers.gemini = {
+          model: geminiModel.trim() || undefined,
+          languages: geminiLangs.length > 0 ? geminiLangs : undefined,
         }
       }
       overrides.speech = {
@@ -151,7 +164,15 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           setDirty({})
           setPromptDraft(null)
           setShowRerunDialog(false)
-          queueRun({ fromStage: "text-and-speech", toStage: "text-and-speech", apiKey, azure: { key: azureKey, region: azureRegion } })
+          queueRun({
+            fromStage: "text-and-speech",
+            toStage: "text-and-speech",
+            apiKey,
+            providerCredentials: {
+              azure: { key: azureKey, region: azureRegion },
+              geminiApiKey: geminiKey,
+            },
+          })
           navigate({ to: "/books/$label/$step", params: { label: bookLabel, step: "text-and-speech" } })
         },
       }
@@ -199,6 +220,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
               >
                 <option value="openai">OpenAI</option>
                 <option value="azure">Azure</option>
+                <option value="gemini">Gemini</option>
               </select>
               <p className="text-xs text-muted-foreground">Provider used for languages not assigned to a specific provider.</p>
             </div>
@@ -252,6 +274,30 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
             </div>
           </div>
 
+          {/* Gemini Provider */}
+          <div className="space-y-3 rounded-md border p-3">
+            <h3 className="text-xs font-semibold">Gemini</h3>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Model</Label>
+              <Input
+                value={geminiModel}
+                onChange={(e) => { setGeminiModel(e.target.value); markDirty("speech") }}
+                placeholder="e.g. gemini-2.5-pro-preview-tts"
+                className="w-72 h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Languages</Label>
+              <Input
+                value={geminiLanguages}
+                onChange={(e) => { setGeminiLanguages(e.target.value); markDirty("speech") }}
+                placeholder="e.g. en, hi, ta"
+                className="w-72 h-8 text-xs"
+              />
+              <p className="text-xs text-muted-foreground">Comma-separated language codes routed to Gemini.</p>
+            </div>
+          </div>
+
           {/* Audio Settings */}
           <div className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Audio Settings</h3>
@@ -284,6 +330,9 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
                 />
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format.
+            </p>
           </div>
         </div>
       )}

@@ -504,6 +504,39 @@ describe("POST /books/:label/stages/run", () => {
       verifyStorage.close()
     }
   })
+
+  it("passes Gemini credentials through to the stage runner options", async () => {
+    const label = "gemini-stage-run"
+    createTestBook(label)
+
+    let receivedOptions: StageRunOptions | undefined
+    const stageService: StageService = {
+      getStatus: () => ({ active: null, queue: [] }),
+      getQueuedStages: () => [],
+      addListener: () => () => {},
+      startStageRun: (_label, options) => {
+        receivedOptions = options
+        return { status: "started" as const, id: "run-2" }
+      },
+    }
+
+    const app = createStageRoutes(stageService, tmpDir, "", "")
+    const res = await app.request(`/books/${label}/stages/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-OpenAI-Key": "sk-test",
+        "X-Gemini-API-Key": "gm-test",
+      },
+      body: JSON.stringify({
+        fromStage: "text-and-speech",
+        toStage: "text-and-speech",
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(receivedOptions?.geminiApiKey).toBe("gm-test")
+  })
 })
 
 describe("GET /books/:label/step-status", () => {

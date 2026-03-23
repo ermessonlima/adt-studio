@@ -104,8 +104,9 @@ export function createStageRoutes(
 
     const azureSpeechKey = c.req.header("X-Azure-Speech-Key") || undefined
     const azureSpeechRegion = c.req.header("X-Azure-Speech-Region") || undefined
+    const geminiApiKey = c.req.header("X-Gemini-API-Key") || undefined
 
-    console.log(`[stages] ${label}: ${fromStage}→${toStage}${renderOnly ? " (render-only)" : ""} azureKey=${azureSpeechKey ? "set" : "NOT SET"} azureRegion=${azureSpeechRegion ?? "NOT SET"}`)
+    console.log(`[stages] ${label}: ${fromStage}→${toStage}${renderOnly ? " (render-only)" : ""} azureKey=${azureSpeechKey ? "set" : "NOT SET"} azureRegion=${azureSpeechRegion ?? "NOT SET"} geminiKey=${geminiApiKey ? "set" : "NOT SET"}`)
 
     const clearData = makeBeforeRun(label, fromStage, booksDir, renderOnly)
 
@@ -120,6 +121,7 @@ export function createStageRoutes(
       renderOnly,
       azureSpeechKey,
       azureSpeechRegion,
+      geminiApiKey,
       // Queued jobs clear data when they start executing
       beforeRun: clearData,
     })

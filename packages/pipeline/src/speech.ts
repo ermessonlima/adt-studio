@@ -14,6 +14,13 @@ const EMOJI_RE = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1
 const SAFE_TEXT_ID_RE = /^[A-Za-z0-9._-]+$/
 const SAFE_LANGUAGE_RE = /^[A-Za-z0-9_-]+$/
 const SAFE_FORMAT_RE = /^[a-z0-9]+$/
+const DEFAULT_OPENAI_VOICE = "alloy"
+const DEFAULT_GEMINI_VOICE = "Kore"
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini-tts"
+const DEFAULT_AZURE_MODEL = "azure-tts"
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-pro-preview-tts"
+const DEFAULT_AUDIO_FORMAT = "mp3"
+const GEMINI_AUDIO_FORMAT = "wav"
 
 export function stripEmojis(text: string): string {
   if (!text) return text
@@ -55,7 +62,12 @@ export function resolveVoice(
   voiceMaps: VoiceMaps,
   defaultVoice?: string
 ): string {
-  const fallback = defaultVoice ?? "alloy"
+  const normalizedDefaultVoice = defaultVoice?.trim()
+  const fallback =
+    provider === "gemini" &&
+      (!normalizedDefaultVoice || normalizedDefaultVoice === DEFAULT_OPENAI_VOICE)
+      ? DEFAULT_GEMINI_VOICE
+      : normalizedDefaultVoice || DEFAULT_OPENAI_VOICE
   const providerConfig = voiceMaps[provider]
   if (!providerConfig) return fallback
 
@@ -133,6 +145,27 @@ export function resolveProviderForLanguage(
   }
 
   return routing.defaultProvider
+}
+
+export function resolveSpeechModel(
+  provider: string,
+  providerConfigs: Record<string, TTSProviderConfig>,
+  defaultModel?: string
+): string {
+  const configuredModel = providerConfigs[provider]?.model?.trim()
+  if (configuredModel) return configuredModel
+
+  if (provider === "azure") return DEFAULT_AZURE_MODEL
+  if (provider === "gemini") return DEFAULT_GEMINI_MODEL
+  return defaultModel?.trim() || DEFAULT_OPENAI_MODEL
+}
+
+export function resolveSpeechFormat(
+  provider: string,
+  defaultFormat?: string
+): string {
+  if (provider === "gemini") return GEMINI_AUDIO_FORMAT
+  return defaultFormat?.trim().toLowerCase() || DEFAULT_AUDIO_FORMAT
 }
 
 // ---------------------------------------------------------------------------

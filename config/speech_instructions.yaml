@@ -1,23 +1,13 @@
-# TTS accent/pronunciation instructions per locale
-# These are passed as the "instructions" parameter to OpenAI TTS models.
-#
-# Resolution order: exact match (en-tz) → base language (en) → default
-# Users can add or modify entries to customize TTS pronunciation.
-
-default: "Speak in a cheerful and positive tone."
-
-en: "Speak in a cheerful and positive tone."
-
+default: Speak in a cheerful and positive tone.
+en: Speak in a cheerful and positive tone.
 en-tz: |
   Speak it in a Tanzanian English accent. Use the pronunciation and
   intonation typical of Tanzania. Maintain a calm, conversational tone.
   Speak in a cheerful and positive tone.
-
 sw-tz: |
   Speak it in Tanzanian Swahili (Kiswahili cha Tanzania). Use the
   pronunciation and intonation typical of mainland Tanzania, not Kenyan Swahili.
   Speak in a cheerful and positive tone.
-
 pt: |
   Speak it in a European Portuguese (Portugal) accent. Use the pronunciation
   and intonation typical of Portugal, not Brazilian Portuguese. Key differences include:
@@ -27,12 +17,20 @@ pt: |
   DO NOT CHANGE THE TEXT ITSELF. Pronounce the words as written, but with
   European Portuguese pronunciation.
   Speak in a cheerful and positive tone.
-
 pt-br: |
   Speak it in a Brazilian Portuguese accent. Use the pronunciation and
   intonation typical of Brazil.
   Speak in a cheerful and positive tone.
+ur: |
+  Speak it in natural, clear Urdu with a warm, child-friendly tone.
 
+  DO NOT CHANGE THE TEXT ITSELF. Read exactly what is written in Urdu.
+  Do not translate, paraphrase, or swap words from another language.
+
+  Preserve the intended pronunciation and rhythm of Urdu, and keep the
+  delivery cheerful and easy to follow.
+
+  Speak in a cheerful and positive tone in Pakistani accent.
 es-uy: |
   Speak it in an Uruguayan Rioplatense accent. For example, pronounce
   the 'y' sound in yacaré like 'sh' in 'shoe'. Pronounce the 'll' sound
@@ -55,5 +53,25 @@ es-uy: |
       Phoneme breakdown:
       pue → [pwe] (similar to English "pweh," with a glide from 'u' to 'e')
       des → [ðes] (soft 'd', like 'th' in English "this," followed by "ess")
+
+  Speak in a cheerful and positive tone.
+np: |-
+  Speak the following Nepali text using an Uruguayan Rioplatense accent. For example, pronounce Nepali sounds in a way that reflects Rioplatense Spanish phonetics, such as using a “sh” sound similar to the ‘y’ in “yacaré” or the ‘ll’ in “lluvia.”
+
+  DO NOT CHANGE THE TEXT ITSELF. Read exactly what is written in Nepali. Do not modify words, grammar, or endings under any circumstances.
+
+  Maintain the original Nepali wording strictly. Even if something feels unnatural in speech, do not adjust it.
+
+  Use pronunciation influence only, not vocabulary or grammar changes.
+
+  Speak in a cheerful and positive tone.
+ne: |-
+  Speak the following Nepali text using an Uruguayan Rioplatense accent. For example, pronounce Nepali sounds in a way that reflects Rioplatense Spanish phonetics, such as using a “sh” sound similar to the ‘y’ in “yacaré” or the ‘ll’ in “lluvia.”
+
+  DO NOT CHANGE THE TEXT ITSELF. Read exactly what is written in Nepali. Do not modify words, grammar, or endings under any circumstances.
+
+  Maintain the original Nepali wording strictly. Even if something feels unnatural in speech, do not adjust it.
+
+  Use pronunciation influence only, not vocabulary or grammar changes.
 
   Speak in a cheerful and positive tone.

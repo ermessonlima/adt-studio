@@ -52,6 +52,10 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: "it", name: "Italian" },
   { code: "ja", name: "Japanese" },
   { code: "ko", name: "Korean" },
+  { code: "ne", name: "Nepali", countries: [
+    { code: "np", name: "Nepal" },
+    { code: "in", name: "India" },
+  ]},
   { code: "pl", name: "Polish" },
   { code: "pt", name: "Portuguese", countries: [
     { code: "br", name: "Brazil" },
@@ -75,6 +79,10 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   ]},
   { code: "th", name: "Thai" },
   { code: "tr", name: "Turkish" },
+  { code: "ur", name: "Urdu", countries: [
+    { code: "pk", name: "Pakistan" },
+    { code: "in", name: "India" },
+  ]},
   { code: "vi", name: "Vietnamese" },
 ]
 

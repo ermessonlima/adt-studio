@@ -97,8 +97,11 @@ app.route("/api", createQuizRoutes(booksDir))
 app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath, taskService))
 app.route("/api", createPromptRoutes(promptsDir, booksDir))
 app.route("/api", createTextCatalogRoutes(booksDir))
-app.route("/api", createTTSRoutes(booksDir))
-app.route("/api", createStageRoutes(stageService, eventBus, booksDir, promptsDir, webAssetsDir, configPath))
+app.route("/api", createTTSRoutes(booksDir, configPath))
+app.route(
+  "/api",
+  createStageRoutes(stageService, eventBus, booksDir, promptsDir, webAssetsDir, configPath)
+)
 app.route("/api", createTaskRoutes(taskService))
 app.route("/api", createPresetRoutes(configPath))
 app.route("/api", createAdtPreviewRoutes(booksDir, webAssetsDir, configPath))

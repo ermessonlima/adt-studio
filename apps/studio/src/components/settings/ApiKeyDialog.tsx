@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 const TABS = [
   { key: "openai", label: "OpenAI" },
   { key: "azure", label: "Azure Speech" },
+  { key: "gemini", label: "Gemini" },
 ] as const
 
 type TabKey = (typeof TABS)[number]["key"]
@@ -29,6 +30,8 @@ interface ApiKeyDialogProps {
   onSaveAzureKey: (key: string) => void
   azureRegion: string
   onSaveAzureRegion: (region: string) => void
+  geminiKey: string
+  onSaveGeminiKey: (key: string) => void
 }
 
 function isValidOpenAIKey(key: string): boolean {
@@ -44,11 +47,14 @@ export function ApiKeyDialog({
   onSaveAzureKey,
   azureRegion,
   onSaveAzureRegion,
+  geminiKey,
+  onSaveGeminiKey,
 }: ApiKeyDialogProps) {
   const [tab, setTab] = useState<TabKey>("openai")
   const [openaiDraft, setOpenaiDraft] = useState(apiKey)
   const [azureKeyDraft, setAzureKeyDraft] = useState(azureKey)
   const [azureRegionDraft, setAzureRegionDraft] = useState(azureRegion)
+  const [geminiKeyDraft, setGeminiKeyDraft] = useState(geminiKey)
   const [showKey, setShowKey] = useState(false)
 
   useEffect(() => {
@@ -56,9 +62,10 @@ export function ApiKeyDialog({
       setOpenaiDraft(apiKey)
       setAzureKeyDraft(azureKey)
       setAzureRegionDraft(azureRegion)
+      setGeminiKeyDraft(geminiKey)
       setShowKey(false)
     }
-  }, [open, apiKey, azureKey, azureRegion])
+  }, [open, apiKey, azureKey, azureRegion, geminiKey])
 
   function handleSave() {
     // Save the current tab's credentials
@@ -67,11 +74,14 @@ export function ApiKeyDialog({
       if (isValidOpenAIKey(trimmed)) {
         onSaveApiKey(trimmed)
       }
-    } else {
+    } else if (tab === "azure") {
       const trimmedKey = azureKeyDraft.trim()
       const trimmedRegion = azureRegionDraft.trim()
       if (trimmedKey) onSaveAzureKey(trimmedKey)
       if (trimmedRegion) onSaveAzureRegion(trimmedRegion)
+    } else {
+      const trimmedKey = geminiKeyDraft.trim()
+      if (trimmedKey) onSaveGeminiKey(trimmedKey)
     }
     onOpenChange(false)
   }
@@ -79,7 +89,9 @@ export function ApiKeyDialog({
   const canSave =
     tab === "openai"
       ? isValidOpenAIKey(openaiDraft)
-      : azureKeyDraft.trim().length > 0 && azureRegionDraft.trim().length > 0
+      : tab === "azure"
+        ? azureKeyDraft.trim().length > 0 && azureRegionDraft.trim().length > 0
+        : geminiKeyDraft.trim().length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,7 +106,9 @@ export function ApiKeyDialog({
         <div className="flex gap-1 border-b mb-3">
           {TABS.map((t) => {
             const isSaved =
-              t.key === "openai" ? apiKey.length > 0 : azureKey.length > 0
+              t.key === "openai" ? apiKey.length > 0
+                : t.key === "azure" ? azureKey.length > 0
+                  : geminiKey.length > 0
             return (
               <button
                 key={t.key}
@@ -179,6 +193,36 @@ export function ApiKeyDialog({
                 onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
               />
             </div>
+          </div>
+        )}
+
+        {tab === "gemini" && (
+          <div className="space-y-2">
+            <Label htmlFor="gemini-key-input">Gemini API Key</Label>
+            <div className="relative">
+              <Input
+                id="gemini-key-input"
+                type={showKey ? "text" : "password"}
+                placeholder="AIza..."
+                value={geminiKeyDraft}
+                onChange={(e) => setGeminiKeyDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-10 w-10"
+                onClick={() => setShowKey(!showKey)}
+                tabIndex={-1}
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts.
+            </p>
           </div>
         )}
 

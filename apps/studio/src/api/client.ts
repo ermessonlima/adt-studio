@@ -70,6 +70,11 @@ export interface AzureCredentials {
   region: string
 }
 
+export interface StageRunProviderCredentials {
+  azure?: AzureCredentials
+  geminiApiKey?: string
+}
+
 export interface RunStagesOptions {
   fromStage: string
   toStage: string
@@ -79,11 +84,18 @@ export interface RunStagesOptions {
 
 function buildApiHeaders(
   apiKey: string,
-  azure?: AzureCredentials
+  providerCredentials?: StageRunProviderCredentials
 ): Record<string, string> {
   const headers: Record<string, string> = { "X-OpenAI-Key": apiKey }
-  if (azure?.key) headers["X-Azure-Speech-Key"] = azure.key
-  if (azure?.region) headers["X-Azure-Speech-Region"] = azure.region
+  if (providerCredentials?.azure?.key) {
+    headers["X-Azure-Speech-Key"] = providerCredentials.azure.key
+  }
+  if (providerCredentials?.azure?.region) {
+    headers["X-Azure-Speech-Region"] = providerCredentials.azure.region
+  }
+  if (providerCredentials?.geminiApiKey) {
+    headers["X-Gemini-API-Key"] = providerCredentials.geminiApiKey
+  }
   return headers
 }
 
@@ -267,10 +279,12 @@ export interface TextCatalogResponse {
 
 export interface TTSEntry {
   textId: string
+  language?: string
   fileName: string
   voice: string
   model: string
   cached: boolean
+  provider?: string
 }
 
 export interface TTSLanguageData {
@@ -281,6 +295,13 @@ export interface TTSLanguageData {
 
 export interface TTSResponse {
   languages: Record<string, TTSLanguageData>
+}
+
+export interface GenerateSingleTTSResponse {
+  entry: TTSEntry
+  version: number
+  completed: boolean
+  remainingItems: number
 }
 
 // --- Debug types ---
@@ -407,13 +428,13 @@ export const api = {
     label: string,
     apiKey: string,
     options: RunStagesOptions,
-    azure?: AzureCredentials
+    providerCredentials?: StageRunProviderCredentials
   ) =>
     request<{ status: string; label: string; fromStage: string; toStage: string }>(
       `/books/${label}/stages/run`,
       {
         method: "POST",
-        headers: buildApiHeaders(apiKey, azure),
+        headers: buildApiHeaders(apiKey, providerCredentials),
         body: JSON.stringify(options),
       }
     ),
@@ -704,6 +725,18 @@ export const api = {
 
   getTTS: (label: string) =>
     request<TTSResponse>(`/books/${label}/tts`),
+
+  generateGeminiTTSForItem: (
+    label: string,
+    textId: string,
+    language: string,
+    geminiApiKey: string
+  ) =>
+    request<GenerateSingleTTSResponse>(`/books/${label}/tts/generate-one`, {
+      method: "POST",
+      headers: { "X-Gemini-API-Key": geminiApiKey },
+      body: JSON.stringify({ textId, language }),
+    }),
 
   packageAdt: (label: string) =>
     request<{ status: string; label: string; taskId?: string }>(

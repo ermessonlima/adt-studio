@@ -148,7 +148,7 @@ function AddBookPage() {
   const navigate = useNavigate()
   const createMutation = useCreateBook()
   const { data: existingBooks } = useBooks()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const { openSettings } = useSettingsDialog()
 
   const [step, setStep] = useState(1)
@@ -498,7 +498,10 @@ function AddBookPage() {
                 book.label,
                 apiKey,
                 { fromStage: "extract", toStage: "storyboard" },
-                { key: azureKey, region: azureRegion }
+                {
+                  azure: { key: azureKey, region: azureRegion },
+                  geminiApiKey: geminiKey,
+                }
               )
             } catch {
               // Book creation already succeeded; user can retry the run from the book view.

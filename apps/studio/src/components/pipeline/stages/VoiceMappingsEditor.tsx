@@ -14,10 +14,19 @@ interface VoiceMappingsEditorProps {
   headerTarget?: HTMLDivElement | null
 }
 
+const PROVIDERS = [
+  { key: "openai", label: "OpenAI Voice", placeholder: "e.g. alloy" },
+  { key: "azure", label: "Azure Voice", placeholder: "e.g. en-US-JennyNeural" },
+  { key: "gemini", label: "Gemini Voice", placeholder: "e.g. Kore" },
+] as const
+
+type VoiceProviderKey = (typeof PROVIDERS)[number]["key"]
+
 interface VoiceRow {
   lang: string
   openai: string
   azure: string
+  gemini: string
 }
 
 export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEditorProps) {
@@ -42,10 +51,20 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
     if (!data) return
     const openai = data.openai ?? {}
     const azure = data.azure ?? {}
-    const allLangs = new Set([...Object.keys(openai), ...Object.keys(azure)])
+    const gemini = data.gemini ?? {}
+    const allLangs = new Set([
+      ...Object.keys(openai),
+      ...Object.keys(azure),
+      ...Object.keys(gemini),
+    ])
     const built: VoiceRow[] = []
     for (const lang of allLangs) {
-      built.push({ lang, openai: openai[lang] ?? "", azure: azure[lang] ?? "" })
+      built.push({
+        lang,
+        openai: openai[lang] ?? "",
+        azure: azure[lang] ?? "",
+        gemini: gemini[lang] ?? "",
+      })
     }
     // Sort with "default" first, then alphabetical
     built.sort((a, b) => {
@@ -68,7 +87,7 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
     setDefaultVoice(typeof voice === "string" ? voice : "")
   }, [activeConfigData, dirtyDefaultVoice])
 
-  const updateRow = (index: number, field: "openai" | "azure", value: string) => {
+  const updateRow = (index: number, field: VoiceProviderKey, value: string) => {
     setRows((prev) => prev.map((r, i) => i === index ? { ...r, [field]: value } : r))
     setDirtyMappings(true)
   }
@@ -81,7 +100,7 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
   const addLanguage = () => {
     const key = newLangKey.trim().toLowerCase()
     if (!key || rows.some((r) => r.lang === key)) return
-    setRows((prev) => [...prev, { lang: key, openai: "", azure: "" }])
+    setRows((prev) => [...prev, { lang: key, openai: "", azure: "", gemini: "" }])
     setNewLangKey("")
     setShowAddLang(false)
     setDirtyMappings(true)
@@ -93,13 +112,18 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
       const saves: Promise<unknown>[] = []
 
       if (dirtyMappings) {
-        const openai: Record<string, string> = {}
-        const azure: Record<string, string> = {}
-        for (const row of rows) {
-          if (row.openai.trim()) openai[row.lang] = row.openai.trim()
-          if (row.azure.trim()) azure[row.lang] = row.azure.trim()
+        const nextMappings: Record<string, Record<string, string>> = {}
+        for (const provider of PROVIDERS) {
+          const values: Record<string, string> = {}
+          for (const row of rows) {
+            const value = row[provider.key].trim()
+            if (value) values[row.lang] = value
+          }
+          if (Object.keys(values).length > 0) {
+            nextMappings[provider.key] = values
+          }
         }
-        saves.push(api.updateVoiceMappings({ openai, azure }))
+        saves.push(api.updateVoiceMappings(nextMappings))
       }
 
       if (dirtyDefaultVoice) {
@@ -220,8 +244,11 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
           <thead>
             <tr className="bg-muted/50 border-b">
               <th className="text-left font-medium px-3 py-2 w-28">Language</th>
-              <th className="text-left font-medium px-3 py-2">OpenAI Voice</th>
-              <th className="text-left font-medium px-3 py-2">Azure Voice</th>
+              {PROVIDERS.map((provider) => (
+                <th key={provider.key} className="text-left font-medium px-3 py-2">
+                  {provider.label}
+                </th>
+              ))}
               <th className="w-10 px-2 py-2" />
             </tr>
           </thead>
@@ -231,22 +258,16 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
                 <td className="px-3 py-1.5 font-medium text-muted-foreground">
                   {row.lang}
                 </td>
-                <td className="px-3 py-1.5">
-                  <Input
-                    value={row.openai}
-                    onChange={(e) => updateRow(i, "openai", e.target.value)}
-                    className="h-7 text-xs"
-                    placeholder="—"
-                  />
-                </td>
-                <td className="px-3 py-1.5">
-                  <Input
-                    value={row.azure}
-                    onChange={(e) => updateRow(i, "azure", e.target.value)}
-                    className="h-7 text-xs"
-                    placeholder="—"
-                  />
-                </td>
+                {PROVIDERS.map((provider) => (
+                  <td key={provider.key} className="px-3 py-1.5">
+                    <Input
+                      value={row[provider.key]}
+                      onChange={(e) => updateRow(i, provider.key, e.target.value)}
+                      className="h-7 text-xs"
+                      placeholder={provider.placeholder}
+                    />
+                  </td>
+                ))}
                 <td className="px-2 py-1.5">
                   {row.lang !== "default" && (
                     <Button
