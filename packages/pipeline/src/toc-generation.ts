@@ -159,7 +159,7 @@ export async function generateToc(
       original_toc_text: originalTocText ?? "",
     },
     maxRetries: config.maxRetries,
-    maxTokens: 8192,
+    maxTokens: Math.max(8192, headings.length * 80),
     log: {
       taskType: "toc-generation",
       promptName: config.promptName,
