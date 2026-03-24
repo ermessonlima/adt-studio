@@ -1,6 +1,11 @@
 import { useEffect, useCallback, useRef, createContext, useContext, useState } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
-import { api, BASE_URL, type TaskInfoResponse } from "@/api/client"
+import {
+  api,
+  BASE_URL,
+  type TaskInfoResponse,
+  type StageRunProviderCredentials,
+} from "@/api/client"
 import { STEP_TO_STAGE, PIPELINE, getStageClearOrder } from "@adt/types"
 import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
@@ -24,7 +29,7 @@ export interface QueueRunOptions {
   apiKey: string
   /** When true, skip page-sectioning and only re-render from existing section data. */
   renderOnly?: boolean
-  azure?: { key: string; region: string }
+  providerCredentials?: StageRunProviderCredentials
 }
 
 /** Shape returned by the enriched GET /books/:label/step-status endpoint. */
@@ -273,7 +278,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
   // ------------------------------------------------------------------
   const queueRun = useCallback(
     (options: QueueRunOptions) => {
-      const { fromStage, toStage, apiKey, renderOnly, azure } = options
+      const { fromStage, toStage, apiKey, renderOnly, providerCredentials } = options
 
       // Optimistically mark target stage(s) as queued and clear downstream
       const stagesToClear = new Set(getStageClearOrder(fromStage as StageName))
@@ -315,7 +320,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
       // Chain the API call so they arrive in click order
       runChainRef.current = runChainRef.current.then(async () => {
         try {
-          await api.runStages(label, apiKey, { fromStage, toStage, renderOnly }, azure)
+          await api.runStages(label, apiKey, { fromStage, toStage, renderOnly }, providerCredentials)
           // Refetch to reconcile — backend cleared step_runs
           queryClient.invalidateQueries({ queryKey: stepStatusKey(label) })
         } catch {

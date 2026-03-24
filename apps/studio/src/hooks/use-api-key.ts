@@ -3,6 +3,7 @@ import { useState, useCallback } from "react"
 const STORAGE_KEY_OPENAI = "adt-studio-openai-key"
 const STORAGE_KEY_AZURE = "adt-studio-azure-key"
 const STORAGE_KEY_AZURE_REGION = "adt-studio-azure-region"
+const STORAGE_KEY_GEMINI = "adt-studio-gemini-key"
 
 function useLocalStorageState(key: string) {
   const [value, setValueState] = useState<string>(() => {
@@ -36,6 +37,7 @@ export function useApiKey() {
   const [apiKey, setApiKey] = useLocalStorageState(STORAGE_KEY_OPENAI)
   const [azureKey, setAzureKey] = useLocalStorageState(STORAGE_KEY_AZURE)
   const [azureRegion, setAzureRegion] = useLocalStorageState(STORAGE_KEY_AZURE_REGION)
+  const [geminiKey, setGeminiKey] = useLocalStorageState(STORAGE_KEY_GEMINI)
 
   return {
     apiKey,
@@ -46,5 +48,8 @@ export function useApiKey() {
     hasAzureKey: azureKey.length > 0,
     azureRegion,
     setAzureRegion,
+    geminiKey,
+    setGeminiKey,
+    hasGeminiKey: geminiKey.length > 0,
   }
 }

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 export function TextToSpeechView({ bookLabel }: { bookLabel: string }) {
   const { setExtra } = useStepHeader()
   const { stageState, queueRun } = useBookRun()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const ttsState = stageState("text-and-speech")
   const textAndSpeechDone = ttsState === "done"
   const ttsRunning = ttsState === "running" || ttsState === "queued"
@@ -21,8 +21,16 @@ export function TextToSpeechView({ bookLabel }: { bookLabel: string }) {
 
   const handleRunTTS = useCallback(() => {
     if (!hasApiKey || ttsRunning) return
-    queueRun({ fromStage: "text-and-speech", toStage: "text-and-speech", apiKey, azure: { key: azureKey, region: azureRegion } })
-  }, [hasApiKey, ttsRunning, apiKey, azureKey, azureRegion, queueRun])
+    queueRun({
+      fromStage: "text-and-speech",
+      toStage: "text-and-speech",
+      apiKey,
+      providerCredentials: {
+        azure: { key: azureKey, region: azureRegion },
+        geminiApiKey: geminiKey,
+      },
+    })
+  }, [hasApiKey, ttsRunning, apiKey, azureKey, azureRegion, geminiKey, queueRun])
 
   const { data: ttsData, isLoading: ttsLoading } = useQuery({
     queryKey: ["books", bookLabel, "tts"],

@@ -504,6 +504,39 @@ describe("POST /books/:label/stages/run", () => {
       verifyStorage.close()
     }
   })
+
+  it("passes Gemini credentials through to the stage runner options", async () => {
+    const label = "gemini-stage-run"
+    createTestBook(label)
+
+    let receivedOptions: StageRunOptions | undefined
+    const stageService: StageService = {
+      getStatus: () => ({ active: null, queue: [] }),
+      getQueuedStages: () => [],
+      addListener: () => () => {},
+      startStageRun: (_label, options) => {
+        receivedOptions = options
+        return { status: "started" as const, id: "run-2" }
+      },
+    }
+
+    const app = createStageRoutes(stageService, mockEventBus, tmpDir, "", "")
+    const res = await app.request(`/books/${label}/stages/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-OpenAI-Key": "sk-test",
+        "X-Gemini-API-Key": "gm-test",
+      },
+      body: JSON.stringify({
+        fromStage: "text-and-speech",
+        toStage: "text-and-speech",
+      }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(receivedOptions?.geminiApiKey).toBe("gm-test")
+  })
 })
 
 describe("GET /books/:label/step-status", () => {
@@ -555,7 +588,7 @@ describe("GET /books/:label/step-status", () => {
   }
 
   it("returns all stages/steps idle when DB is missing and no run state exists", async () => {
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
     const res = await app.request("/books/missing-db/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -575,6 +608,7 @@ describe("GET /books/:label/step-status", () => {
       mockStageService({ queuedStages: ["extract", "storyboard"] }),
       mockEventBus,
       tmpDir,
+      "",
       ""
     )
     const res = await app.request("/books/missing-db-queued/step-status")
@@ -594,6 +628,7 @@ describe("GET /books/:label/step-status", () => {
       }),
       mockEventBus,
       tmpDir,
+      "",
       ""
     )
     const res = await app.request("/books/status-error/step-status")
@@ -611,7 +646,7 @@ describe("GET /books/:label/step-status", () => {
     } finally {
       storage.close()
     }
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/extract-incomplete/step-status")
     expect(res.status).toBe(200)
@@ -626,7 +661,7 @@ describe("GET /books/:label/step-status", () => {
   it("marks extract complete when all extract steps are done", async () => {
     createTestBook("extract-complete")
     markExtractStageComplete("extract-complete")
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/extract-complete/step-status")
     expect(res.status).toBe(200)
@@ -643,6 +678,7 @@ describe("GET /books/:label/step-status", () => {
       mockStageService({ queuedStages: ["extract"] }),
       mockEventBus,
       tmpDir,
+      "",
       ""
     )
 
@@ -662,7 +698,7 @@ describe("GET /books/:label/step-status", () => {
     } finally {
       storage.close()
     }
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/step-error-test/step-status")
     expect(res.status).toBe(200)
@@ -681,7 +717,7 @@ describe("GET /books/:label/step-status", () => {
     } finally {
       storage.close()
     }
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/step-running-test/step-status")
     expect(res.status).toBe(200)
@@ -705,6 +741,7 @@ describe("GET /books/:label/step-status", () => {
       }),
       mockEventBus,
       tmpDir,
+      "",
       ""
     )
 
@@ -727,6 +764,7 @@ describe("GET /books/:label/step-status", () => {
       }),
       mockEventBus,
       tmpDir,
+      "",
       ""
     )
 
@@ -742,7 +780,7 @@ describe("GET /books/:label/step-status", () => {
   it("returns null stepErrors when no errors exist", async () => {
     createTestBook("no-errors")
     markExtractStageComplete("no-errors")
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/no-errors/step-status")
     expect(res.status).toBe(200)
@@ -758,7 +796,7 @@ describe("GET /books/:label/step-status", () => {
     } finally {
       storage.close()
     }
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/derived-error/step-status")
     expect(res.status).toBe(200)
@@ -780,7 +818,7 @@ describe("GET /books/:label/step-status", () => {
     } finally {
       storage.close()
     }
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
 
     const res = await app.request("/books/skipped-steps/step-status")
     expect(res.status).toBe(200)
@@ -792,7 +830,7 @@ describe("GET /books/:label/step-status", () => {
     createTestBook("preview-done")
     fs.mkdirSync(path.join(tmpDir, "preview-done", "adt"), { recursive: true })
 
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
     const res = await app.request("/books/preview-done/step-status")
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -800,7 +838,7 @@ describe("GET /books/:label/step-status", () => {
   })
 
   it("returns 400 for invalid book labels", async () => {
-    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "")
+    const app = createStageRoutes(mockStageService(), mockEventBus, tmpDir, "", "")
     const res = await app.request("/books/-bad/step-status")
     expect(res.status).toBe(400)
   })

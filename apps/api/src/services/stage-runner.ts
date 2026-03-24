@@ -42,6 +42,8 @@ import {
   resolveVoice,
   resolveInstructions,
   resolveProviderForLanguage,
+  resolveSpeechModel,
+  resolveSpeechFormat,
   generateSpeechFile,
   generateBookSummary,
   buildBookSummaryConfig,
@@ -60,7 +62,7 @@ import {
 } from "@adt/pipeline"
 import type { TranslationConfig, QuizPageInput, ProviderRouting, MeaningfulnessConfig, CroppingConfig, SegmentationConfig, VisualRefinementDeps } from "@adt/pipeline"
 import { loadStyleguideContent } from "./styleguide.js"
-import { createTTSSynthesizer, createAzureTTSSynthesizer } from "@adt/llm"
+import { createTTSSynthesizer, createAzureTTSSynthesizer, createGeminiTTSSynthesizer } from "@adt/llm"
 import type { TTSSynthesizer } from "@adt/llm"
 import { STAGE_ORDER } from "@adt/types"
 import type {
@@ -1502,16 +1504,15 @@ async function runTextAndSpeechStep(
     const voiceMaps = loadVoicesConfig(configDir)
     const instructionsMap = loadSpeechInstructions(configDir)
 
-    const speechModel = config.speech?.model ?? "gpt-4o-mini-tts"
-    const speechFormat = config.speech?.format ?? "mp3"
+    const speechModel = config.speech?.model
     const defaultProvider = config.speech?.default_provider ?? "openai"
     const providerConfigs = config.speech?.providers ?? {}
     const routing: ProviderRouting = { providers: providerConfigs, defaultProvider }
 
     console.log(`[stage-run] ${label}: TTS configDir=${configDir} voiceMaps=${Object.keys(voiceMaps).join(",")||"(empty)"}`)
-    console.log(`[stage-run] ${label}: TTS config — defaultProvider=${defaultProvider} model=${speechModel} format=${speechFormat}`)
+    console.log(`[stage-run] ${label}: TTS config — defaultProvider=${defaultProvider} model=${speechModel ?? "(provider default)"} format=${config.speech?.format ?? "(provider default)"}`)
     console.log(`[stage-run] ${label}: TTS providers=${JSON.stringify(providerConfigs)}`)
-    console.log(`[stage-run] ${label}: TTS azureKey=${options.azureSpeechKey ? "set" : "NOT SET"} azureRegion=${options.azureSpeechRegion ?? "NOT SET"}`)
+    console.log(`[stage-run] ${label}: TTS azureKey=${options.azureSpeechKey ? "set" : "NOT SET"} azureRegion=${options.azureSpeechRegion ?? "NOT SET"} geminiKey=${options.geminiApiKey ? "set" : "NOT SET"}`)
 
     const synthesizers = new Map<string, TTSSynthesizer>()
     function getSynthesizer(providerName: string): TTSSynthesizer {
@@ -1526,6 +1527,16 @@ async function runTextAndSpeechStep(
           { sampleRate: config.speech?.sample_rate, bitRate: config.speech?.bit_rate }
         )
         synthesizers.set("azure", synth)
+        return synth
+      }
+      if (providerName === "gemini") {
+        if (!options.geminiApiKey && !process.env.GEMINI_API_KEY) {
+          throw new Error("Gemini API key is required for Gemini TTS provider. Set it in the API Keys dialog (gear icon).")
+        }
+        const synth = createGeminiTTSSynthesizer(
+          options.geminiApiKey ? { apiKey: options.geminiApiKey } : undefined
+        )
+        synthesizers.set("gemini", synth)
         return synth
       }
       const synth = createTTSSynthesizer()
@@ -1587,6 +1598,7 @@ async function runTextAndSpeechStep(
     }
 
     const failedItems: string[] = []
+    const geminiFailedItems: string[] = []
 
     await processWithConcurrency(
       ttsWorkItems,
@@ -1594,13 +1606,14 @@ async function runTextAndSpeechStep(
       async (item: TTSWorkItem) => {
         const startMs = Date.now()
         const provider = resolveProviderForLanguage(item.language, routing)
-        const providerModel = providerConfigs[provider]?.model ?? (provider === "azure" ? "azure-tts" : speechModel)
+        const providerModel = resolveSpeechModel(provider, providerConfigs, speechModel)
+        const outputFormat = resolveSpeechFormat(provider, config.speech?.format)
         const voice = resolveVoice(provider, item.language, voiceMaps, config.speech?.voice)
         const instructions = provider === "openai"
           ? resolveInstructions(item.language, instructionsMap)
           : ""
 
-        console.log(`[stage-run] ${label}: TTS ${item.textId} → provider=${provider} voice=${voice} model=${providerModel}`)
+        console.log(`[stage-run] ${label}: TTS ${item.textId} → provider=${provider} voice=${voice} model=${providerModel} format=${outputFormat}`)
 
         try {
           const ttsSynthesizer = getSynthesizer(provider)
@@ -1612,7 +1625,7 @@ async function runTextAndSpeechStep(
             model: providerModel,
             voice,
             instructions,
-            format: speechFormat,
+            format: outputFormat,
             bookDir,
             cacheDir,
             ttsSynthesizer,
@@ -1658,6 +1671,9 @@ async function runTextAndSpeechStep(
           const durationMs = Date.now() - startMs
           console.error(`[stage-run] ${label}: TTS failed for ${item.textId} (${item.language}): ${msg}`)
           failedItems.push(`${item.textId}: ${msg}`)
+          if (provider === "gemini") {
+            geminiFailedItems.push(`${item.textId}: ${msg}`)
+          }
 
           const logEntry: LlmLogEntry = {
             requestId: crypto.randomUUID(),
@@ -1686,11 +1702,13 @@ async function runTextAndSpeechStep(
             cacheHit: false,
             durationMs,
           })
-          progress.emit({
-            type: "step-error",
-            step: "tts",
-            error: `${item.textId} failed: ${msg}`,
-          })
+          if (provider !== "gemini") {
+            progress.emit({
+              type: "step-error",
+              step: "tts",
+              error: `${item.textId} failed: ${msg}`,
+            })
+          }
         }
 
         completedItems++
@@ -1716,6 +1734,17 @@ async function runTextAndSpeechStep(
         generatedAt: new Date().toISOString(),
       }
       storage.putNodeData("tts", lang, output)
+    }
+
+    if (geminiFailedItems.length > 0) {
+      const summary = `${geminiFailedItems.length} Gemini TTS item(s) failed. Missing Gemini audio can be generated one by one from the Text & Speech view.`
+      progress.emit({
+        type: "step-error",
+        step: "tts",
+        error: summary,
+      })
+      console.log(`[stage-run] ${label}: text & speech completed with Gemini TTS gaps`)
+      return
     }
 
     progress.emit({ type: "step-complete", step: "tts" })

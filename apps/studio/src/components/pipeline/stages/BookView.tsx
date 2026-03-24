@@ -15,15 +15,23 @@ interface ViewProps {
 export function BookView({ bookLabel }: ViewProps) {
   const pipelineSteps = getPipelineStages()
   const { stageState, queueRun } = useBookRun()
-  const { apiKey, hasApiKey, azureKey, azureRegion } = useApiKey()
+  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
 
   const handleRun = useCallback((slug: string) => {
     if (!hasApiKey) return
     // Prevent duplicate: don't queue if this stage is already running or queued
     const state = stageState(slug)
     if (state === "running" || state === "queued") return
-    queueRun({ fromStage: slug, toStage: slug, apiKey, azure: { key: azureKey, region: azureRegion } })
-  }, [hasApiKey, stageState, apiKey, azureKey, azureRegion, queueRun])
+    queueRun({
+      fromStage: slug,
+      toStage: slug,
+      apiKey,
+      providerCredentials: {
+        azure: { key: azureKey, region: azureRegion },
+        geminiApiKey: geminiKey,
+      },
+    })
+  }, [hasApiKey, stageState, apiKey, azureKey, azureRegion, geminiKey, queueRun])
 
   return (
     <div className="flex flex-col items-start max-w-xl">

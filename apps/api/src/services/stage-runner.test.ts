@@ -12,6 +12,7 @@ import {
 const {
   capturedCaptionInputs,
   captionPageImagesMock,
+  generateSpeechFileMock,
   renderPageMock,
   sectionPageMock,
 } = vi.hoisted(() => {
@@ -22,6 +23,7 @@ const {
       capturedCaptionInputs.push(input)
       return { captions: [] }
     }),
+    generateSpeechFileMock: vi.fn(),
     renderPageMock: vi.fn(async () => ({ sections: [] })),
     sectionPageMock: vi.fn(async () => ({ reasoning: "", sections: [] })),
   }
@@ -34,6 +36,7 @@ vi.mock("@adt/pipeline", async () => {
   return {
     ...actual,
     captionPageImages: captionPageImagesMock,
+    generateSpeechFile: generateSpeechFileMock,
     renderPage: renderPageMock,
     sectionPage: sectionPageMock,
   }
@@ -146,6 +149,39 @@ function seedStoryboardBook(booksDir: string, label: string): void {
   }
 }
 
+function seedTextAndSpeechBook(booksDir: string, label: string): void {
+  const storage = createBookStorage(label, booksDir)
+  try {
+    storage.putExtractedPage({
+      pageId: "pg001",
+      pageNumber: 1,
+      text: "Page text",
+      pageImage: {
+        imageId: "pg001_page",
+        buffer: Buffer.from("fake-page-image"),
+        format: "png",
+        hash: "hash-page",
+        width: 800,
+        height: 600,
+      },
+      images: [],
+    })
+
+    storage.putNodeData("web-rendering", "pg001", {
+      sections: [
+        {
+          sectionIndex: 0,
+          sectionType: "content",
+          reasoning: "",
+          html: '<p data-id="pg001_t001">Hello world</p>',
+        },
+      ],
+    })
+  } finally {
+    storage.close()
+  }
+}
+
 describe("buildStageRunnerImageClassifyConfig", () => {
   it("injects getImageBytes so min_stddev filtering can decode image bytes", () => {
     const config: AppConfig = {
@@ -180,6 +216,8 @@ describe("createStageRunner captions step", () => {
   beforeEach(() => {
     capturedCaptionInputs.length = 0
     captionPageImagesMock.mockClear()
+    generateSpeechFileMock.mockReset()
+    generateSpeechFileMock.mockResolvedValue(undefined)
     renderPageMock.mockClear()
     sectionPageMock.mockClear()
   })
@@ -310,5 +348,87 @@ describe("createStageRunner storyboard render-only", () => {
           event.type === "step-complete" && event.step === "page-sectioning"
       )
     ).toBe(false)
+  })
+})
+
+describe("createStageRunner text-and-speech Gemini partial failures", () => {
+  let tmpDir = ""
+
+  beforeEach(() => {
+    generateSpeechFileMock.mockReset()
+    generateSpeechFileMock.mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    if (tmpDir) {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+      tmpDir = ""
+    }
+  })
+
+  it("keeps Gemini TTS in error state when some audio items fail", async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "stage-runner-tts-"))
+    const booksDir = path.join(tmpDir, "books")
+    const promptsDir = path.join(tmpDir, "prompts")
+    const configPath = path.join(tmpDir, "config.yaml")
+    fs.mkdirSync(promptsDir, { recursive: true })
+    fs.writeFileSync(
+      configPath,
+      `text_types:
+  section_text: Main body text
+text_group_types:
+  paragraph: Paragraph
+speech:
+  default_provider: gemini
+  providers:
+    gemini:
+      languages:
+        - en
+`
+    )
+    seedTextAndSpeechBook(booksDir, "gemini-tts-failure")
+
+    generateSpeechFileMock.mockRejectedValueOnce(
+      new Error("Gemini TTS request failed (429): Quota exceeded")
+    )
+
+    const events: ProgressEvent[] = []
+    const runner = createStageRunner()
+    await runner.run(
+      "gemini-tts-failure",
+      {
+        booksDir,
+        apiKey: "sk-test",
+        geminiApiKey: "gm-test",
+        promptsDir,
+        configPath,
+        fromStage: "text-and-speech",
+        toStage: "text-and-speech",
+      },
+      { emit: (event) => events.push(event) }
+    )
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === "step-error" &&
+          event.step === "tts" &&
+          event.error.includes("Missing Gemini audio can be generated one by one")
+      )
+    ).toBe(true)
+    expect(
+      events.some(
+        (event) => event.type === "step-complete" && event.step === "tts"
+      )
+    ).toBe(false)
+
+    const storage = createBookStorage("gemini-tts-failure", booksDir)
+    try {
+      const ttsStep = storage.getStepRuns().find((step) => step.step === "tts")
+      expect(ttsStep?.status).toBe("error")
+      expect(ttsStep?.error).toContain("Missing Gemini audio can be generated one by one")
+    } finally {
+      storage.close()
+    }
   })
 })
