@@ -3,7 +3,7 @@ import path from "node:path"
 import crypto from "node:crypto"
 import yaml from "js-yaml"
 import type { SpeechFileEntry, TTSProviderConfig } from "@adt/types"
-import type { TTSSynthesizer } from "@adt/llm"
+import type { RateLimiter, TTSSynthesizer } from "@adt/llm"
 import { getBaseLanguage, normalizeLocale } from "./language-context.js"
 
 // ---------------------------------------------------------------------------
@@ -220,6 +220,7 @@ export interface GenerateSpeechFileOptions {
   bookDir: string
   cacheDir: string
   ttsSynthesizer: TTSSynthesizer
+  rateLimiter?: RateLimiter
   provider?: string
 }
 
@@ -242,6 +243,7 @@ export async function generateSpeechFile(
     bookDir,
     cacheDir,
     ttsSynthesizer,
+    rateLimiter,
     provider,
   } = options
 
@@ -295,6 +297,7 @@ export async function generateSpeechFile(
   }
 
   // Generate speech via shared LLM TTS client
+  await rateLimiter?.acquire()
   const audioBytes = await ttsSynthesizer.synthesize({
     model,
     voice,

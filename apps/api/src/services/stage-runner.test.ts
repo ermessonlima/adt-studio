@@ -389,7 +389,7 @@ speech:
     seedTextAndSpeechBook(booksDir, "gemini-tts-failure")
 
     generateSpeechFileMock.mockRejectedValueOnce(
-      new Error("Gemini TTS request failed (429): Quota exceeded")
+      new Error("Gemini TTS response did not include audio data")
     )
 
     const events: ProgressEvent[] = []
@@ -427,6 +427,76 @@ speech:
       const ttsStep = storage.getStepRuns().find((step) => step.step === "tts")
       expect(ttsStep?.status).toBe("error")
       expect(ttsStep?.error).toContain("Missing Gemini audio can be generated one by one")
+    } finally {
+      storage.close()
+    }
+  })
+
+  it("retries rate-limited Gemini TTS items and completes the step when a retry succeeds", async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "stage-runner-tts-"))
+    const booksDir = path.join(tmpDir, "books")
+    const promptsDir = path.join(tmpDir, "prompts")
+    const configPath = path.join(tmpDir, "config.yaml")
+    fs.mkdirSync(promptsDir, { recursive: true })
+    fs.writeFileSync(
+      configPath,
+      `text_types:
+  section_text: Main body text
+text_group_types:
+  paragraph: Paragraph
+speech:
+  default_provider: gemini
+  providers:
+    gemini:
+      languages:
+        - en
+`
+    )
+    seedTextAndSpeechBook(booksDir, "gemini-tts-retry")
+
+    generateSpeechFileMock
+      .mockRejectedValueOnce(
+        new Error(
+          "Gemini TTS request failed (429): Quota exceeded. Please retry in 0s."
+        )
+      )
+      .mockResolvedValueOnce(undefined)
+
+    const events: ProgressEvent[] = []
+    const runner = createStageRunner()
+    await runner.run(
+      "gemini-tts-retry",
+      {
+        booksDir,
+        apiKey: "sk-test",
+        geminiApiKey: "gm-test",
+        promptsDir,
+        configPath,
+        fromStage: "text-and-speech",
+        toStage: "text-and-speech",
+      },
+      { emit: (event) => events.push(event) }
+    )
+
+    expect(generateSpeechFileMock).toHaveBeenCalledTimes(2)
+    expect(
+      events.some(
+        (event) => event.type === "step-complete" && event.step === "tts"
+      )
+    ).toBe(true)
+    expect(
+      events.some(
+        (event) =>
+          event.type === "step-error" &&
+          event.step === "tts" &&
+          event.error.includes("Missing Gemini audio can be generated one by one")
+      )
+    ).toBe(false)
+
+    const storage = createBookStorage("gemini-tts-retry", booksDir)
+    try {
+      const ttsStep = storage.getStepRuns().find((step) => step.step === "tts")
+      expect(ttsStep?.status).toBe("done")
     } finally {
       storage.close()
     }

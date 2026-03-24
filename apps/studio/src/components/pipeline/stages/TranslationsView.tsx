@@ -303,7 +303,13 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
         bookLabel,
         variables.textId,
         variables.language,
-        geminiKey
+        {
+          geminiApiKey: geminiKey,
+          openaiApiKey: apiKey || undefined,
+          azure: azureKey && azureRegion
+            ? { key: azureKey, region: azureRegion }
+            : undefined,
+        }
       )
     },
     onMutate: (variables) => {

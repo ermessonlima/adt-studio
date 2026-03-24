@@ -28,6 +28,23 @@ export interface GeminiTTSConfig {
   apiKey?: string
 }
 
+interface GeminiInlineData {
+  data?: string
+  mimeType?: string
+}
+
+interface GeminiGenerateContentPayload {
+  error?: { message?: string } | string
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string
+        inlineData?: GeminiInlineData
+      }>
+    }
+  }>
+}
+
 const GEMINI_PCM_SAMPLE_RATE = 24_000
 const GEMINI_PCM_CHANNELS = 1
 const GEMINI_PCM_BITS_PER_SAMPLE = 16
@@ -81,6 +98,76 @@ function wrapPcmAsWave(
   header.writeUInt32LE(dataSize, 40)
 
   return new Uint8Array(Buffer.concat([header, Buffer.from(pcmBytes)]))
+}
+
+function extractGeminiAudioData(
+  payload: GeminiGenerateContentPayload
+): string | null {
+  let fallbackAudioData: string | null = null
+
+  for (const candidate of payload.candidates ?? []) {
+    for (const part of candidate.content?.parts ?? []) {
+      const inlineData = part.inlineData
+      if (!inlineData?.data) continue
+
+      const mimeType = inlineData.mimeType?.toLowerCase()
+      if (mimeType?.startsWith("audio/")) {
+        return inlineData.data
+      }
+
+      if (!mimeType && !fallbackAudioData) {
+        fallbackAudioData = inlineData.data
+      }
+    }
+  }
+
+  return fallbackAudioData
+}
+
+function summarizeGeminiResponse(
+  payload: GeminiGenerateContentPayload
+): string | null {
+  const details: string[] = []
+
+  for (const candidate of payload.candidates ?? []) {
+    for (const part of candidate.content?.parts ?? []) {
+      const text = part.text?.trim()
+      if (text) {
+        details.push(`text="${text.slice(0, 160)}"`)
+        continue
+      }
+
+      const mimeType = part.inlineData?.mimeType?.trim()
+      if (mimeType) {
+        details.push(`inlineData mimeType=${mimeType}`)
+      } else if (part.inlineData?.data) {
+        details.push("inlineData without mimeType")
+      }
+    }
+  }
+
+  if (details.length === 0) {
+    return null
+  }
+
+  return details.slice(0, 3).join("; ")
+}
+
+function buildGeminiShortTextRetryInput(input: string): string | null {
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  const codePointLength = Array.from(trimmed).length
+  if (codePointLength > 10) return null
+  if (/[.!?؟۔。！？।]$/u.test(trimmed)) return null
+
+  const suffix =
+    /[\u0600-\u08FF]/u.test(trimmed) ? "۔"
+      : /[\u0900-\u097F]/u.test(trimmed) ? "।"
+        : /[\u3040-\u30FF\u3400-\u9FFF]/u.test(trimmed) ? "。"
+          : "."
+
+  return `${trimmed}${suffix}`
 }
 
 /**
@@ -186,67 +273,75 @@ export function createGeminiTTSSynthesizer(
       }
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(options.model)}:generateContent`
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": resolvedApiKey,
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: options.input,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: options.voice,
+      const synthesizeInput = async (inputText: string): Promise<GeminiGenerateContentPayload> => {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": resolvedApiKey,
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: inputText,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: {
+                    voiceName: options.voice,
+                  },
                 },
               },
             },
-          },
-        }),
-      })
+          }),
+        })
 
-      const responseText = await response.text()
-      const payload = (() => {
-        try {
-          return JSON.parse(responseText)
-        } catch {
-          return { error: responseText || response.statusText }
-        }
-      })() as {
-        error?: { message?: string } | string
-        candidates?: Array<{
-          content?: {
-            parts?: Array<{
-              inlineData?: {
-                data?: string
-              }
-            }>
+        const responseText = await response.text()
+        const payload = (() => {
+          try {
+            return JSON.parse(responseText)
+          } catch {
+            return { error: responseText || response.statusText }
           }
-        }>
+        })() as GeminiGenerateContentPayload
+
+        if (!response.ok) {
+          const message =
+            typeof payload.error === "string" ? payload.error
+              : payload.error?.message ?? response.statusText
+          throw new Error(
+            `Gemini TTS request failed (${response.status}): ${message || response.statusText}`
+          )
+        }
+
+        return payload
       }
 
-      if (!response.ok) {
-        const message =
-          typeof payload.error === "string" ? payload.error
-            : payload.error?.message ?? response.statusText
-        throw new Error(
-          `Gemini TTS request failed (${response.status}): ${message || response.statusText}`
-        )
-      }
+      let payload = await synthesizeInput(options.input)
+      let audioData = extractGeminiAudioData(payload)
 
-      const audioData = payload.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data
       if (!audioData) {
-        throw new Error("Gemini TTS response did not include audio data")
+        const retryInput = buildGeminiShortTextRetryInput(options.input)
+        if (retryInput) {
+          payload = await synthesizeInput(retryInput)
+          audioData = extractGeminiAudioData(payload)
+        }
+      }
+
+      if (!audioData) {
+        const responseSummary = summarizeGeminiResponse(payload)
+        throw new Error(
+          responseSummary
+            ? `Gemini TTS response did not include audio data. Response summary: ${responseSummary}`
+            : "Gemini TTS response did not include audio data"
+        )
       }
 
       const pcmBytes = new Uint8Array(Buffer.from(audioData, "base64"))

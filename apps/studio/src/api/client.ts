@@ -730,11 +730,20 @@ export const api = {
     label: string,
     textId: string,
     language: string,
-    geminiApiKey: string
+    credentials: {
+      geminiApiKey: string
+      openaiApiKey?: string
+      azure?: AzureCredentials
+    }
   ) =>
     request<GenerateSingleTTSResponse>(`/books/${label}/tts/generate-one`, {
       method: "POST",
-      headers: { "X-Gemini-API-Key": geminiApiKey },
+      headers: {
+        "X-Gemini-API-Key": credentials.geminiApiKey,
+        ...(credentials.openaiApiKey ? { "X-OpenAI-Key": credentials.openaiApiKey } : {}),
+        ...(credentials.azure?.key ? { "X-Azure-Speech-Key": credentials.azure.key } : {}),
+        ...(credentials.azure?.region ? { "X-Azure-Speech-Region": credentials.azure.region } : {}),
+      },
       body: JSON.stringify({ textId, language }),
     }),
 

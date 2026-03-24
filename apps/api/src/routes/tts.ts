@@ -8,11 +8,17 @@ import {
   parseBookLabel,
   TTSOutput,
   type SpeechFileEntry,
+  type TTSProviderConfig,
   type TextCatalogEntry,
   type TextCatalogOutput,
 } from "@adt/types"
 import { openBookDb, createBookStorage } from "@adt/storage"
-import { createGeminiTTSSynthesizer, type LlmLogEntry } from "@adt/llm"
+import {
+  createAzureTTSSynthesizer,
+  createGeminiTTSSynthesizer,
+  createTTSSynthesizer,
+  type LlmLogEntry,
+} from "@adt/llm"
 import {
   getBaseLanguage,
   loadBookConfig,
@@ -32,6 +38,15 @@ const GenerateSingleTTSBody = z
     language: z.string().min(1),
   })
   .strict()
+
+const GEMINI_FLASH_PREVIEW_TTS_MODEL = "gemini-2.5-flash-preview-tts"
+const GEMINI_PRO_PREVIEW_TTS_MODEL = "gemini-2.5-pro-preview-tts"
+
+interface SingleItemFallbackAttempt {
+  provider: "openai" | "azure"
+  model: string
+  voice: string
+}
 
 function safeParseLabel(label: string): string {
   try {
@@ -182,6 +197,45 @@ function getTtsCompletionSummary(
   }
 }
 
+function getGeminiFallbackModel(model: string): string | null {
+  if (model === GEMINI_FLASH_PREVIEW_TTS_MODEL) {
+    return GEMINI_PRO_PREVIEW_TTS_MODEL
+  }
+  if (model === GEMINI_PRO_PREVIEW_TTS_MODEL) {
+    return GEMINI_FLASH_PREVIEW_TTS_MODEL
+  }
+  return null
+}
+
+function getSingleItemFallbackAttempts(options: {
+  openaiApiKey?: string
+  azureSpeechKey?: string
+  azureSpeechRegion?: string
+  language: string
+  providerConfigs: Record<string, TTSProviderConfig>
+  voiceMaps: ReturnType<typeof loadVoicesConfig>
+}): SingleItemFallbackAttempt[] {
+  const attempts: SingleItemFallbackAttempt[] = []
+
+  if (options.openaiApiKey) {
+    attempts.push({
+      provider: "openai",
+      model: resolveSpeechModel("openai", options.providerConfigs),
+      voice: resolveVoice("openai", options.language, options.voiceMaps),
+    })
+  }
+
+  if (options.azureSpeechKey && options.azureSpeechRegion) {
+    attempts.push({
+      provider: "azure",
+      model: resolveSpeechModel("azure", options.providerConfigs),
+      voice: resolveVoice("azure", options.language, options.voiceMaps),
+    })
+  }
+
+  return attempts
+}
+
 function appendSingleTtsLog(
   storage: ReturnType<typeof createBookStorage>,
   options: {
@@ -299,6 +353,9 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
     }
 
     const geminiApiKey = c.req.header("X-Gemini-API-Key")?.trim()
+    const openaiApiKey = c.req.header("X-OpenAI-Key")?.trim()
+    const azureSpeechKey = c.req.header("X-Azure-Speech-Key")?.trim()
+    const azureSpeechRegion = c.req.header("X-Azure-Speech-Region")?.trim()
     if (!geminiApiKey) {
       throw new HTTPException(400, {
         message: "Gemini API key required. Set X-Gemini-API-Key header.",
@@ -322,7 +379,8 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
         })
       }
 
-      const providerConfigs = config.speech?.providers ?? {}
+      const providerConfigs: Record<string, TTSProviderConfig> =
+        config.speech?.providers ?? {}
       const routing: ProviderRouting = {
         providers: providerConfigs,
         defaultProvider: config.speech?.default_provider ?? "openai",
@@ -359,23 +417,77 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
         voiceMaps,
         config.speech?.voice
       )
+      const fallbackAttempts = getSingleItemFallbackAttempts({
+        openaiApiKey,
+        azureSpeechKey,
+        azureSpeechRegion,
+        language: normalizedLanguage,
+        providerConfigs,
+        voiceMaps,
+      })
+      const bookDir = path.join(path.resolve(booksDir), safeLabel)
+      const cacheDir = path.join(bookDir, ".cache")
 
       const startMs = Date.now()
-
-      try {
-        const entry = await generateSpeechFile({
+      const generateEntry = async (options: {
+        targetProvider: string
+        targetModel: string
+        targetVoice: string
+      }) =>
+        generateSpeechFile({
           textId: textEntry.id,
           text: textEntry.text,
           language: normalizedLanguage,
-          model,
-          voice,
+          model: options.targetModel,
+          voice: options.targetVoice,
           instructions: "",
           format,
-          bookDir: path.join(path.resolve(booksDir), safeLabel),
-          cacheDir: path.join(path.resolve(booksDir), safeLabel, ".cache"),
-          ttsSynthesizer: createGeminiTTSSynthesizer({ apiKey: geminiApiKey }),
-          provider,
+          bookDir,
+          cacheDir,
+          ttsSynthesizer:
+            options.targetProvider === "gemini"
+              ? createGeminiTTSSynthesizer({ apiKey: geminiApiKey })
+              : options.targetProvider === "azure"
+                ? createAzureTTSSynthesizer({
+                    subscriptionKey: azureSpeechKey!,
+                    region: azureSpeechRegion!,
+                  })
+                : createTTSSynthesizer(openaiApiKey),
+          provider: options.targetProvider,
         })
+
+      try {
+        let usedProvider = provider
+        let usedModel = model
+        let usedVoice = voice
+        let entry: Awaited<ReturnType<typeof generateEntry>>
+
+        try {
+          entry = await generateEntry({
+            targetProvider: provider,
+            targetModel: model,
+            targetVoice: voice,
+          })
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          const fallbackModel = getGeminiFallbackModel(model)
+          if (
+            fallbackModel &&
+            /did not include audio data/i.test(message)
+          ) {
+            console.warn(
+              `[tts] ${safeLabel}: retrying ${textEntry.id} with fallback Gemini model ${fallbackModel} after ${model} returned no audio`
+            )
+            usedModel = fallbackModel
+            entry = await generateEntry({
+              targetProvider: provider,
+              targetModel: fallbackModel,
+              targetVoice: voice,
+            })
+          } else {
+            throw err
+          }
+        }
 
         if (!entry) {
           throw new HTTPException(422, {
@@ -386,9 +498,9 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
         appendSingleTtsLog(storage, {
           textId: textEntry.id,
           language: normalizedLanguage,
-          voice,
-          model,
-          provider,
+          voice: usedVoice,
+          model: usedModel,
+          provider: usedProvider,
           text: textEntry.text,
           durationMs: Date.now() - startMs,
           success: true,
@@ -437,6 +549,85 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
         }
 
         const message = err instanceof Error ? err.message : String(err)
+        let fallbackFailureMessage = message
+
+        if (/did not include audio data/i.test(message)) {
+          for (const attempt of fallbackAttempts) {
+            try {
+              console.warn(
+                `[tts] ${safeLabel}: retrying ${textEntry.id} with fallback provider ${attempt.provider} after Gemini returned no audio`
+              )
+              const entry = await generateEntry({
+                targetProvider: attempt.provider,
+                targetModel: attempt.model,
+                targetVoice: attempt.voice,
+              })
+
+              if (!entry) {
+                throw new HTTPException(422, {
+                  message: `Text entry is not speakable: ${textEntry.id}`,
+                })
+              }
+
+              appendSingleTtsLog(storage, {
+                textId: textEntry.id,
+                language: normalizedLanguage,
+                voice: attempt.voice,
+                model: attempt.model,
+                provider: attempt.provider,
+                text: textEntry.text,
+                durationMs: Date.now() - startMs,
+                success: true,
+                cached: entry.cached,
+              })
+
+              const mergedEntries = mergeSpeechEntry(
+                getLatestTtsEntries(storage, normalizedLanguage),
+                entry,
+                languageEntries.map((item) => item.id)
+              )
+
+              const version = storage.putNodeData("tts", normalizedLanguage, {
+                entries: mergedEntries,
+                generatedAt: new Date().toISOString(),
+              })
+
+              const completion = getTtsCompletionSummary(
+                storage,
+                config,
+                sourceLanguage
+              )
+              if (completion.allComplete) {
+                storage.markStepCompleted("tts")
+              } else {
+                const currentStatus = storage
+                  .getStepRuns()
+                  .find((step) => step.step === "tts")?.status
+                if (currentStatus === "error") {
+                  storage.recordStepError(
+                    "tts",
+                    `${completion.remainingItems} Gemini audio item(s) still need generation.`
+                  )
+                }
+              }
+
+              return c.json({
+                entry,
+                version,
+                completed: completion.allComplete,
+                remainingItems: completion.remainingItems,
+              })
+            } catch (fallbackErr) {
+              if (fallbackErr instanceof HTTPException) {
+                throw fallbackErr
+              }
+              const fallbackMessage =
+                fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+              fallbackFailureMessage = `${message}. Fallback ${attempt.provider} failed: ${fallbackMessage}`
+            }
+          }
+        }
+
         appendSingleTtsLog(storage, {
           textId: textEntry.id,
           language: normalizedLanguage,
@@ -447,15 +638,15 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
           durationMs: Date.now() - startMs,
           success: false,
           cached: false,
-          error: message,
+          error: fallbackFailureMessage,
         })
         storage.recordStepError(
           "tts",
-          `Gemini audio generation failed for ${textEntry.id}: ${message}`
+          `Gemini audio generation failed for ${textEntry.id}: ${fallbackFailureMessage}`
         )
 
-        const status = /\(429\)|quota|rate limit/i.test(message) ? 429 : 502
-        return c.json({ error: message }, status)
+        const status = /\(429\)|quota|rate limit/i.test(fallbackFailureMessage) ? 429 : 502
+        return c.json({ error: fallbackFailureMessage }, status)
       }
     } finally {
       storage.close()

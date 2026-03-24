@@ -74,6 +74,109 @@ describe("createGeminiTTSSynthesizer", () => {
     })
   })
 
+  it("finds Gemini audio when a text part appears before the audio part", async () => {
+    const pcmBytes = new Uint8Array([5, 6, 7, 8])
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: "Audio generated successfully." },
+                  {
+                    inlineData: {
+                      mimeType: "audio/L16;rate=24000",
+                      data: Buffer.from(pcmBytes).toString("base64"),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    )
+
+    const synth = createGeminiTTSSynthesizer({ apiKey: "gm-test" })
+    const result = await synth.synthesize({
+      model: "gemini-2.5-pro-preview-tts",
+      voice: "Kore",
+      input: "Hello again",
+      responseFormat: "wav",
+    })
+
+    expect(Buffer.from(result.subarray(0, 4)).toString("ascii")).toBe("RIFF")
+    expect(result.byteLength).toBe(44 + pcmBytes.byteLength)
+  })
+
+  it("retries very short Gemini text with terminal punctuation when the first response has no audio", async () => {
+    const pcmBytes = new Uint8Array([9, 10, 11, 12])
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { text: "No audio returned for this request." },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      inlineData: {
+                        mimeType: "audio/L16;rate=24000",
+                        data: Buffer.from(pcmBytes).toString("base64"),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+
+    const synth = createGeminiTTSSynthesizer({ apiKey: "gm-test" })
+    const result = await synth.synthesize({
+      model: "gemini-2.5-pro-preview-tts",
+      voice: "Kore",
+      input: "یونیسف",
+      responseFormat: "wav",
+    })
+
+    expect(Buffer.from(result.subarray(0, 4)).toString("ascii")).toBe("RIFF")
+    expect(result.byteLength).toBe(44 + pcmBytes.byteLength)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toMatchObject({
+      contents: [{ parts: [{ text: "یونیسف۔" }] }],
+    })
+  })
+
   it("rejects non-wav Gemini output requests", async () => {
     const synth = createGeminiTTSSynthesizer({ apiKey: "gm-test" })
 
@@ -87,5 +190,42 @@ describe("createGeminiTTSSynthesizer", () => {
     ).rejects.toThrow(/only supports wav output/i)
 
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("surfaces a useful summary when Gemini returns text but no audio", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: "The selected voice is unavailable for this request.",
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    )
+
+    const synth = createGeminiTTSSynthesizer({ apiKey: "gm-test" })
+
+    await expect(
+      synth.synthesize({
+        model: "gemini-2.5-pro-preview-tts",
+        voice: "Kore",
+        input: "Hello world",
+        responseFormat: "wav",
+      })
+    ).rejects.toThrow(
+      /response did not include audio data\. Response summary: text="The selected voice is unavailable for this request\."/
+    )
   })
 })
