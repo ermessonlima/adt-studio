@@ -127,6 +127,202 @@ describe("POST /books/:label/tts/generate-one", () => {
     ).toBe(true)
   })
 
+  it("generates Gemini audio when the response includes a text part before the audio part", async () => {
+    const label = "gemini-audio-multipart"
+    seedBook(label)
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: "Audio generated successfully." },
+                  {
+                    inlineData: {
+                      mimeType: "audio/L16;rate=24000",
+                      data: Buffer.from(new Uint8Array([9, 10, 11, 12])).toString(
+                        "base64"
+                      ),
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    )
+
+    const app = createTTSRoutes(tmpDir, configPath)
+    const res = await app.request(`/books/${label}/tts/generate-one`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Gemini-API-Key": "gm-test",
+      },
+      body: JSON.stringify({ textId: "pg001_t001", language: "en" }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entry.fileName).toBe("pg001_t001.wav")
+    expect(body.remainingItems).toBe(0)
+  })
+
+  it("retries single-item Gemini audio generation with the alternate preview model when the first model returns no audio", async () => {
+    const label = "gemini-audio-fallback-model"
+    seedBook(label)
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { text: "No audio returned for this request." },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      inlineData: {
+                        data: Buffer.from(new Uint8Array([13, 14, 15, 16])).toString(
+                          "base64"
+                        ),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+
+    const app = createTTSRoutes(tmpDir, configPath)
+    const res = await app.request(`/books/${label}/tts/generate-one`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Gemini-API-Key": "gm-test",
+      },
+      body: JSON.stringify({ textId: "pg001_t001", language: "en" }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entry.fileName).toBe("pg001_t001.wav")
+    expect(body.entry.model).toBe("gemini-2.5-flash-preview-tts")
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    const [firstUrl] = fetchMock.mock.calls[0]
+    const [secondUrl] = fetchMock.mock.calls[1]
+    expect(String(firstUrl)).toContain("gemini-2.5-pro-preview-tts")
+    expect(String(secondUrl)).toContain("gemini-2.5-flash-preview-tts")
+  })
+
+  it("falls back to OpenAI when both Gemini preview models return no audio", async () => {
+    const label = "gemini-audio-openai-fallback"
+    seedBook(label)
+
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: "No audio returned for this request." }],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [{ text: "Still no audio returned for this request." }],
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([17, 18, 19, 20]), {
+          status: 200,
+          headers: { "Content-Type": "audio/wav" },
+        })
+      )
+
+    const app = createTTSRoutes(tmpDir, configPath)
+    const res = await app.request(`/books/${label}/tts/generate-one`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Gemini-API-Key": "gm-test",
+        "X-OpenAI-Key": "sk-test",
+      },
+      body: JSON.stringify({ textId: "pg001_t001", language: "en" }),
+    })
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.entry.fileName).toBe("pg001_t001.wav")
+    expect(body.entry.provider).toBe("openai")
+    expect(body.entry.model).toBe("gpt-4o-mini-tts")
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    const [firstUrl] = fetchMock.mock.calls[0]
+    const [secondUrl] = fetchMock.mock.calls[1]
+    const [thirdUrl, thirdInit] = fetchMock.mock.calls[2]
+    expect(String(firstUrl)).toContain("gemini-2.5-pro-preview-tts")
+    expect(String(secondUrl)).toContain("gemini-2.5-flash-preview-tts")
+    expect(String(thirdUrl)).toBe("https://api.openai.com/v1/audio/speech")
+    expect(thirdInit?.headers).toMatchObject({
+      Authorization: "Bearer sk-test",
+      "Content-Type": "application/json",
+    })
+  })
+
   it("rejects single-item generation when the language is not routed to Gemini", async () => {
     writeConfig("openai")
     const label = "openai-audio"

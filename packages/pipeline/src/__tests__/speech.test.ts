@@ -412,6 +412,43 @@ describe("generateSpeechFile", () => {
     expect(mockSynthesize).toHaveBeenCalledTimes(1) // Not called again
   })
 
+  it("only acquires the optional rate limiter when a real synth call is needed", async () => {
+    const rateLimiter = {
+      acquire: vi.fn().mockResolvedValue(undefined),
+    }
+
+    await generateSpeechFile({
+      textId: "p001_t001",
+      text: "Hello world",
+      language: "en",
+      model: "gpt-4o-mini-tts",
+      voice: "alloy",
+      instructions: "Speak cheerfully.",
+      format: "mp3",
+      bookDir,
+      cacheDir,
+      ttsSynthesizer: mockSynthesizer,
+      rateLimiter,
+    })
+
+    await generateSpeechFile({
+      textId: "p001_t001",
+      text: "Hello world",
+      language: "en",
+      model: "gpt-4o-mini-tts",
+      voice: "alloy",
+      instructions: "Speak cheerfully.",
+      format: "mp3",
+      bookDir,
+      cacheDir,
+      ttsSynthesizer: mockSynthesizer,
+      rateLimiter,
+    })
+
+    expect(rateLimiter.acquire).toHaveBeenCalledTimes(1)
+    expect(mockSynthesize).toHaveBeenCalledTimes(1)
+  })
+
   it("returns null for non-speakable text", async () => {
     const result = await generateSpeechFile({
       textId: "p001_t001",
