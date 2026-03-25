@@ -58,6 +58,12 @@ docker compose down
 
 Change the host port by setting `PORT=9000` in a `.env` file next to `docker-compose.yml`. See the [README](../README.md) for build-from-source instructions.
 
+To set the OpenAI API key at the server level (so users don't need to enter it in the UI):
+
+```bash
+docker run -p 8080:80 -v ./books:/app/books -e OPENAI_API_KEY=sk-... ghcr.io/unicef/adt-studio:latest
+```
+
 ### Option B — VPS / Bare Metal
 
 Build the project and run the two components separately using any process manager and static file server.
@@ -68,7 +74,7 @@ pnpm install && pnpm build
 
 # --- API server ---
 # With PM2:
-pm2 start apps/api/dist/index.js --name adt-api
+pm2 start apps/api/dist/api-server.mjs --name adt-api
 # With systemd: create a unit file pointing at the same entry point
 ```
 
@@ -303,7 +309,7 @@ HTML layout templates used by template-based render strategies (e.g., `two_colum
 
 ## 7. Developer Setup (Local)
 
-**Prerequisites**: [Node.js](https://nodejs.org/) >= 20, [pnpm](https://pnpm.io/) >= 9, and Playwright Chromium.
+**Prerequisites**: [Node.js](https://nodejs.org/) >= 22, [pnpm](https://pnpm.io/) 10.32.1 (via `corepack enable && corepack prepare pnpm@10.32.1 --activate`), and Playwright Chromium.
 
 ```bash
 git clone git@github.com:unicef/adt-studio.git
@@ -334,15 +340,43 @@ On first run, `pnpm dev` compiles all packages (~1 min). Subsequent runs use inc
 ```bash
 pnpm typecheck        # TypeScript strict mode check across all packages
 pnpm test             # Run all Vitest tests
-pnpm test:coverage    # Tests with coverage report
+pnpm test:watch       # Tests in watch mode
 pnpm lint             # ESLint across all packages
 pnpm build            # Full production build
 ```
 
 **Desktop app** (optional — requires [Rust](https://rustup.rs/)):
 ```bash
-pnpm dev:desktop      # Opens Tauri window pointing at the Vite dev server
+pnpm --filter @adt/api build:sidecar  # Required once before first run (and after API changes)
+pnpm dev                               # Terminal 1: start API + Studio dev servers
+pnpm dev:desktop                       # Terminal 2: opens Tauri window
 ```
+
+### Platform-specific notes
+
+**Windows:**
+- Use **PowerShell** or **Git Bash** (included with [Git for Windows](https://gitforwindows.org/)). Avoid CMD — it has issues with long paths.
+- `corepack enable` may require running PowerShell as Administrator.
+- Use [nvm-windows](https://github.com/coreybutler/nvm-windows) or [fnm](https://github.com/Schniz/fnm) (`winget install Schniz.fnm`) to manage Node.js versions. Note: `nvm-windows` is a different project from the Unix `nvm`.
+- For Docker: install [Docker Desktop](https://docs.docker.com/desktop/install/windows-install/) with WSL2 backend. Use `${PWD}/books` (PowerShell) instead of `./books` for volume mounts.
+- For long path issues: `git config --system core.longpaths true` (as Administrator).
+- For Tauri desktop builds: install [Visual Studio C++ Build Tools 2022](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the "Desktop development with C++" workload. WebView2 is preinstalled on Windows 10/11.
+
+**macOS:**
+- For Tauri desktop builds: install Xcode Command Line Tools: `xcode-select --install`.
+- Node.js can also be installed via Homebrew: `brew install node@22`.
+
+**Linux:**
+- For Tauri desktop builds (Debian/Ubuntu):
+  ```bash
+  sudo apt install libwebkit2gtk-4.1-dev build-essential libssl-dev \
+    libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+  ```
+- To run Docker without `sudo`:
+  ```bash
+  sudo usermod -aG docker $USER
+  # Log out and back in for the group change to take effect
+  ```
 
 ---
 
