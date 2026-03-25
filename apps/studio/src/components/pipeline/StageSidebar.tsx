@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { Link, useMatchRoute, useSearch } from "@tanstack/react-router"
+import { Trans } from "@lingui/react/macro"
 import {
   Loader2,
   RotateCcw,
   Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Trans, useLingui } from "@lingui/react"
+import { useLingui } from "@lingui/react"
 import { msg } from "@lingui/core/macro"
 import type { MessageDescriptor } from "@lingui/core"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,14 @@ const SETTINGS_TAB_MESSAGE: Record<string, MessageDescriptor> = {
   "speech-prompts": msg`Speech Prompts`,
   voices: msg`Voices`,
   "toc-prompt": msg`Generation Prompt`,
+}
+
+const TASK_KIND_LABELS: Record<string, MessageDescriptor> = {
+  "package-adt": msg`Packaging`,
+  "image-generate": msg`Image Generation`,
+  "re-render": msg`Re-render`,
+  "ai-edit": msg`AI Edit`,
+  "prepare-export": msg`Export`,
 }
 
 function getSettingsTabs(
@@ -212,7 +221,7 @@ export function StageSidebar({
               to="/books/$label/$step/settings"
               params={{ label: bookLabel, step: step.slug }}
               search={{ tab: "general" }}
-              title={`${stepLabel} ${i18n._("Settings")}`}
+              title={`${stepLabel} ${i18n._(msg`Settings`)}`}
               className={cn(
                 "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors ",
                 isActive
@@ -226,7 +235,7 @@ export function StageSidebar({
             <button
               type="button"
               onClick={openSettings}
-              title={i18n._("API Key Settings")}
+              title={i18n._(msg`API Key Settings`)}
               className={cn(
                 "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors cursor-pointer",
                 isActive
@@ -240,7 +249,7 @@ export function StageSidebar({
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent("adt:repackage"))}
-              title={i18n._("Re-package ADT")}
+              title={i18n._(msg`Re-package ADT`)}
               className={cn(
                 "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors cursor-pointer",
                 isActive
@@ -331,14 +340,8 @@ export function StageSidebar({
 
 /* ---------- TaskIndicator ---------- */
 
-const TASK_KIND_LABELS: Record<string, string> = {
-  "package-adt": "Packaging",
-  "image-generate": "Image Gen",
-  "re-render": "Re-render",
-  "ai-edit": "AI Edit",
-}
-
 function TaskIndicator({ bookLabel }: { bookLabel: string }) {
+  const { i18n } = useLingui()
   const { runningTasks, runningCount } = useBookTasks(bookLabel)
 
   if (runningCount === 0) return null
@@ -361,7 +364,7 @@ function TaskIndicator({ bookLabel }: { bookLabel: string }) {
           <StepProgressRing size={28} state="running" colorClass="bg-violet-600" />
         </div>
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-          {runningCount === 1 ? "Task" : "Tasks"} Running
+          {i18n._(msg`Background Tasks`)}
         </span>
       </div>
     </div>
@@ -369,22 +372,25 @@ function TaskIndicator({ bookLabel }: { bookLabel: string }) {
 }
 
 function TaskRow({ task }: { task: TaskInfoResponse }) {
-  const kindLabel = TASK_KIND_LABELS[task.kind] ?? task.kind
+  const { i18n } = useLingui()
+  const kindLabel = TASK_KIND_LABELS[task.kind]
   const [, tick] = useState(0)
   useEffect(() => {
     const id = window.setInterval(() => tick((n) => n + 1), 1000)
     return () => window.clearInterval(id)
   }, [])
   const elapsed = task.startedAt ? Math.round((Date.now() - task.startedAt) / 1000) : 0
-  const elapsedStr = elapsed < 60 ? `${elapsed}s` : `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+  const elapsedStr =
+    elapsed < 60
+      ? i18n._(msg`${elapsed}s`)
+      : i18n._(msg`${Math.floor(elapsed / 60)}m ${elapsed % 60}s`)
 
   const content = (
     <>
       <Loader2 className="w-3 h-3 animate-spin text-violet-500 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">{kindLabel}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>
-      </div>
+      <p className="flex-1 min-w-0 text-xs font-medium truncate">
+        {kindLabel ? i18n._(kindLabel) : task.kind}
+      </p>
       <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{elapsedStr}</span>
     </>
   )
@@ -427,7 +433,7 @@ function PageIndex({
   if (!pages?.length) {
     return (
       <div className="px-3 py-4 text-xs text-muted-foreground text-center">
-        <Trans id="No pages extracted yet" />
+        <Trans>No pages extracted yet</Trans>
       </div>
     )
   }
@@ -543,7 +549,7 @@ function PageRow({
         )}
         <div className="flex flex-col gap-0.5 min-w-0 flex-1 pt-0.5">
           <span className="text-[11px] leading-snug line-clamp-2">
-            {page.textPreview || i18n._("Untitled")}
+            {page.textPreview || i18n._(msg`Untitled`)}
           </span>
           <span className="text-[9px] font-mono opacity-50 leading-none">
             {`pg ${String(page.pageNumber)}`}
@@ -586,7 +592,11 @@ function PageRow({
                     ? cn(activeStepDef?.color ?? "bg-violet-600", pruned ? "text-white/50 line-through" : "text-white")
                     : pruned ? "bg-black/5 text-black/20 line-through hover:bg-black/10 hover:text-black/40" : "bg-black/5 text-black/40 hover:bg-black/10 hover:text-black/60"
                 )}
-                title={pruned ? `Section ${String(i + 1)} (pruned)` : `Section ${String(i + 1)}`}
+                title={
+                  pruned
+                    ? i18n._(msg`Section ${i + 1} (pruned)`)
+                    : i18n._(msg`Section ${i + 1}`)
+                }
               >
                 {i + 1}
               </button>

@@ -137,10 +137,10 @@ function buildQuizEntries(storage: Storage): TextCatalogEntry[] {
  * Gathers text from rendered pages, image captions, glossary, and quizzes.
  * No LLM calls — purely reads existing node data.
  */
-export function buildTextCatalog(
+export async function buildTextCatalog(
   storage: Storage,
   pages: PageData[]
-): TextCatalogOutput {
+): Promise<TextCatalogOutput> {
   const entries: TextCatalogEntry[] = []
 
   // Page text + image captions
@@ -161,6 +161,9 @@ export function buildTextCatalog(
 
     const captionMap = loadCaptionMap(storage, page.pageId)
     entries.push(...extractPageEntries(page.pageId, parsed.data, captionMap, prunedIndices))
+
+    // Yield to event loop so the server stays responsive during large books
+    await new Promise(resolve => setTimeout(resolve, 0))
   }
 
   // Glossary

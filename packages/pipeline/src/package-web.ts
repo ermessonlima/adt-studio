@@ -83,7 +83,7 @@ export async function packageAdtWeb(
   const imageMap = buildImageMap(path.join(bookDir, "images"))
 
   // Always rebuild the text catalog to avoid staleness; only persist if changed
-  const catalog = buildTextCatalog(storage, pages)
+  const catalog = await buildTextCatalog(storage, pages)
   const catalogRow = storage.getLatestNodeData("text-catalog", "book")
   const storedEntries = catalogRow
     ? JSON.stringify((catalogRow.data as TextCatalogOutput).entries)

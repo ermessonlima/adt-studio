@@ -1415,7 +1415,7 @@ async function runTextAndSpeechStep(
 
     console.log(`[stage-run] ${label}: building text catalog from ${pages.length} pages`)
 
-    const catalog = buildTextCatalog(storage, pages)
+    const catalog = await buildTextCatalog(storage, pages)
     storage.putNodeData("text-catalog", "book", catalog)
 
     progress.emit({

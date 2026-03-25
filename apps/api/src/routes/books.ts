@@ -12,7 +12,8 @@ import {
   getBookConfig,
   updateBookConfig,
 } from "../services/book-service.js"
-import { exportBook, exportWebpub, exportScorm } from "../services/export-service.js"
+import { prepareExport, exportBook, exportWebpub, exportScorm } from "../services/export-service.js"
+import type { TaskService } from "../services/task-service.js"
 
 const MIME_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -36,6 +37,7 @@ export function createBookRoutes(
   booksDir: string,
   webAssetsDir?: string,
   configPath?: string,
+  taskService?: TaskService,
 ): Hono {
   const app = new Hono()
 
@@ -141,17 +143,52 @@ export function createBookRoutes(
 
   // NOTE: step-status endpoint is now in stages.ts (needs StageService for run state)
 
+  // POST /books/:label/prepare-export — Rebuild adt/ (and webpub/ if needed) before download
+  app.post("/books/:label/prepare-export", async (c) => {
+    const { label } = c.req.param()
+    const format = (c.req.query("format") ?? "book") as "book" | "webpub" | "scorm"
+    const safeLabel = parseBookLabel(label)
+
+    try {
+      if (taskService) {
+        const { taskId } = taskService.submitTask(
+          safeLabel,
+          "prepare-export",
+          `Preparing ${format} export`,
+          async () => {
+            await prepareExport(label, format, booksDir, webAssetsDir ?? "", configPath)
+          },
+          { url: `/books/${safeLabel}/export` }
+        )
+        return c.json({ status: "submitted", taskId, label: safeLabel })
+      }
+
+      // Fallback: run synchronously (tests)
+      await prepareExport(label, format, booksDir, webAssetsDir ?? "", configPath)
+      return c.json({ status: "completed", label: safeLabel })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes("Web assets directory not found")) {
+        throw new HTTPException(500, { message })
+      }
+      if (message.includes("Book not found")) {
+        throw new HTTPException(404, { message })
+      }
+      throw new HTTPException(400, { message })
+    }
+  })
+
   // GET /books/:label/export — Download book as ZIP
   app.get("/books/:label/export", async (c) => {
     const { label } = c.req.param()
     try {
-      const result = await exportBook(label, booksDir, webAssetsDir ?? "", configPath)
+      const result = await exportBook(label, booksDir)
       c.header("Content-Type", "application/zip")
       c.header(
         "Content-Disposition",
         `attachment; filename="${result.filename}"`
       )
-      return c.body(Buffer.from(result.zipBuffer))
+      return c.body(result.stream)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       if (message.includes("Web assets directory not found")) {
@@ -168,7 +205,7 @@ export function createBookRoutes(
   app.get("/books/:label/export-webpub", async (c) => {
     const { label } = c.req.param()
     try {
-      const result = await exportWebpub(label, booksDir, webAssetsDir ?? "", configPath)
+      const result = await exportWebpub(label, booksDir)
       c.header("Content-Type", "application/zip")
       // Use RFC 5987 filename* for non-ASCII titles, with ASCII fallback
       const encodedName = encodeURIComponent(result.filename)
@@ -176,7 +213,7 @@ export function createBookRoutes(
         "Content-Disposition",
         `attachment; filename="${result.safeFilename}"; filename*=UTF-8''${encodedName}`
       )
-      return c.body(Buffer.from(result.webpubBuffer))
+      return c.body(result.stream)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       if (message.includes("Web assets directory not found")) {
@@ -193,14 +230,14 @@ export function createBookRoutes(
   app.get("/books/:label/export-scorm", async (c) => {
     const { label } = c.req.param()
     try {
-      const result = await exportScorm(label, booksDir, webAssetsDir ?? "", configPath)
+      const result = await exportScorm(label, booksDir)
       c.header("Content-Type", "application/zip")
       const encodedName = encodeURIComponent(result.filename)
       c.header(
         "Content-Disposition",
         `attachment; filename="${result.safeFilename}"; filename*=UTF-8''${encodedName}`
       )
-      return c.body(Buffer.from(result.scormBuffer))
+      return c.body(result.stream)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       if (message.includes("Web assets directory not found")) {

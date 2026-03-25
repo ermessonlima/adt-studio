@@ -4,7 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { openBookDb, createBookStorage } from "@adt/storage"
 import { unzipSync } from "fflate"
-import { exportBook, exportWebpub } from "./export-service.js"
+import { prepareExport, exportBook, exportWebpub } from "./export-service.js"
 
 let tmpDir: string
 let webAssetsDir: string
@@ -18,6 +18,26 @@ beforeEach(() => {
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true })
 })
+
+/** Collect a ReadableStream into a single Uint8Array. */
+async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  let totalLength = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    totalLength += value.length
+  }
+  const result = new Uint8Array(totalLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    result.set(chunk, offset)
+    offset += chunk.length
+  }
+  return result
+}
 
 function createTestDb(label: string): void {
   const bookDir = path.join(tmpDir, label)
@@ -80,11 +100,12 @@ describe("exportBook", () => {
     createTestDb("export-test")
     addPages("export-test", 1)
 
-    const result = await exportBook("export-test", tmpDir, webAssetsDir)
-    expect(result.zipBuffer).toBeInstanceOf(Uint8Array)
+    const result = await exportBook("export-test", tmpDir)
+    expect(result.stream).toBeInstanceOf(ReadableStream)
     expect(result.filename).toBe("export-test.zip")
 
-    const files = unzipSync(result.zipBuffer)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     expect(files["export-test.db"]).toBeDefined()
   })
 
@@ -93,8 +114,9 @@ describe("exportBook", () => {
     addPages("with-pdf", 1)
     addPdf("with-pdf")
 
-    const result = await exportBook("with-pdf", tmpDir, webAssetsDir)
-    const files = unzipSync(result.zipBuffer)
+    const result = await exportBook("with-pdf", tmpDir)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     expect(files["with-pdf.pdf"]).toBeDefined()
     expect(Buffer.from(files["with-pdf.pdf"]).toString()).toContain("%PDF")
   })
@@ -104,8 +126,9 @@ describe("exportBook", () => {
     addPages("with-imgs", 1)
     addImageFile("with-imgs", "my-img")
 
-    const result = await exportBook("with-imgs", tmpDir, webAssetsDir)
-    const files = unzipSync(result.zipBuffer)
+    const result = await exportBook("with-imgs", tmpDir)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     expect(files["images/my-img.png"]).toBeDefined()
     expect(Buffer.from(files["images/my-img.png"]).toString()).toBe("fake-png-data")
   })
@@ -115,8 +138,9 @@ describe("exportBook", () => {
     addPages("with-config", 1)
     addConfigYaml("with-config")
 
-    const result = await exportBook("with-config", tmpDir, webAssetsDir)
-    const files = unzipSync(result.zipBuffer)
+    const result = await exportBook("with-config", tmpDir)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     expect(files["config.yaml"]).toBeDefined()
     const content = new TextDecoder().decode(files["config.yaml"])
     expect(content).toContain("concurrency: 4")
@@ -126,20 +150,20 @@ describe("exportBook", () => {
     createTestDb("not-accepted")
     addPages("not-accepted", 1)
 
-    const result = await exportBook("not-accepted", tmpDir, webAssetsDir)
-    expect(result.zipBuffer).toBeInstanceOf(Uint8Array)
+    const result = await exportBook("not-accepted", tmpDir)
+    expect(result.stream).toBeInstanceOf(ReadableStream)
     expect(result.filename).toBe("not-accepted.zip")
   })
 
   it("throws for non-existent book", async () => {
-    await expect(exportBook("ghost", tmpDir, webAssetsDir)).rejects.toThrow("not found")
+    await expect(exportBook("ghost", tmpDir)).rejects.toThrow("not found")
   })
 
-  it("throws when web assets directory is missing", async () => {
+  it("throws when web assets directory is missing (prepareExport)", async () => {
     createTestDb("missing-assets")
     addPages("missing-assets", 1)
 
-    await expect(exportBook("missing-assets", tmpDir, path.join(tmpDir, "missing-assets-dir")))
+    await expect(prepareExport("missing-assets", "book", tmpDir, path.join(tmpDir, "missing-assets-dir")))
       .rejects.toThrow("Web assets directory not found")
   })
 
@@ -151,8 +175,9 @@ describe("exportBook", () => {
     addImageFile("full-book", "img-b")
     addConfigYaml("full-book")
 
-    const result = await exportBook("full-book", tmpDir, webAssetsDir)
-    const files = unzipSync(result.zipBuffer)
+    const result = await exportBook("full-book", tmpDir)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     const paths = Object.keys(files).sort()
 
     expect(paths).toContain("full-book.db")
@@ -242,12 +267,14 @@ describe("exportWebpub", () => {
     createBookWithMetadata("webpub-test", "Test Book")
     addPagesAndRenderings("webpub-test", 1)
 
-    const result = await exportWebpub("webpub-test", tmpDir, webAssetsDir)
-    expect(result.webpubBuffer).toBeInstanceOf(Uint8Array)
+    await prepareExport("webpub-test", "webpub", tmpDir, webAssetsDir)
+    const result = await exportWebpub("webpub-test", tmpDir)
+    expect(result.stream).toBeInstanceOf(ReadableStream)
     expect(result.filename).toBe("Test Book.webpub")
     expect(result.safeFilename).toBe("webpub-test.webpub")
 
-    const files = unzipSync(result.webpubBuffer)
+    const zipBuffer = await streamToBuffer(result.stream)
+    const files = unzipSync(zipBuffer)
     expect(files["manifest.json"]).toBeDefined()
   })
 
@@ -255,7 +282,8 @@ describe("exportWebpub", () => {
     createBookWithMetadata("sinhala-book", "\u0DC3\u0DD2\u0D82\u0DC4\u0DBD \u0DB4\u0DD9\u0DA7")
     addPagesAndRenderings("sinhala-book", 1)
 
-    const result = await exportWebpub("sinhala-book", tmpDir, webAssetsDir)
+    await prepareExport("sinhala-book", "webpub", tmpDir, webAssetsDir)
+    const result = await exportWebpub("sinhala-book", tmpDir)
     expect(result.filename).toBe("\u0DC3\u0DD2\u0D82\u0DC4\u0DBD \u0DB4\u0DD9\u0DA7.webpub")
     expect(result.safeFilename).toBe("sinhala-book.webpub")
   })
@@ -264,7 +292,8 @@ describe("exportWebpub", () => {
     createTestDb("no-title")
     addPages("no-title", 1)
 
-    const result = await exportWebpub("no-title", tmpDir, webAssetsDir)
+    await prepareExport("no-title", "webpub", tmpDir, webAssetsDir)
+    const result = await exportWebpub("no-title", tmpDir)
     expect(result.filename).toBe("no-title.webpub")
     expect(result.safeFilename).toBe("no-title.webpub")
   })
@@ -273,7 +302,7 @@ describe("exportWebpub", () => {
     createBookWithMetadata("webpub-config", "Config Test")
     addPagesAndRenderings("webpub-config", 1)
 
-    await exportWebpub("webpub-config", tmpDir, webAssetsDir)
+    await prepareExport("webpub-config", "webpub", tmpDir, webAssetsDir)
 
     const configPath = path.join(tmpDir, "webpub-config", "webpub", "assets", "config.json")
     const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
@@ -285,7 +314,7 @@ describe("exportWebpub", () => {
     createBookWithMetadata("webpub-css", "CSS Test")
     addPagesAndRenderings("webpub-css", 1)
 
-    await exportWebpub("webpub-css", tmpDir, webAssetsDir)
+    await prepareExport("webpub-css", "webpub", tmpDir, webAssetsDir)
 
     const indexPath = path.join(tmpDir, "webpub-css", "webpub", "index.html")
     const html = fs.readFileSync(indexPath, "utf-8")
@@ -297,7 +326,7 @@ describe("exportWebpub", () => {
     createBookWithMetadata("webpub-manifest", "Manifest Test")
     addPagesAndRenderings("webpub-manifest", 2)
 
-    await exportWebpub("webpub-manifest", tmpDir, webAssetsDir)
+    await prepareExport("webpub-manifest", "webpub", tmpDir, webAssetsDir)
 
     const manifestPath = path.join(tmpDir, "webpub-manifest", "webpub", "manifest.json")
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"))
@@ -309,14 +338,14 @@ describe("exportWebpub", () => {
   })
 
   it("throws for non-existent book", async () => {
-    await expect(exportWebpub("ghost", tmpDir, webAssetsDir)).rejects.toThrow("not found")
+    await expect(exportWebpub("ghost", tmpDir)).rejects.toThrow("not found")
   })
 
-  it("throws when web assets directory is missing", async () => {
+  it("throws when web assets directory is missing (prepareExport)", async () => {
     createBookWithMetadata("missing-assets", "Missing")
     addPagesAndRenderings("missing-assets", 1)
 
-    await expect(exportWebpub("missing-assets", tmpDir, path.join(tmpDir, "no-assets")))
+    await expect(prepareExport("missing-assets", "webpub", tmpDir, path.join(tmpDir, "no-assets")))
       .rejects.toThrow("Web assets directory not found")
   })
 })

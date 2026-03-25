@@ -28,7 +28,7 @@ const pages: PageData[] = [
 ]
 
 describe("buildTextCatalog", () => {
-  it("extracts text from data-id elements in rendered HTML", () => {
+  it("extracts text from data-id elements in rendered HTML", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -54,7 +54,7 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, pages)
+    const result = await buildTextCatalog(storage, pages)
 
     expect(result.entries).toEqual([
       { id: "pg001_gp001_tx001", text: "Hello world" },
@@ -63,7 +63,7 @@ describe("buildTextCatalog", () => {
     ])
   })
 
-  it("looks up captions for img data-ids", () => {
+  it("looks up captions for img data-ids", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -86,14 +86,14 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [pages[0]])
+    const result = await buildTextCatalog(storage, [pages[0]])
 
     expect(result.entries).toEqual([
       { id: "pg001_im001", text: "A beautiful sunset" },
     ])
   })
 
-  it("reassigns activity_gen_* IDs to page-scoped ac IDs", () => {
+  it("reassigns activity_gen_* IDs to page-scoped ac IDs", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -109,7 +109,7 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [pages[0]])
+    const result = await buildTextCatalog(storage, [pages[0]])
 
     expect(result.entries).toEqual([
       { id: "pg001_gp001_tx001", text: "Question" },
@@ -118,7 +118,7 @@ describe("buildTextCatalog", () => {
     ])
   })
 
-  it("builds glossary entries with gl prefix", () => {
+  it("builds glossary entries with gl prefix", async () => {
     const storage = createMockStorage({
       glossary: {
         book: {
@@ -132,7 +132,7 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [])
+    const result = await buildTextCatalog(storage, [])
 
     expect(result.entries).toEqual([
       { id: "gl001", text: "Photosynthesis" },
@@ -142,7 +142,7 @@ describe("buildTextCatalog", () => {
     ])
   })
 
-  it("builds quiz entries with qz prefix", () => {
+  it("builds quiz entries with qz prefix", async () => {
     const storage = createMockStorage({
       "quiz-generation": {
         book: {
@@ -168,7 +168,7 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [])
+    const result = await buildTextCatalog(storage, [])
 
     expect(result.entries).toEqual([
       { id: "qz001_que", text: "What is 2+2?" },
@@ -181,7 +181,7 @@ describe("buildTextCatalog", () => {
     ])
   })
 
-  it("skips empty text nodes", () => {
+  it("skips empty text nodes", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -197,22 +197,22 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [pages[0]])
+    const result = await buildTextCatalog(storage, [pages[0]])
 
     expect(result.entries).toEqual([
       { id: "pg001_gp001_tx002", text: "Real text" },
     ])
   })
 
-  it("skips pages with no web-rendering data", () => {
+  it("skips pages with no web-rendering data", async () => {
     const storage = createMockStorage({})
 
-    const result = buildTextCatalog(storage, pages)
+    const result = await buildTextCatalog(storage, pages)
 
     expect(result.entries).toEqual([])
   })
 
-  it("skips images with no caption", () => {
+  it("skips images with no caption", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -229,12 +229,12 @@ describe("buildTextCatalog", () => {
       // No image-captioning node
     })
 
-    const result = buildTextCatalog(storage, [pages[0]])
+    const result = await buildTextCatalog(storage, [pages[0]])
 
     expect(result.entries).toEqual([])
   })
 
-  it("combines all sources into a single catalog", () => {
+  it("combines all sources into a single catalog", async () => {
     const storage = createMockStorage({
       "web-rendering": {
         pg001: {
@@ -286,7 +286,7 @@ describe("buildTextCatalog", () => {
       },
     })
 
-    const result = buildTextCatalog(storage, [pages[0]])
+    const result = await buildTextCatalog(storage, [pages[0]])
 
     expect(result.entries).toHaveLength(11)
     // Page text
@@ -300,9 +300,9 @@ describe("buildTextCatalog", () => {
     expect(result.entries[4]).toEqual({ id: "qz001_que", text: "What is hello?" })
   })
 
-  it("includes generatedAt timestamp", () => {
+  it("includes generatedAt timestamp", async () => {
     const storage = createMockStorage({})
-    const result = buildTextCatalog(storage, [])
+    const result = await buildTextCatalog(storage, [])
     expect(result.generatedAt).toBeDefined()
     expect(new Date(result.generatedAt).getTime()).not.toBeNaN()
   })

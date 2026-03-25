@@ -710,7 +710,7 @@ export async function runFullPipeline(
 
     executors.set("text-catalog", async () => {
       const pages = storage.getPages()
-      const catalog = buildTextCatalog(storage, pages)
+      const catalog = await buildTextCatalog(storage, pages)
       storage.putNodeData("text-catalog", "book", catalog)
     })
 

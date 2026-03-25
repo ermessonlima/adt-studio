@@ -1,35 +1,17 @@
 import { FileDown, Loader2, BookOpen, AlertCircle, GraduationCap } from "lucide-react"
 import { Trans } from "@lingui/react/macro"
-import { useLingui } from "@lingui/react/macro"
 import { Button } from "@/components/ui/button"
-import { useExportBook, useExportWebpub, useExportScorm } from "@/hooks/use-books"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useExportWatcher } from "@/hooks/use-export-watcher"
 
 export function ExportView({ bookLabel }: { bookLabel: string }) {
-  const { t } = useLingui()
-  const exportBook = useExportBook()
-  const exportWebpub = useExportWebpub()
-  const exportScorm = useExportScorm()
+  const { startExport, isPreparing, preparingFormat, error } = useExportWatcher()
   const { stageState } = useBookRun()
   const storyboardDone = stageState("storyboard") === "done"
 
-  const adtError = exportBook.isError
-    ? exportBook.error.name === "TimeoutError"
-      ? t`Export timed out — the book may be too large`
-      : exportBook.error.message
-    : null
-
-  const webpubError = exportWebpub.isError
-    ? exportWebpub.error.name === "TimeoutError"
-      ? t`Export timed out — the book may be too large`
-      : exportWebpub.error.message
-    : null
-
-  const scormError = exportScorm.isError
-    ? exportScorm.error.name === "TimeoutError"
-      ? t`Export timed out — the book may be too large`
-      : exportScorm.error.message
-    : null
+  const adtError = error?.format === "book" ? error.message : null
+  const scormError = error?.format === "scorm" ? error.message : null
+  const webpubError = error?.format === "webpub" ? error.message : null
 
   if (!storyboardDone) {
     return (
@@ -63,19 +45,19 @@ export function ExportView({ bookLabel }: { bookLabel: string }) {
             variant="outline"
             size="sm"
             className={
-              exportBook.isError
+              adtError
                 ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 w-fit"
                 : "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 w-fit"
             }
-            onClick={() => exportBook.mutate(bookLabel)}
-            disabled={exportBook.isPending}
+            onClick={() => startExport("book")}
+            disabled={isPreparing}
           >
-            {exportBook.isPending ? (
+            {preparingFormat === "book" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
               <FileDown className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {exportBook.isError ? <Trans>Retry Export</Trans> : <Trans>Export ADT</Trans>}
+            {adtError ? <Trans>Retry Export</Trans> : <Trans>Export ADT</Trans>}
           </Button>
           {adtError && (
             <p className="text-[11px] leading-tight text-red-500">
@@ -99,19 +81,19 @@ export function ExportView({ bookLabel }: { bookLabel: string }) {
             variant="outline"
             size="sm"
             className={
-              exportScorm.isError
+              scormError
                 ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 w-fit"
                 : "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 w-fit"
             }
-            onClick={() => exportScorm.mutate(bookLabel)}
-            disabled={exportScorm.isPending}
+            onClick={() => startExport("scorm")}
+            disabled={isPreparing}
           >
-            {exportScorm.isPending ? (
+            {preparingFormat === "scorm" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
               <GraduationCap className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {exportScorm.isError ? <Trans>Retry Export</Trans> : <Trans>Export SCORM</Trans>}
+            {scormError ? <Trans>Retry Export</Trans> : <Trans>Export SCORM</Trans>}
           </Button>
           {scormError && (
             <p className="text-[11px] leading-tight text-red-500">
@@ -138,19 +120,19 @@ export function ExportView({ bookLabel }: { bookLabel: string }) {
             variant="outline"
             size="sm"
             className={
-              exportWebpub.isError
+              webpubError
                 ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 w-fit"
                 : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 w-fit"
             }
-            onClick={() => exportWebpub.mutate(bookLabel)}
-            disabled={exportWebpub.isPending}
+            onClick={() => startExport("webpub")}
+            disabled={isPreparing}
           >
-            {exportWebpub.isPending ? (
+            {preparingFormat === "webpub" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
               <BookOpen className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {exportWebpub.isError ? <Trans>Retry Export</Trans> : <Trans>Export WebPub</Trans>}
+            {webpubError ? <Trans>Retry Export</Trans> : <Trans>Export WebPub</Trans>}
           </Button>
           {webpubError && (
             <p className="text-[11px] leading-tight text-red-500">

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { api, BASE_URL } from "@/api/client"
+import { api } from "@/api/client"
 
 export function useBooks() {
   return useQuery({
@@ -40,118 +40,6 @@ export function useDeleteBook() {
     mutationFn: (label: string) => api.deleteBook(label),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["books"] })
-    },
-  })
-}
-
-export function useExportBook() {
-  return useMutation({
-    mutationFn: (label: string) => api.exportBook(label),
-    onSuccess: async (blob, label) => {
-      if (BASE_URL.startsWith("http")) {
-        // Tauri mode: programmatic blob-URL anchor clicks don't trigger file system
-        // downloads in WebView2 (async click loses the user-gesture context).
-        // Use native OS save dialog + fs write instead (see Lesson #10).
-        try {
-          const { save } = await import("@tauri-apps/plugin-dialog")
-          const { writeFile } = await import("@tauri-apps/plugin-fs")
-          const savePath = await save({
-            defaultPath: `${label}.zip`,
-            filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
-          })
-          if (savePath) {
-            const buf = await blob.arrayBuffer()
-            await writeFile(savePath, new Uint8Array(buf))
-          }
-        } catch (err) {
-          console.error("Export failed:", err)
-          throw err // Re-throw so TanStack Query marks the mutation as failed
-        }
-      } else {
-        // Local dev / browser: standard anchor-click download
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${label}.zip`
-        document.body.appendChild(a)
-        a.click()
-        setTimeout(() => {
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        }, 1500)
-      }
-    },
-  })
-}
-
-export function useExportWebpub() {
-  return useMutation({
-    mutationFn: (label: string) => api.exportWebpub(label),
-    onSuccess: async (blob, label) => {
-      if (BASE_URL.startsWith("http")) {
-        try {
-          const { save } = await import("@tauri-apps/plugin-dialog")
-          const { writeFile } = await import("@tauri-apps/plugin-fs")
-          const savePath = await save({
-            defaultPath: `${label}.webpub`,
-            filters: [{ name: "WebPub", extensions: ["webpub"] }],
-          })
-          if (savePath) {
-            const buf = await blob.arrayBuffer()
-            await writeFile(savePath, new Uint8Array(buf))
-          }
-        } catch (err) {
-          console.error("WebPub export failed:", err)
-          throw err
-        }
-      } else {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${label}.webpub`
-        document.body.appendChild(a)
-        a.click()
-        setTimeout(() => {
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        }, 1500)
-      }
-    },
-  })
-}
-
-export function useExportScorm() {
-  return useMutation({
-    mutationFn: (label: string) => api.exportScorm(label),
-    onSuccess: async (blob, label) => {
-      if (BASE_URL.startsWith("http")) {
-        try {
-          const { save } = await import("@tauri-apps/plugin-dialog")
-          const { writeFile } = await import("@tauri-apps/plugin-fs")
-          const savePath = await save({
-            defaultPath: `${label}-scorm.zip`,
-            filters: [{ name: "SCORM Package", extensions: ["zip"] }],
-          })
-          if (savePath) {
-            const buf = await blob.arrayBuffer()
-            await writeFile(savePath, new Uint8Array(buf))
-          }
-        } catch (err) {
-          console.error("SCORM export failed:", err)
-          throw err
-        }
-      } else {
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${label}-scorm.zip`
-        document.body.appendChild(a)
-        a.click()
-        setTimeout(() => {
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        }, 1500)
-      }
     },
   })
 }

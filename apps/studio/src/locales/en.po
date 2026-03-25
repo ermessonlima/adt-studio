@@ -13,24 +13,24 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
-msgid "Settings"
-msgstr "Settings"
+#~ msgid "Settings"
+#~ msgstr "Settings"
 
 #. js-lingui-explicit-id
-msgid "API Key Settings"
-msgstr "API Key Settings"
+#~ msgid "API Key Settings"
+#~ msgstr "API Key Settings"
 
 #. js-lingui-explicit-id
-msgid "Re-package ADT"
-msgstr "Re-package ADT"
+#~ msgid "Re-package ADT"
+#~ msgstr "Re-package ADT"
 
 #. js-lingui-explicit-id
-msgid "No pages extracted yet"
-msgstr "No pages extracted yet"
+#~ msgid "No pages extracted yet"
+#~ msgstr "No pages extracted yet"
 
 #. js-lingui-explicit-id
-msgid "Untitled"
-msgstr "Untitled"
+#~ msgid "Untitled"
+#~ msgstr "Untitled"
 
 msgid "? This will remove all extracted data and cannot be undone."
 msgstr "? This will remove all extracted data and cannot be undone."
@@ -90,6 +90,11 @@ msgstr "{0}/{1} audio"
 msgid "{0}/5 pages selected"
 msgstr "{0}/5 pages selected"
 
+#. placeholder {0}: Math.floor(elapsed / 60)
+#. placeholder {1}: elapsed % 60
+msgid "{0}m {1}s"
+msgstr "{0}m {1}s"
+
 #. placeholder {0}: String(Math.floor(diff / 60_000))
 msgid "{0}m ago"
 msgstr "{0}m ago"
@@ -97,6 +102,9 @@ msgstr "{0}m ago"
 #. placeholder {0}: String(Math.floor(diff / 1000))
 msgid "{0}s ago"
 msgstr "{0}s ago"
+
+msgid "{elapsed}s"
+msgstr "{elapsed}s"
 
 msgid "{missingAudioCount} missing"
 msgstr "{missingAudioCount} missing"
@@ -254,6 +262,9 @@ msgstr "After {0}"
 msgid "AI"
 msgstr "AI"
 
+msgid "AI Edit"
+msgstr "AI Edit"
+
 msgid "AI editing..."
 msgstr "AI editing..."
 
@@ -367,6 +378,9 @@ msgstr "Back to Editor"
 
 msgid "Back to preview"
 msgstr "Back to preview"
+
+msgid "Background Tasks"
+msgstr "Background Tasks"
 
 #. placeholder {0}: section.backgroundColor
 msgid "Background: {0}"
@@ -744,6 +758,9 @@ msgstr "Export ADT"
 msgid "Export as a SCORM 1.2 package for upload to a Learning Management System (LMS). Includes activity completion tracking and offline support."
 msgstr "Export as a SCORM 1.2 package for upload to a Learning Management System (LMS). Includes activity completion tracking and offline support."
 
+msgid "Export preparation failed"
+msgstr "Export preparation failed"
+
 msgid "Export SCORM"
 msgstr "Export SCORM"
 
@@ -753,8 +770,8 @@ msgstr "Export the book as a Readium WebPub package — a standards-based format
 msgid "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
 msgstr "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
 
-msgid "Export timed out — the book may be too large"
-msgstr "Export timed out — the book may be too large"
+#~ msgid "Export timed out — the book may be too large"
+#~ msgstr "Export timed out — the book may be too large"
 
 msgid "Export WebPub"
 msgstr "Export WebPub"
@@ -1284,8 +1301,8 @@ msgstr "No metadata yet — run the pipeline to extract book details"
 msgid "No page linked"
 msgstr "No page linked"
 
-#~ msgid "No pages extracted yet"
-#~ msgstr "No pages extracted yet"
+msgid "No pages extracted yet"
+msgstr "No pages extracted yet"
 
 msgid "No pages extracted yet. Run the pipeline to extract content."
 msgstr "No pages extracted yet. Run the pipeline to extract content."
@@ -1367,6 +1384,9 @@ msgstr "Output Tokens"
 
 msgid "Package and preview the final ADT web application."
 msgstr "Package and preview the final ADT web application."
+
+msgid "Packaging"
+msgstr "Packaging"
 
 msgid "Packaging preview..."
 msgstr "Packaging preview..."
@@ -1525,8 +1545,8 @@ msgstr "Quizzes are linked to other pages in this book"
 msgid "Re-enable type"
 msgstr "Re-enable type"
 
-#~ msgid "Re-package ADT"
-#~ msgstr "Re-package ADT"
+msgid "Re-package ADT"
+msgstr "Re-package ADT"
 
 msgid "Re-render"
 msgstr "Re-render"
@@ -1663,6 +1683,9 @@ msgstr "Saving..."
 msgid "SCORM Export"
 msgstr "SCORM Export"
 
+msgid "SCORM Package"
+msgstr "SCORM Package"
+
 msgid "Search languages..."
 msgstr "Search languages..."
 
@@ -1671,6 +1694,7 @@ msgstr "Search sections..."
 
 #. placeholder {0}: String(group.sectionIndex + 1)
 #. placeholder {0}: String(i + 1)
+#. placeholder {0}: i + 1
 msgid "Section {0}"
 msgstr "Section {0}"
 
@@ -1680,6 +1704,7 @@ msgid "Section {0} — {1}"
 msgstr "Section {0} — {1}"
 
 #. placeholder {0}: String(i + 1)
+#. placeholder {0}: i + 1
 msgid "Section {0} (pruned)"
 msgstr "Section {0} (pruned)"
 
@@ -2062,8 +2087,8 @@ msgstr "Unsaved:"
 msgid "Untangling nested divs with care..."
 msgstr "Untangling nested divs with care..."
 
-#~ msgid "Untitled"
-#~ msgstr "Untitled"
+msgid "Untitled"
+msgstr "Untitled"
 
 msgid "Upload a new image file from your computer"
 msgstr "Upload a new image file from your computer"
@@ -2121,6 +2146,9 @@ msgstr "Web Package"
 msgid "Web Rendering"
 msgstr "Web Rendering"
 
+msgid "WebPub"
+msgstr "WebPub"
+
 msgid "WebPub Export"
 msgstr "WebPub Export"
 
@@ -2138,6 +2166,9 @@ msgstr "Wraps 'Generate new' requests. Supports user_prompt, style, and image_ty
 
 msgid "Your Books"
 msgstr "Your Books"
+
+msgid "ZIP Archive"
+msgstr "ZIP Archive"
 
 msgid "Zoom"
 msgstr "Zoom"

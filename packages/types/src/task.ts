@@ -5,6 +5,7 @@ export const TaskKind = z.enum([
   "re-render",
   "ai-edit",
   "package-adt",
+  "prepare-export",
 ])
 export type TaskKind = z.infer<typeof TaskKind>
 

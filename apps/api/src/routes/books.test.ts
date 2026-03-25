@@ -873,11 +873,11 @@ describe("GET /books/:label/export", () => {
     expect(res.status).toBe(404)
   })
 
-  it("returns 500 when web assets directory is missing", async () => {
+  it("returns 500 when web assets directory is missing (prepare-export)", async () => {
     createTestBook("missing-assets-export")
     addPagesAndRenderings("missing-assets-export", 1)
     const app = createBookRoutes(tmpDir, path.join(tmpDir, "no-web-assets"))
-    const res = await app.request("/books/missing-assets-export/export")
+    const res = await app.request("/books/missing-assets-export/prepare-export", { method: "POST" })
     expect(res.status).toBe(500)
   })
 })
@@ -913,6 +913,9 @@ describe("GET /books/:label/export-webpub", () => {
     createBookWithTitle("webpub-ascii", "My Book")
     addPagesAndRenderings("webpub-ascii", 1)
     const app = createBookRoutes(tmpDir, webAssetsDir)
+    // Prepare first (builds webpub directory)
+    const prepRes = await app.request("/books/webpub-ascii/prepare-export?format=webpub", { method: "POST" })
+    expect(prepRes.status).toBe(200)
     const res = await app.request("/books/webpub-ascii/export-webpub")
     expect(res.status).toBe(200)
     expect(res.headers.get("Content-Type")).toBe("application/zip")
@@ -925,6 +928,8 @@ describe("GET /books/:label/export-webpub", () => {
     createBookWithTitle("sinhala-export", "\u0DC3\u0DD2\u0D82\u0DC4\u0DBD")
     addPagesAndRenderings("sinhala-export", 1)
     const app = createBookRoutes(tmpDir, webAssetsDir)
+    // Prepare first (builds webpub directory)
+    await app.request("/books/sinhala-export/prepare-export?format=webpub", { method: "POST" })
     const res = await app.request("/books/sinhala-export/export-webpub")
     expect(res.status).toBe(200)
     const disposition = res.headers.get("Content-Disposition") ?? ""
@@ -941,11 +946,11 @@ describe("GET /books/:label/export-webpub", () => {
     expect(res.status).toBe(404)
   })
 
-  it("returns 500 when web assets directory is missing", async () => {
+  it("returns 500 when web assets directory is missing (prepare-export)", async () => {
     createBookWithTitle("missing-assets-wp", "Missing")
     addPagesAndRenderings("missing-assets-wp", 1)
     const app = createBookRoutes(tmpDir, path.join(tmpDir, "no-web-assets"))
-    const res = await app.request("/books/missing-assets-wp/export-webpub")
+    const res = await app.request("/books/missing-assets-wp/prepare-export?format=webpub", { method: "POST" })
     expect(res.status).toBe(500)
   })
 })

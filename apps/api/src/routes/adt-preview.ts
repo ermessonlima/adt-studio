@@ -81,9 +81,9 @@ function getBookTitle(storage: Storage): string {
   return metadata?.title ?? "ADT Preview"
 }
 
-function getTextCatalog(storage: Storage): TextCatalogOutput {
+async function getTextCatalog(storage: Storage): Promise<TextCatalogOutput> {
   const pages = storage.getPages()
-  return buildTextCatalog(storage, pages)
+  return await buildTextCatalog(storage, pages)
 }
 
 function getGlossary(storage: Storage): GlossaryOutput | undefined {
@@ -354,15 +354,22 @@ export function createAdtPreviewRoutes(
     return { safeLabel, bookDir }
   }
 
-  /** Open storage, run callback, close on exit */
+  /** Open storage, run callback, close on exit. Supports async callbacks. */
   function withStorage<T>(label: string, fn: (storage: Storage, safeLabel: string, bookDir: string) => T): T {
     const { safeLabel, bookDir } = resolveBook(label)
     const storage = createBookStorage(safeLabel, booksDir)
+    let result: T
     try {
-      return fn(storage, safeLabel, bookDir)
-    } finally {
+      result = fn(storage, safeLabel, bookDir)
+    } catch (err) {
       storage.close()
+      throw err
     }
+    if (result instanceof Promise) {
+      return result.finally(() => storage.close()) as T
+    }
+    storage.close()
+    return result
   }
 
   // /assets/config.json — Dynamic config reflecting book capabilities
@@ -458,7 +465,7 @@ export function createAdtPreviewRoutes(
 
       // Include quiz HTML so Tailwind scans quiz classes
       const quizData = getQuizData(storage)
-      const catalog = getTextCatalog(storage)
+      const catalog = await getTextCatalog(storage)
       if (quizData?.quizzes) {
         for (let i = 0; i < quizData.quizzes.length; i++) {
           const quizId = `qz${pad3(i + 1)}`
@@ -492,12 +499,12 @@ export function createAdtPreviewRoutes(
   })
 
   // /content/i18n/:lang/texts.json — Text catalog
-  app.get("/books/:label/adt-preview/content/i18n/:lang/texts.json", (c) => {
+  app.get("/books/:label/adt-preview/content/i18n/:lang/texts.json", async (c) => {
     const lang = c.req.param("lang")
-    const textsMap = withStorage(c.req.param("label"), (storage) => {
+    const textsMap = await withStorage(c.req.param("label"), async (storage) => {
       const language = getBookLanguage(storage)
       const sourceLanguage = getBaseLanguage(language)
-      const catalog = getTextCatalog(storage)
+      const catalog = await getTextCatalog(storage)
       return buildTextsMap(storage, lang, sourceLanguage, catalog)
     })
     c.header("Content-Type", "application/json")
@@ -505,12 +512,12 @@ export function createAdtPreviewRoutes(
   })
 
   // /content/i18n/:lang/glossary.json — Glossary data
-  app.get("/books/:label/adt-preview/content/i18n/:lang/glossary.json", (c) => {
+  app.get("/books/:label/adt-preview/content/i18n/:lang/glossary.json", async (c) => {
     const lang = c.req.param("lang")
-    const glossaryJson = withStorage(c.req.param("label"), (storage) => {
+    const glossaryJson = await withStorage(c.req.param("label"), async (storage) => {
       const language = getBookLanguage(storage)
       const sourceLanguage = getBaseLanguage(language)
-      const catalog = getTextCatalog(storage)
+      const catalog = await getTextCatalog(storage)
       const glossary = getGlossary(storage)
       const textsMap = buildTextsMap(storage, lang, sourceLanguage, catalog)
       const baseLang = getBaseLanguage(lang)
@@ -595,7 +602,7 @@ export function createAdtPreviewRoutes(
 
   // /:pageId.html — Rendered page with ADT bundle chrome
   // Registered last so specific content/assets/images routes match first
-  app.get("/books/:label/adt-preview/:filename", (c) => {
+  app.get("/books/:label/adt-preview/:filename", async (c) => {
     const { label, filename } = c.req.param()
     if (!filename.endsWith(".html")) throw new HTTPException(404, { message: "Not found" })
     const pageId = filename.replace(/\.html$/, "")
@@ -605,7 +612,7 @@ export function createAdtPreviewRoutes(
     const applyBodyBackground = config.apply_body_background
     const embed = c.req.query("embed") === "1"
 
-    return withStorage(label, (storage) => {
+    return await withStorage(label, async (storage) => {
       const title = getBookTitle(storage)
       const language = getBookLanguage(storage)
 
@@ -618,7 +625,7 @@ export function createAdtPreviewRoutes(
           throw new HTTPException(404, { message: `No quiz data for: ${pageId}` })
         }
         const quiz = quizData.quizzes[quizIndex]
-        const catalog = getTextCatalog(storage)
+        const catalog = await getTextCatalog(storage)
 
         const quizHtmlContent = renderQuizHtml(quiz, pageId, catalog)
         // Determine page index from the manifest

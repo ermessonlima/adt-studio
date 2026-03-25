@@ -88,7 +88,7 @@ app.use(
 app.onError(errorHandler)
 
 app.route("/api", healthRoutes)
-app.route("/api", createBookRoutes(booksDir, webAssetsDir, configPath))
+app.route("/api", createBookRoutes(booksDir, webAssetsDir, configPath, taskService))
 app.route("/api", createPageRoutes(booksDir, promptsDir, webAssetsDir, configPath, taskService))
 app.route("/api", createGlossaryRoutes(booksDir))
 app.route("/api", createTocRoutes(booksDir))

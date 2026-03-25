@@ -34,11 +34,6 @@
       "count": 1
     }
   },
-  "src/components/pipeline/StageSidebar.tsx": {
-    "lingui/no-unlocalized-strings": {
-      "count": 8
-    }
-  },
   "src/components/pipeline/TemplateViewer.tsx": {
     "lingui/no-unlocalized-strings": {
       "count": 2
@@ -135,11 +130,6 @@
     }
   },
   "src/hooks/use-book-run.ts": {
-    "lingui/no-unlocalized-strings": {
-      "count": 3
-    }
-  },
-  "src/hooks/use-books.ts": {
     "lingui/no-unlocalized-strings": {
       "count": 3
     }

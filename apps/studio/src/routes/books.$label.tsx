@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { StageSidebar } from "@/components/pipeline/StageSidebar"
 import { useBook } from "@/hooks/use-books"
 import { useBookRunStatus, BookRunProvider } from "@/hooks/use-book-run"
+import { useExportWatcherSetup, ExportWatcherProvider } from "@/hooks/use-export-watcher"
 
 // Section navigation context — shared between sidebar and all views
 interface SectionNavContext {
@@ -41,6 +42,7 @@ function BookLayoutInner({ label }: { label: string }) {
   const navigate = useNavigate()
   const { data: book } = useBook(label)
   const isDebugRoute = !!matchRoute({ to: "/books/$label/debug", params: { label } })
+  const exportWatcher = useExportWatcherSetup(label)
 
   const openDebugWindow = useCallback(() => {
     window.open(`/books/${label}/debug`, `debug-${label}`, "width=900,height=700")
@@ -137,7 +139,9 @@ function BookLayoutInner({ label }: { label: string }) {
           {/* Main content */}
           <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
             <SectionNavCtx.Provider value={sectionNav}>
-              <Outlet />
+              <ExportWatcherProvider value={exportWatcher}>
+                <Outlet />
+              </ExportWatcherProvider>
             </SectionNavCtx.Provider>
           </div>
         </div>
