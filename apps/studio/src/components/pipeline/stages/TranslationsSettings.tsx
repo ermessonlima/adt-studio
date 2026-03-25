@@ -24,8 +24,10 @@ import { useStepConfig } from "@/hooks/use-step-config"
 import { normalizeLocale } from "@/lib/languages"
 import { SpeechPromptsEditor } from "./SpeechPromptsEditor"
 import { VoiceMappingsEditor } from "./VoiceMappingsEditor"
+import { useLingui } from "@lingui/react/macro"
 
 export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
+  const { t } = useLingui()
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
@@ -186,8 +188,8 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           selected={outputLanguages}
           onSelect={toggleLanguage}
           multiple
-          label="Output Languages"
-          hint="Leave empty to output only in the book language."
+          label={t`Output Languages`}
+          hint={t`Leave empty to output only in the book language.`}
         />
       )}
 
@@ -195,8 +197,8 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
         <PromptViewer
           promptName="translation"
           bookLabel={bookLabel}
-          title="Translation Prompt"
-          description="The prompt template used to translate text catalog entries."
+          title={t`Translation Prompt`}
+          description={t`The prompt template used to translate text catalog entries.`}
           model={translation.model}
           onModelChange={translation.onModelChange}
           maxRetries={translation.maxRetries}
@@ -210,128 +212,128 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
         <div className="space-y-6">
           {/* Provider Routing */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Provider Routing</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Provider Routing`}</h3>
             <div className="space-y-1.5">
-              <Label className="text-xs">Default Provider</Label>
+              <Label className="text-xs">{t`Default Provider`}</Label>
               <select
                 value={defaultProvider}
                 onChange={(e) => { setDefaultProvider(e.target.value); markDirty("speech") }}
                 className="flex h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
               >
-                <option value="openai">OpenAI</option>
-                <option value="azure">Azure</option>
-                <option value="gemini">Gemini</option>
+                <option value="openai">{t`OpenAI`}</option>
+                <option value="azure">{t`Azure`}</option>
+                <option value="gemini">{t`Gemini`}</option>
               </select>
-              <p className="text-xs text-muted-foreground">Provider used for languages not assigned to a specific provider.</p>
+              <p className="text-xs text-muted-foreground">{t`Provider used for languages not assigned to a specific provider.`}</p>
             </div>
           </div>
 
           {/* OpenAI Provider */}
           <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">OpenAI</h3>
+            <h3 className="text-xs font-semibold">{t`OpenAI`}</h3>
             <div className="space-y-1.5">
-              <Label className="text-xs">Model</Label>
+              <Label className="text-xs">{t`Model`}</Label>
               <Input
                 value={openaiModel}
                 onChange={(e) => { setOpenaiModel(e.target.value); markDirty("speech") }}
-                placeholder="e.g. gpt-4o-mini-tts"
+                placeholder={t`e.g. gpt-4o-mini-tts`}
                 className="w-72 h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Languages</Label>
+              <Label className="text-xs">{t`Languages`}</Label>
               <Input
                 value={openaiLanguages}
                 onChange={(e) => { setOpenaiLanguages(e.target.value); markDirty("speech") }}
-                placeholder="e.g. en, fr"
+                placeholder={t`e.g. en, fr`}
                 className="w-72 h-8 text-xs"
               />
-              <p className="text-xs text-muted-foreground">Comma-separated language codes routed to OpenAI.</p>
+              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to OpenAI.`}</p>
             </div>
           </div>
 
           {/* Azure Provider */}
           <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">Azure Speech</h3>
+            <h3 className="text-xs font-semibold">{t`Azure Speech`}</h3>
             <div className="space-y-1.5">
-              <Label className="text-xs">Model</Label>
+              <Label className="text-xs">{t`Model`}</Label>
               <Input
                 value={azureModel}
                 onChange={(e) => { setAzureModel(e.target.value); markDirty("speech") }}
-                placeholder="e.g. azure-tts"
+                placeholder={t`e.g. azure-tts`}
                 className="w-72 h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Languages</Label>
+              <Label className="text-xs">{t`Languages`}</Label>
               <Input
                 value={azureLanguages}
                 onChange={(e) => { setAzureLanguages(e.target.value); markDirty("speech") }}
-                placeholder="e.g. es, ta, si, sw"
+                placeholder={t`e.g. es, ta, si, sw`}
                 className="w-72 h-8 text-xs"
               />
-              <p className="text-xs text-muted-foreground">Comma-separated language codes routed to Azure.</p>
+              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to Azure.`}</p>
             </div>
           </div>
 
           {/* Gemini Provider */}
           <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">Gemini</h3>
+            <h3 className="text-xs font-semibold">{t`Gemini`}</h3>
             <div className="space-y-1.5">
-              <Label className="text-xs">Model</Label>
+              <Label className="text-xs">{t`Model`}</Label>
               <Input
                 value={geminiModel}
                 onChange={(e) => { setGeminiModel(e.target.value); markDirty("speech") }}
-                placeholder="e.g. gemini-2.5-pro-preview-tts"
+                placeholder={t`e.g. gemini-2.5-pro-preview-tts`}
                 className="w-72 h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Languages</Label>
+              <Label className="text-xs">{t`Languages`}</Label>
               <Input
                 value={geminiLanguages}
                 onChange={(e) => { setGeminiLanguages(e.target.value); markDirty("speech") }}
-                placeholder="e.g. en, hi, ta"
+                placeholder={t`e.g. en, hi, ta`}
                 className="w-72 h-8 text-xs"
               />
-              <p className="text-xs text-muted-foreground">Comma-separated language codes routed to Gemini.</p>
+              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to Gemini.`}</p>
             </div>
           </div>
 
           {/* Audio Settings */}
           <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Audio Settings</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Audio Settings`}</h3>
             <div className="flex gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs">Format</Label>
+                <Label className="text-xs">{t`Format`}</Label>
                 <Input
                   value={format}
                   onChange={(e) => { setFormat(e.target.value); markDirty("speech") }}
-                  placeholder="mp3"
+                  placeholder={t`mp3`}
                   className="w-32 h-8 text-xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Bit Rate</Label>
+                <Label className="text-xs">{t`Bit Rate`}</Label>
                 <Input
                   value={bitRate}
                   onChange={(e) => { setBitRate(e.target.value); markDirty("speech") }}
-                  placeholder="64k"
+                  placeholder={t`64k`}
                   className="w-32 h-8 text-xs"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Sample Rate</Label>
+                <Label className="text-xs">{t`Sample Rate`}</Label>
                 <Input
                   value={sampleRate}
                   onChange={(e) => { setSampleRate(e.target.value); markDirty("speech") }}
-                  placeholder="24000"
+                  placeholder={t`24000`}
                   className="w-32 h-8 text-xs"
                 />
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format.
+              {t`Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format.`}
             </p>
           </div>
         </div>
@@ -353,7 +355,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           disabled={updateConfig.isPending || !hasApiKey}
         >
           <Play className="mr-1.5 h-3.5 w-3.5" />
-          Save &amp; Rerun
+          {t`Save & Rerun`}
         </Button>,
         headerTarget
       )}
@@ -361,18 +363,17 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
       <Dialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save &amp; Rerun Translations + Audio</DialogTitle>
+            <DialogTitle>{t`Save & Rerun Translations + Audio`}</DialogTitle>
             <DialogDescription>
-              This will save your settings and re-run translations and audio generation,
-              rebuilding the text catalog, translating to output languages, and generating speech.
+              {t`This will save your settings and re-run translations and audio generation, rebuilding the text catalog, translating to output languages, and generating speech.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRerunDialog(false)}>
-              Cancel
+              {t`Cancel`}
             </Button>
             <Button onClick={confirmSaveAndRerun} disabled={updateConfig.isPending}>
-              {updateConfig.isPending ? "Saving..." : "Confirm Rerun"}
+              {updateConfig.isPending ? t`Saving...` : t`Confirm Rerun`}
             </Button>
           </DialogFooter>
         </DialogContent>

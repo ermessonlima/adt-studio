@@ -1,0 +1,2143 @@
+# English
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. js-lingui-explicit-id
+msgid "Settings"
+msgstr "Settings"
+
+#. js-lingui-explicit-id
+msgid "API Key Settings"
+msgstr "API Key Settings"
+
+#. js-lingui-explicit-id
+msgid "Re-package ADT"
+msgstr "Re-package ADT"
+
+#. js-lingui-explicit-id
+msgid "No pages extracted yet"
+msgstr "No pages extracted yet"
+
+#. js-lingui-explicit-id
+msgid "Untitled"
+msgstr "Untitled"
+
+msgid "? This will remove all extracted data and cannot be undone."
+msgstr "? This will remove all extracted data and cannot be undone."
+
+msgid "(active)"
+msgstr "(active)"
+
+msgid "(template)"
+msgstr "(template)"
+
+#. placeholder {0}: lockedLang.name
+msgid "{0} — type country or Enter for base"
+msgstr "{0} — type country or Enter for base"
+
+#. placeholder {0}: String(totalAudioFiles)
+msgid "{0} audio"
+msgstr "{0} audio"
+
+#. placeholder {0}: entries.length
+msgid "{0} entries"
+msgstr "{0} entries"
+
+#. placeholder {0}: String(totalImages)
+msgid "{0} images"
+msgstr "{0} images"
+
+#. placeholder {0}: String(selected.size)
+msgid "{0} images selected"
+msgstr "{0} images selected"
+
+#. placeholder {0}: String(outputLanguages.length)
+msgid "{0} languages"
+msgstr "{0} languages"
+
+#. placeholder {0}: String(displayPages.length)
+msgid "{0} pages"
+msgstr "{0} pages"
+
+#. placeholder {0}: String(displayQuizzes.length)
+msgid "{0} questions"
+msgstr "{0} questions"
+
+#. placeholder {0}: String(items.length)
+msgid "{0} terms"
+msgstr "{0} terms"
+
+#. placeholder {0}: String(displayEntries.length)
+msgid "{0} texts"
+msgstr "{0} texts"
+
+#. placeholder {0}: String(generatedAudioCount)
+#. placeholder {1}: String(displayEntries.length)
+msgid "{0}/{1} audio"
+msgstr "{0}/{1} audio"
+
+#. placeholder {0}: String(selectedPageIds.size)
+msgid "{0}/5 pages selected"
+msgstr "{0}/5 pages selected"
+
+#. placeholder {0}: String(Math.floor(diff / 60_000))
+msgid "{0}m ago"
+msgstr "{0}m ago"
+
+#. placeholder {0}: String(Math.floor(diff / 1000))
+msgid "{0}s ago"
+msgstr "{0}s ago"
+
+msgid "{missingAudioCount} missing"
+msgstr "{missingAudioCount} missing"
+
+#~ msgid "{stepLabel} Settings"
+#~ msgstr "{stepLabel} Settings"
+
+#. placeholder {0}: String(filterSectionIndex + 1)
+msgid "/ Section {0}"
+msgstr "/ Section {0}"
+
+msgid "0 = deterministic, 2 = max creativity"
+msgstr "0 = deterministic, 2 = max creativity"
+
+msgid "1 image selected"
+msgstr "1 image selected"
+
+msgid "24000"
+msgstr "24000"
+
+msgid "64k"
+msgstr "64k"
+
+msgid "A fill-in-the-blank activity."
+msgstr "A fill-in-the-blank activity."
+
+msgid "A matching activity where students connect related items."
+msgstr "A matching activity where students connect related items."
+
+msgid "A multiple choice activity."
+msgstr "A multiple choice activity."
+
+msgid "A section containing only images."
+msgstr "A section containing only images."
+
+msgid "A section containing only text content."
+msgstr "A section containing only text content."
+
+msgid "A section with text and a single image."
+msgstr "A section with text and a single image."
+
+msgid "A section with text and multiple images."
+msgstr "A section with text and multiple images."
+
+msgid "A section with text in a highlighted box."
+msgstr "A section with text in a highlighted box."
+
+msgid "A separator page between sections."
+msgstr "A separator page between sections."
+
+msgid "A sorting activity."
+msgstr "A sorting activity."
+
+msgid "A storyboard must be built before exporting."
+msgstr "A storyboard must be built before exporting."
+
+msgid "A table-filling activity."
+msgstr "A table-filling activity."
+
+msgid "A true or false activity."
+msgstr "A true or false activity."
+
+msgid "Active Configuration"
+msgstr "Active Configuration"
+
+msgid "Activities"
+msgstr "Activities"
+
+msgid "Activities disabled"
+msgstr "Activities disabled"
+
+msgid "Activities enabled"
+msgstr "Activities enabled"
+
+msgid "Activity Input Placeholder"
+msgstr "Activity Input Placeholder"
+
+msgid "Activity Number"
+msgstr "Activity Number"
+
+msgid "Activity Option"
+msgstr "Activity Option"
+
+msgid "Activity Rendering"
+msgstr "Activity Rendering"
+
+msgid "Activity section types are available for classification and rendering."
+msgstr "Activity section types are available for classification and rendering."
+
+msgid "Activity section types are hidden from the classifier and skipped during rendering."
+msgstr "Activity section types are hidden from the classifier and skipped during rendering."
+
+msgid "Activity Title"
+msgstr "Activity Title"
+
+msgid "Activity: Fill in a Table"
+msgstr "Activity: Fill in a Table"
+
+msgid "Activity: Fill in the Blank"
+msgstr "Activity: Fill in the Blank"
+
+msgid "Activity: Matching"
+msgstr "Activity: Matching"
+
+msgid "Activity: Multiple Choice"
+msgstr "Activity: Multiple Choice"
+
+msgid "Activity: Open-Ended Answer"
+msgstr "Activity: Open-Ended Answer"
+
+msgid "Activity: Other"
+msgstr "Activity: Other"
+
+msgid "Activity: Sorting"
+msgstr "Activity: Sorting"
+
+msgid "Activity: True / False"
+msgstr "Activity: True / False"
+
+msgid "Add"
+msgstr "Add"
+
+#. placeholder {0}: String(selected.size)
+msgid "Add {0} Images"
+msgstr "Add {0} Images"
+
+msgid "Add Book"
+msgstr "Add Book"
+
+msgid "Add entry below"
+msgstr "Add entry below"
+
+msgid "Add Group"
+msgstr "Add Group"
+
+msgid "Add Image"
+msgstr "Add Image"
+
+msgid "Add Language"
+msgstr "Add Language"
+
+msgid "Add your first book"
+msgstr "Add your first book"
+
+msgid "ADT Export"
+msgstr "ADT Export"
+
+msgid "ADT Preview"
+msgstr "ADT Preview"
+
+#. placeholder {0}: quiz.afterPageId
+msgid "After {0}"
+msgstr "After {0}"
+
+msgid "AI"
+msgstr "AI"
+
+msgid "AI editing..."
+msgstr "AI editing..."
+
+msgid "AI Generated"
+msgstr "AI Generated"
+
+msgid "AI Image"
+msgstr "AI Image"
+
+msgid "AI Overlay"
+msgstr "AI Overlay"
+
+#~ msgid "AI reasoning"
+#~ msgstr "AI reasoning"
+
+msgid "AI Rendering"
+msgstr "AI Rendering"
+
+msgid "AI sees the current image and modifies it"
+msgstr "AI sees the current image and modifies it"
+
+msgid "AIza..."
+msgstr "AIza..."
+
+msgid "All sections have been deleted"
+msgstr "All sections have been deleted"
+
+msgid "All steps"
+msgstr "All steps"
+
+msgid "An activity that does not fit the standard categories."
+msgstr "An activity that does not fit the standard categories."
+
+msgid "An AI image is being generated. Cancel it and navigate?"
+msgstr "An AI image is being generated. Cancel it and navigate?"
+
+msgid "An open-ended answer activity."
+msgstr "An open-ended answer activity."
+
+msgid "Answer Prompt"
+msgstr "Answer Prompt"
+
+msgid "Any other section type."
+msgstr "Any other section type."
+
+msgid "API key required to re-render"
+msgstr "API key required to re-render"
+
+msgid "API Key Settings"
+msgstr "API Key Settings"
+
+msgid "API Keys"
+msgstr "API Keys"
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Apply page background colors"
+msgstr "Apply page background colors"
+
+msgid "Are you sure you want to delete"
+msgstr "Are you sure you want to delete"
+
+msgid "Are you sure you want to delete this section? This action cannot be undone."
+msgstr "Are you sure you want to delete this section? This action cannot be undone."
+
+msgid "Arrange extracted content into a structured storyboard with pages, sections, and layouts."
+msgstr "Arrange extracted content into a structured storyboard with pages, sections, and layouts."
+
+msgid "Ask AI to edit..."
+msgstr "Ask AI to edit..."
+
+msgid "Asking the AI to put on its creative hat..."
+msgstr "Asking the AI to put on its creative hat..."
+
+msgid "Aspect:"
+msgstr "Aspect:"
+
+msgid "Audio Settings"
+msgstr "Audio Settings"
+
+msgid "Author"
+msgstr "Author"
+
+msgid "Authors"
+msgstr "Authors"
+
+msgid "Auto"
+msgstr "Auto"
+
+msgid "Avg Duration"
+msgstr "Avg Duration"
+
+msgid "Azure"
+msgstr "Azure"
+
+msgid "Azure Speech"
+msgstr "Azure Speech"
+
+msgid "Azure Speech subscription key"
+msgstr "Azure Speech subscription key"
+
+msgid "Azure Voice"
+msgstr "Azure Voice"
+
+msgid "Back Cover"
+msgstr "Back Cover"
+
+msgid "Back to Editor"
+msgstr "Back to Editor"
+
+msgid "Back to preview"
+msgstr "Back to preview"
+
+#. placeholder {0}: section.backgroundColor
+msgid "Background: {0}"
+msgstr "Background: {0}"
+
+msgid "Be descriptive — include style, colors, mood, and composition."
+msgstr "Be descriptive — include style, colors, mood, and composition."
+
+msgid "Be descriptive — include subject, colors, mood, and composition."
+msgstr "Be descriptive — include subject, colors, mood, and composition."
+
+msgid "Beta"
+msgstr "Beta"
+
+msgid "Bit Rate"
+msgstr "Bit Rate"
+
+msgid "Book"
+msgstr "Book"
+
+msgid "Book Author"
+msgstr "Book Author"
+
+msgid "Book data is outdated and must be rebuilt."
+msgstr "Book data is outdated and must be rebuilt."
+
+msgid "Book Metadata"
+msgstr "Book Metadata"
+
+msgid "Book Override"
+msgstr "Book Override"
+
+msgid "Book Subtitle"
+msgstr "Book Subtitle"
+
+msgid "Book Summary"
+msgstr "Book Summary"
+
+msgid "Book Summary Prompt"
+msgstr "Book Summary Prompt"
+
+msgid "Book Title"
+msgstr "Book Title"
+
+msgid "Boxed Text"
+msgstr "Boxed Text"
+
+msgid "Brewing a fresh batch of HTML..."
+msgstr "Brewing a fresh batch of HTML..."
+
+msgid "Browse and edit Liquid templates used for template-based rendering strategies."
+msgstr "Browse and edit Liquid templates used for template-based rendering strategies."
+
+msgid "Build a glossary of key terms and definitions found in the text."
+msgstr "Build a glossary of key terms and definitions found in the text."
+
+msgid "Building Preview..."
+msgstr "Building Preview..."
+
+msgid "Building Storyboard..."
+msgstr "Building Storyboard..."
+
+msgid "By Page"
+msgstr "By Page"
+
+msgid "By Section"
+msgstr "By Section"
+
+msgid "Cache"
+msgstr "Cache"
+
+msgid "Cache Hit Rate"
+msgstr "Cache Hit Rate"
+
+msgid "Cache Hits"
+msgstr "Cache Hits"
+
+msgid "Cached"
+msgstr "Cached"
+
+msgid "Calls"
+msgstr "Calls"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Caption Prompt"
+msgstr "Caption Prompt"
+
+msgid "Captioning Images..."
+msgstr "Captioning Images..."
+
+msgid "Captions"
+msgstr "Captions"
+
+msgid "Cartoon"
+msgstr "Cartoon"
+
+msgid "Catalog Translation"
+msgstr "Catalog Translation"
+
+msgid "Change"
+msgstr "Change"
+
+msgid "Change language"
+msgstr "Change language"
+
+msgid "Chart / Graph"
+msgstr "Chart / Graph"
+
+msgid "Choose an existing image from this project"
+msgstr "Choose an existing image from this project"
+
+msgid "Classic Storybook"
+msgstr "Classic Storybook"
+
+msgid "Classified Text"
+msgstr "Classified Text"
+
+msgid "Clear language"
+msgstr "Clear language"
+
+msgid "Click images to select"
+msgstr "Click images to select"
+
+msgid "Click to pick a style reference image"
+msgstr "Click to pick a style reference image"
+
+msgid "Click to select an image"
+msgstr "Click to select an image"
+
+msgid "Clone this section"
+msgstr "Clone this section"
+
+msgid "Close section data"
+msgstr "Close section data"
+
+msgid "Comma-separated language codes routed to Azure."
+msgstr "Comma-separated language codes routed to Azure."
+
+msgid "Comma-separated language codes routed to Gemini."
+msgstr "Comma-separated language codes routed to Gemini."
+
+msgid "Comma-separated language codes routed to OpenAI."
+msgstr "Comma-separated language codes routed to OpenAI."
+
+msgid "Config"
+msgstr "Config"
+
+msgid "Configure API keys for AI pipeline features."
+msgstr "Configure API keys for AI pipeline features."
+
+msgid "Confirm Rerun"
+msgstr "Confirm Rerun"
+
+msgid "Consulting the style council..."
+msgstr "Consulting the style council..."
+
+msgid "Content"
+msgstr "Content"
+
+msgid "Controls how page content is grouped during the sectioning step."
+msgstr "Controls how page content is grouped during the sectioning step."
+
+msgid "Cover of {title}"
+msgstr "Cover of {title}"
+
+msgid "Create a new image from a text description"
+msgstr "Create a new image from a text description"
+
+msgid "Create descriptive captions for images to improve accessibility."
+msgstr "Create descriptive captions for images to improve accessibility."
+
+msgid "Create from scratch using your description"
+msgstr "Create from scratch using your description"
+
+msgid "Credits"
+msgstr "Credits"
+
+msgid "Crop"
+msgstr "Crop"
+
+msgid "Crop Image"
+msgstr "Crop Image"
+
+msgid "Cropping Prompt"
+msgstr "Cropping Prompt"
+
+msgid "Current"
+msgstr "Current"
+
+msgid "Custom"
+msgstr "Custom"
+
+msgid "Debug Panel"
+msgstr "Debug Panel"
+
+msgid "Decrease indent"
+msgstr "Decrease indent"
+
+msgid "Default"
+msgstr "Default"
+
+msgid "Default (from prompt)"
+msgstr "Default (from prompt)"
+
+msgid "Default Prompt"
+msgstr "Default Prompt"
+
+msgid "Default Provider"
+msgstr "Default Provider"
+
+msgid "Default Render Strategy"
+msgstr "Default Render Strategy"
+
+msgid "Default Voice"
+msgstr "Default Voice"
+
+msgid "Default voice used when not specified for a language."
+msgstr "Default voice used when not specified for a language."
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Delete book"
+msgstr "Delete book"
+
+msgid "Delete group"
+msgstr "Delete group"
+
+msgid "Delete section"
+msgstr "Delete section"
+
+msgid "Delete text entry"
+msgstr "Delete text entry"
+
+msgid "Delete this section"
+msgstr "Delete this section"
+
+msgid "Deleting..."
+msgstr "Deleting..."
+
+msgid "Describe the image"
+msgstr "Describe the image"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Description..."
+msgstr "Description..."
+
+msgid "Diagram"
+msgstr "Diagram"
+
+msgid "Disable type"
+msgstr "Disable type"
+
+msgid "Discard"
+msgstr "Discard"
+
+msgid "Display"
+msgstr "Display"
+
+msgid "Drag to reorder"
+msgstr "Drag to reorder"
+
+msgid "Drag to reorder or move to another group"
+msgstr "Drag to reorder or move to another group"
+
+msgid "Duplicate group"
+msgstr "Duplicate group"
+
+msgid "Duplicate text entry"
+msgstr "Duplicate text entry"
+
+msgid "Duration"
+msgstr "Duration"
+
+msgid "Dynamic"
+msgstr "Dynamic"
+
+msgid "e.g. alloy"
+msgstr "e.g. alloy"
+
+msgid "e.g. azure-tts"
+msgstr "e.g. azure-tts"
+
+msgid "e.g. eastus, westeurope"
+msgstr "e.g. eastus, westeurope"
+
+msgid "e.g. en-US-JennyNeural"
+msgstr "e.g. en-US-JennyNeural"
+
+msgid "e.g. en, fr"
+msgstr "e.g. en, fr"
+
+msgid "e.g. en, hi, ta"
+msgstr "e.g. en, hi, ta"
+
+msgid "e.g. es, ta, si, sw"
+msgstr "e.g. es, ta, si, sw"
+
+msgid "e.g. fr, es-mx"
+msgstr "e.g. fr, es-mx"
+
+msgid "e.g. gemini-2.5-pro-preview-tts"
+msgstr "e.g. gemini-2.5-pro-preview-tts"
+
+msgid "e.g. gpt-4o-mini-tts"
+msgstr "e.g. gpt-4o-mini-tts"
+
+msgid "e.g. Kore"
+msgstr "e.g. Kore"
+
+msgid "e.g., A cheerful leopard family in a green forest, children's book style..."
+msgstr "e.g., A cheerful leopard family in a green forest, children's book style..."
+
+msgid "e.g., A cheerful leopard family in a green forest..."
+msgstr "e.g., A cheerful leopard family in a green forest..."
+
+msgid "e.g., Make the background brighter, add more trees..."
+msgstr "e.g., Make the background brighter, add more trees..."
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Edit Prompt"
+msgstr "Edit Prompt"
+
+msgid "Edit Prompts"
+msgstr "Edit Prompts"
+
+msgid "Edit the Liquid/HTML template below. Changes are saved when you click Save & Rerun."
+msgstr "Edit the Liquid/HTML template below. Changes are saved when you click Save & Rerun."
+
+msgid "Edit this image"
+msgstr "Edit this image"
+
+msgid "Editing"
+msgstr "Editing"
+
+msgid "Editing Language"
+msgstr "Editing Language"
+
+msgid "Empty group — drag text entries here"
+msgstr "Empty group — drag text entries here"
+
+msgid "Enable for scanned books where two pages appear on a single PDF page."
+msgstr "Enable for scanned books where two pages appear on a single PDF page."
+
+msgid "English"
+msgstr "English"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Errors"
+msgstr "Errors"
+
+msgid "Est. Cost"
+msgstr "Est. Cost"
+
+msgid "Exclude from render"
+msgstr "Exclude from render"
+
+msgid "Exclude section from render"
+msgstr "Exclude section from render"
+
+msgid "Export"
+msgstr "Export"
+
+msgid "Export ADT"
+msgstr "Export ADT"
+
+msgid "Export as a SCORM 1.2 package for upload to a Learning Management System (LMS). Includes activity completion tracking and offline support."
+msgstr "Export as a SCORM 1.2 package for upload to a Learning Management System (LMS). Includes activity completion tracking and offline support."
+
+msgid "Export SCORM"
+msgstr "Export SCORM"
+
+msgid "Export the book as a Readium WebPub package — a standards-based format for distributing digital publications on the web. Suitable for reading systems that support the Readium Web Publication Manifest specification."
+msgstr "Export the book as a Readium WebPub package — a standards-based format for distributing digital publications on the web. Suitable for reading systems that support the Readium Web Publication Manifest specification."
+
+msgid "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
+msgstr "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
+
+msgid "Export timed out — the book may be too large"
+msgstr "Export timed out — the book may be too large"
+
+msgid "Export WebPub"
+msgstr "Export WebPub"
+
+msgid "Exporting..."
+msgstr "Exporting..."
+
+msgid "Extract"
+msgstr "Extract"
+
+msgid "Extract text and images from each page of the PDF using AI-powered analysis."
+msgstr "Extract text and images from each page of the PDF using AI-powered analysis."
+
+#. placeholder {0}: String(count)
+msgid "Extracted Images ({0})"
+msgstr "Extracted Images ({0})"
+
+msgid "Extracted Text"
+msgstr "Extracted Text"
+
+msgid "Extracting..."
+msgstr "Extracting..."
+
+msgid "Extraction Prompt"
+msgstr "Extraction Prompt"
+
+msgid "Extracts the correct answer key from the generated activity HTML."
+msgstr "Extracts the correct answer key from the generated activity HTML."
+
+#. placeholder {0}: error.message
+msgid "Failed to load books: {0}"
+msgstr "Failed to load books: {0}"
+
+msgid "Failed to load config:"
+msgstr "Failed to load config:"
+
+msgid "Failed to load stats:"
+msgstr "Failed to load stats:"
+
+msgid "Failed:"
+msgstr "Failed:"
+
+msgid "Fill in the Blank"
+msgstr "Fill in the Blank"
+
+msgid "Filter by image ID..."
+msgstr "Filter by image ID..."
+
+msgid "Filter by item ID..."
+msgstr "Filter by item ID..."
+
+msgid "First"
+msgstr "First"
+
+msgid "Fixed two-column template layout"
+msgstr "Fixed two-column template layout"
+
+msgid "Flat Vector"
+msgstr "Flat Vector"
+
+msgid "Footer Text"
+msgstr "Footer Text"
+
+msgid "Foreword"
+msgstr "Foreword"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Free"
+msgstr "Free"
+
+msgid "From reference image..."
+msgstr "From reference image..."
+
+msgid "Front Cover"
+msgstr "Front Cover"
+
+msgid "Full-size source page preview for the selected quiz."
+msgstr "Full-size source page preview for the selected quiz."
+
+msgid "Gemini"
+msgstr "Gemini"
+
+msgid "Gemini API Key"
+msgstr "Gemini API Key"
+
+msgid "Gemini API key is required to generate audio."
+msgstr "Gemini API key is required to generate audio."
+
+msgid "Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format."
+msgstr "Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format."
+
+msgid "Gemini Voice"
+msgstr "Gemini Voice"
+
+msgid "General"
+msgstr "General"
+
+msgid "Generate"
+msgstr "Generate"
+
+msgid "Generate and customize the table of contents for the book navigation."
+msgstr "Generate and customize the table of contents for the book navigation."
+
+msgid "Generate comprehension quizzes and activities based on the book content."
+msgstr "Generate comprehension quizzes and activities based on the book content."
+
+msgid "Generate from pages"
+msgstr "Generate from pages"
+
+msgid "Generate missing Gemini audio"
+msgstr "Generate missing Gemini audio"
+
+msgid "Generate new"
+msgstr "Generate new"
+
+msgid "Generate Prompt"
+msgstr "Generate Prompt"
+
+msgid "Generate Styleguide from Pages"
+msgstr "Generate Styleguide from Pages"
+
+msgid "Generate with AI"
+msgstr "Generate with AI"
+
+msgid "Generates the interactive HTML for this activity type."
+msgstr "Generates the interactive HTML for this activity type."
+
+msgid "Generating Glossary..."
+msgstr "Generating Glossary..."
+
+msgid "Generating image..."
+msgstr "Generating image..."
+
+msgid "Generating Quizzes..."
+msgstr "Generating Quizzes..."
+
+msgid "Generating Text & Speech..."
+msgstr "Generating Text & Speech..."
+
+msgid "Generating TOC..."
+msgstr "Generating TOC..."
+
+msgid "Generating..."
+msgstr "Generating..."
+
+msgid "Generation failed"
+msgstr "Generation failed"
+
+msgid "Generation failed. Please try again."
+msgstr "Generation failed. Please try again."
+
+msgid "Generation Prompt"
+msgstr "Generation Prompt"
+
+msgid "Get started"
+msgstr "Get started"
+
+msgid "Global Only"
+msgstr "Global Only"
+
+msgid "Glossary"
+msgstr "Glossary"
+
+msgid "Glossary Generation"
+msgstr "Glossary Generation"
+
+msgid "Glossary Prompt"
+msgstr "Glossary Prompt"
+
+msgid "Go to book"
+msgstr "Go to book"
+
+msgid "Group Types"
+msgstr "Group Types"
+
+msgid "Groups content into logical sections"
+msgstr "Groups content into logical sections"
+
+msgid "Header Text"
+msgstr "Header Text"
+
+msgid "Heading"
+msgstr "Heading"
+
+msgid "Hide Pruned"
+msgstr "Hide Pruned"
+
+msgid "Hide pruned images"
+msgstr "Hide pruned images"
+
+msgid "Higher values filter out simple or blank images."
+msgstr "Higher values filter out simple or blank images."
+
+msgid "Illustration"
+msgstr "Illustration"
+
+msgid "Image Associated Text"
+msgstr "Image Associated Text"
+
+msgid "Image Captioning"
+msgstr "Image Captioning"
+
+msgid "Image Cropping"
+msgstr "Image Cropping"
+
+msgid "Image Cropping Prompt"
+msgstr "Image Cropping Prompt"
+
+msgid "Image Edit Prompt"
+msgstr "Image Edit Prompt"
+
+msgid "Image Filtering"
+msgstr "Image Filtering"
+
+msgid "Image Filters"
+msgstr "Image Filters"
+
+msgid "Image generated"
+msgstr "Image generated"
+
+msgid "Image Generation"
+msgstr "Image Generation"
+
+msgid "Image Generation Prompt"
+msgstr "Image Generation Prompt"
+
+msgid "Image Meaningfulness"
+msgstr "Image Meaningfulness"
+
+msgid "Image Meaningfulness Prompt"
+msgstr "Image Meaningfulness Prompt"
+
+msgid "Image Overlay"
+msgstr "Image Overlay"
+
+msgid "Image Segmentation"
+msgstr "Image Segmentation"
+
+msgid "Image Segmentation Prompt"
+msgstr "Image Segmentation Prompt"
+
+msgid "Image Type"
+msgstr "Image Type"
+
+msgid "Image unavailable"
+msgstr "Image unavailable"
+
+msgid "Images"
+msgstr "Images"
+
+msgid "Images Only"
+msgstr "Images Only"
+
+msgid "Images with shortest side below min or longest side above max are pruned."
+msgstr "Images with shortest side below min or longest side above max are pruned."
+
+msgid "Include in render"
+msgstr "Include in render"
+
+msgid "Include section in render"
+msgstr "Include section in render"
+
+msgid "Increase indent"
+msgstr "Increase indent"
+
+msgid "Infographic"
+msgstr "Infographic"
+
+msgid "Input Tokens"
+msgstr "Input Tokens"
+
+msgid "Inside Cover"
+msgstr "Inside Cover"
+
+msgid "Instruction Text"
+msgstr "Instruction Text"
+
+msgid "Item"
+msgstr "Item"
+
+msgid "Item ID..."
+msgstr "Item ID..."
+
+msgid "Keeps pages whole unless mixed activity types require splitting"
+msgstr "Keeps pages whole unless mixed activity types require splitting"
+
+msgid "Key must start with \"sk-\""
+msgstr "Key must start with \"sk-\""
+
+#. placeholder {0}: entry.level
+msgid "L{0}"
+msgstr "L{0}"
+
+msgid "Label"
+msgstr "Label"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "Language-Specific Prompts"
+msgstr "Language-Specific Prompts"
+
+msgid "Languages"
+msgstr "Languages"
+
+msgid "Last"
+msgstr "Last"
+
+msgid "Leave empty to output only in the book language."
+msgstr "Leave empty to output only in the book language."
+
+msgid "Leave empty to process all pages."
+msgstr "Leave empty to process all pages."
+
+msgid "Leave empty to use the book language."
+msgstr "Leave empty to use the book language."
+
+msgid "Linked to: {value}"
+msgstr "Linked to: {value}"
+
+msgid "List"
+msgstr "List"
+
+msgid "Live"
+msgstr "Live"
+
+msgid "LLM Calls"
+msgstr "LLM Calls"
+
+msgid "LLM generates HTML from section content"
+msgstr "LLM generates HTML from section content"
+
+msgid "LLM image cropping"
+msgstr "LLM image cropping"
+
+msgid "LLM image segmentation"
+msgstr "LLM image segmentation"
+
+msgid "LLM meaningfulness filter"
+msgstr "LLM meaningfulness filter"
+
+msgid "LLM positions text over background images"
+msgstr "LLM positions text over background images"
+
+msgid "LLM-based cropping to remove stray text, artifacts, and excessive whitespace from extracted images."
+msgstr "LLM-based cropping to remove stray text, artifacts, and excessive whitespace from extracted images."
+
+msgid "LLM-based filter to determine if extracted images are meaningful."
+msgstr "LLM-based filter to determine if extracted images are meaningful."
+
+msgid "LLM-based segmentation to detect and split composited images into individual segments. Requires GPT-5.2+ for accurate bounding box coordinates."
+msgstr "LLM-based segmentation to detect and split composited images into individual segments. Requires GPT-5.2+ for accurate bounding box coordinates."
+
+msgid "Loading Book..."
+msgstr "Loading Book..."
+
+msgid "Loading books..."
+msgstr "Loading books..."
+
+msgid "Loading config..."
+msgstr "Loading config..."
+
+msgid "Loading glossary..."
+msgstr "Loading glossary..."
+
+msgid "Loading image..."
+msgstr "Loading image..."
+
+msgid "Loading logs..."
+msgstr "Loading logs..."
+
+msgid "Loading page..."
+msgstr "Loading page..."
+
+msgid "Loading pages..."
+msgstr "Loading pages..."
+
+msgid "Loading preview..."
+msgstr "Loading preview..."
+
+msgid "Loading quizzes..."
+msgstr "Loading quizzes..."
+
+msgid "Loading speech instructions..."
+msgstr "Loading speech instructions..."
+
+msgid "Loading stats..."
+msgstr "Loading stats..."
+
+msgid "Loading table of contents..."
+msgstr "Loading table of contents..."
+
+msgid "Loading text catalog..."
+msgstr "Loading text catalog..."
+
+msgid "Loading voice mappings..."
+msgstr "Loading voice mappings..."
+
+msgid "Loading..."
+msgstr "Loading..."
+
+msgid "Logs"
+msgstr "Logs"
+
+msgid "Lower values produce more consistent styling across pages."
+msgstr "Lower values produce more consistent styling across pages."
+
+msgid "Map"
+msgstr "Map"
+
+msgid "Map language codes to voice names for each TTS provider."
+msgstr "Map language codes to voice names for each TTS provider."
+
+msgid "Math"
+msgstr "Math"
+
+msgid "Max side (px)"
+msgstr "Max side (px)"
+
+msgid "Meaningfulness Prompt"
+msgstr "Meaningfulness Prompt"
+
+msgid "Merge facing pages as spreads"
+msgstr "Merge facing pages as spreads"
+
+msgid "Merge with next section"
+msgstr "Merge with next section"
+
+msgid "Merge with previous section"
+msgstr "Merge with previous section"
+
+msgid "Messages"
+msgstr "Messages"
+
+msgid "Metadata"
+msgstr "Metadata"
+
+msgid "Metadata Extraction"
+msgstr "Metadata Extraction"
+
+msgid "Metadata Extraction Prompt"
+msgstr "Metadata Extraction Prompt"
+
+msgid "Metadata Prompt"
+msgstr "Metadata Prompt"
+
+msgid "Min complexity"
+msgstr "Min complexity"
+
+msgid "Min image dimension (px)"
+msgstr "Min image dimension (px)"
+
+msgid "Min side (px)"
+msgstr "Min side (px)"
+
+msgid "Misses"
+msgstr "Misses"
+
+msgid "Model"
+msgstr "Model"
+
+msgid "mp3"
+msgstr "mp3"
+
+msgid "Needs rebuild"
+msgstr "Needs rebuild"
+
+msgid "New"
+msgstr "New"
+
+msgid "New Entry"
+msgstr "New Entry"
+
+msgid "new_type_key"
+msgstr "new_type_key"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "No captions for this page"
+msgstr "No captions for this page"
+
+msgid "No data"
+msgstr "No data"
+
+msgid "No extracted text yet. Run the pipeline first."
+msgstr "No extracted text yet. Run the pipeline first."
+
+msgid "No image"
+msgstr "No image"
+
+msgid "No image available"
+msgstr "No image available"
+
+msgid "No images in this book"
+msgstr "No images in this book"
+
+msgid "No images in this section"
+msgstr "No images in this section"
+
+msgid "No images match your filter"
+msgstr "No images match your filter"
+
+msgid "No images on this page"
+msgstr "No images on this page"
+
+msgid "No language-specific prompts configured."
+msgstr "No language-specific prompts configured."
+
+msgid "No link"
+msgstr "No link"
+
+msgid "No log entries found yet."
+msgstr "No log entries found yet."
+
+msgid "No matches for \"{search}\""
+msgstr "No matches for \"{search}\""
+
+msgid "No matching sections"
+msgstr "No matching sections"
+
+msgid "No metadata yet — run the pipeline to extract book details"
+msgstr "No metadata yet — run the pipeline to extract book details"
+
+msgid "No page linked"
+msgstr "No page linked"
+
+#~ msgid "No pages extracted yet"
+#~ msgstr "No pages extracted yet"
+
+msgid "No pages extracted yet. Run the pipeline to extract content."
+msgstr "No pages extracted yet. Run the pipeline to extract content."
+
+msgid "No PDF"
+msgstr "No PDF"
+
+msgid "No pipeline data yet. Run the pipeline to see stats."
+msgstr "No pipeline data yet. Run the pipeline to see stats."
+
+msgid "No quizzes for this page"
+msgstr "No quizzes for this page"
+
+msgid "No rendered content for this section"
+msgstr "No rendered content for this section"
+
+msgid "No sections for this page"
+msgstr "No sections for this page"
+
+msgid "No sections on this page"
+msgstr "No sections on this page"
+
+msgid "No text extracted"
+msgstr "No text extracted"
+
+msgid "No translations for this page"
+msgstr "No translations for this page"
+
+msgid "No versions"
+msgstr "No versions"
+
+msgid "No versions found for {node} / {itemId}"
+msgstr "No versions found for {node} / {itemId}"
+
+msgid "No voice mappings configured."
+msgstr "No voice mappings configured."
+
+msgid "None"
+msgstr "None"
+
+msgid "Number of pages of content to include per quiz question."
+msgstr "Number of pages of content to include per quiz question."
+
+msgid "Only pages containing these section types are counted when grouping pages for quiz generation."
+msgstr "Only pages containing these section types are counted when grouping pages for quiz generation."
+
+msgid "Open page preview for {pageId}"
+msgstr "Open page preview for {pageId}"
+
+msgid "Open section data"
+msgstr "Open section data"
+
+msgid "OpenAI"
+msgstr "OpenAI"
+
+msgid "OpenAI API Key"
+msgstr "OpenAI API Key"
+
+msgid "OpenAI Voice"
+msgstr "OpenAI Voice"
+
+msgid "Optional instructions for the LLM..."
+msgstr "Optional instructions for the LLM..."
+
+msgid "Original"
+msgstr "Original"
+
+msgid "Other"
+msgstr "Other"
+
+msgid "Other images"
+msgstr "Other images"
+
+msgid "Output Languages"
+msgstr "Output Languages"
+
+msgid "Output Tokens"
+msgstr "Output Tokens"
+
+msgid "Package and preview the final ADT web application."
+msgstr "Package and preview the final ADT web application."
+
+msgid "Packaging preview..."
+msgstr "Packaging preview..."
+
+msgid "page"
+msgstr "page"
+
+msgid "Page"
+msgstr "Page"
+
+#. placeholder {0}: String(page.pageNumber)
+#. placeholder {0}: String(pageNumber)
+#. placeholder {0}: String(selectedPage.pageNumber)
+msgid "Page {0}"
+msgstr "Page {0}"
+
+msgid "Page {pageId}"
+msgstr "Page {pageId}"
+
+msgid "Page Number"
+msgstr "Page Number"
+
+msgid "Page preview {pageId}"
+msgstr "Page preview {pageId}"
+
+msgid "Page Range"
+msgstr "Page Range"
+
+msgid "Page Sectioning"
+msgstr "Page Sectioning"
+
+msgid "Page Sectioning Prompt"
+msgstr "Page Sectioning Prompt"
+
+msgid "pages"
+msgstr "pages"
+
+msgid "Pages per Quiz"
+msgstr "Pages per Quiz"
+
+msgid "Paper Collage"
+msgstr "Paper Collage"
+
+msgid "Paragraph"
+msgstr "Paragraph"
+
+msgid "PDF Extraction"
+msgstr "PDF Extraction"
+
+msgid "Pencil Sketch"
+msgstr "Pencil Sketch"
+
+msgid "Pending..."
+msgstr "Pending..."
+
+msgid "Per-Step Breakdown"
+msgstr "Per-Step Breakdown"
+
+#~ msgid "pg {0}"
+#~ msgstr "pg {0}"
+
+msgid "Photograph"
+msgstr "Photograph"
+
+msgid "Pick from book"
+msgstr "Pick from book"
+
+msgid "Pick from Book"
+msgstr "Pick from Book"
+
+msgid "Pipeline Stages"
+msgstr "Pipeline Stages"
+
+msgid "Pixel Art"
+msgstr "Pixel Art"
+
+msgid "Polishing paragraphs to perfection..."
+msgstr "Polishing paragraphs to perfection..."
+
+msgid "Pop out to new window"
+msgstr "Pop out to new window"
+
+msgid "Portuguese (BR)"
+msgstr "Portuguese (BR)"
+
+msgid "Prev"
+msgstr "Prev"
+
+msgid "Preview"
+msgstr "Preview"
+
+msgid "Preview linked page"
+msgstr "Preview linked page"
+
+msgid "Preview of the HTML/CSS patterns used for LLM-generated pages."
+msgstr "Preview of the HTML/CSS patterns used for LLM-generated pages."
+
+msgid "Prompt"
+msgstr "Prompt"
+
+msgid "Provider Routing"
+msgstr "Provider Routing"
+
+msgid "Provider used for languages not assigned to a specific provider."
+msgstr "Provider used for languages not assigned to a specific provider."
+
+msgid "Provides consistent HTML/CSS patterns for LLM-generated pages."
+msgstr "Provides consistent HTML/CSS patterns for LLM-generated pages."
+
+msgid "Prune"
+msgstr "Prune"
+
+msgid "Prune element"
+msgstr "Prune element"
+
+msgid "Prune image"
+msgstr "Prune image"
+
+msgid "Prune section from flow"
+msgstr "Prune section from flow"
+
+msgid "Prune text"
+msgstr "Prune text"
+
+msgid "Pruned"
+msgstr "Pruned"
+
+#. placeholder {0}: reason ?? ""
+msgid "Pruned: {0}"
+msgstr "Pruned: {0}"
+
+msgid "Pruned: {reason}"
+msgstr "Pruned: {reason}"
+
+msgid "Publisher"
+msgstr "Publisher"
+
+msgid "Quiz Generation"
+msgstr "Quiz Generation"
+
+msgid "Quiz Generation Prompt"
+msgstr "Quiz Generation Prompt"
+
+msgid "Quiz Prompt"
+msgstr "Quiz Prompt"
+
+msgid "Quiz Section Types"
+msgstr "Quiz Section Types"
+
+msgid "Quizzes"
+msgstr "Quizzes"
+
+msgid "Quizzes are linked to other pages in this book"
+msgstr "Quizzes are linked to other pages in this book"
+
+msgid "Re-enable type"
+msgstr "Re-enable type"
+
+#~ msgid "Re-package ADT"
+#~ msgstr "Re-package ADT"
+
+msgid "Re-render"
+msgstr "Re-render"
+
+msgid "Re-render section"
+msgstr "Re-render section"
+
+msgid "Re-render this section"
+msgstr "Re-render this section"
+
+#~ msgid "Re-rendering page..."
+#~ msgstr "Re-rendering page..."
+
+msgid "Re-rendering..."
+msgstr "Re-rendering..."
+
+msgid "Re-run {stageLabel}"
+msgstr "Re-run {stageLabel}"
+
+msgid "Realistic / Photo"
+msgstr "Realistic / Photo"
+
+msgid "Rearranging atoms of HTML..."
+msgstr "Rearranging atoms of HTML..."
+
+msgid "Region"
+msgstr "Region"
+
+msgid "Remove"
+msgstr "Remove"
+
+msgid "Remove entry"
+msgstr "Remove entry"
+
+msgid "Remove this block"
+msgstr "Remove this block"
+
+msgid "Remove type"
+msgstr "Remove type"
+
+msgid "Render Strategies"
+msgstr "Render Strategies"
+
+msgid "Render Strategy"
+msgstr "Render Strategy"
+
+msgid "rendering"
+msgstr "rendering"
+
+msgid "Rendering Prompt"
+msgstr "Rendering Prompt"
+
+msgid "Replace"
+msgstr "Replace"
+
+msgid "Resolving source language..."
+msgstr "Resolving source language..."
+
+msgid "Restore"
+msgstr "Restore"
+
+msgid "Restore element"
+msgstr "Restore element"
+
+msgid "Restore section to flow"
+msgstr "Restore section to flow"
+
+msgid "Retry"
+msgstr "Retry"
+
+msgid "Retry Export"
+msgstr "Retry Export"
+
+msgid "Rewriting the story of this section..."
+msgstr "Rewriting the story of this section..."
+
+msgid "Run {stageLabel}"
+msgstr "Run {stageLabel}"
+
+msgid "Run the pipeline through at least the"
+msgstr "Run the pipeline through at least the"
+
+msgid "Runs in background — you can keep editing"
+msgstr "Runs in background — you can keep editing"
+
+msgid "Sample Rate"
+msgstr "Sample Rate"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Save & Rerun"
+msgstr "Save & Rerun"
+
+msgid "Save & Rerun Captions"
+msgstr "Save & Rerun Captions"
+
+msgid "Save & Rerun Extraction"
+msgstr "Save & Rerun Extraction"
+
+msgid "Save & Rerun Glossary"
+msgstr "Save & Rerun Glossary"
+
+msgid "Save & Rerun Quizzes"
+msgstr "Save & Rerun Quizzes"
+
+msgid "Save & Rerun Storyboard"
+msgstr "Save & Rerun Storyboard"
+
+msgid "Save & Rerun TOC Generation"
+msgstr "Save & Rerun TOC Generation"
+
+msgid "Save & Rerun Translations + Audio"
+msgstr "Save & Rerun Translations + Audio"
+
+msgid "Save changes before cloning"
+msgstr "Save changes before cloning"
+
+msgid "Save changes before deleting"
+msgstr "Save changes before deleting"
+
+msgid "Save changes before merging"
+msgstr "Save changes before merging"
+
+msgid "Save changes before re-rendering"
+msgstr "Save changes before re-rendering"
+
+msgid "Save changes first to preview the latest version"
+msgstr "Save changes first to preview the latest version"
+
+msgid "Saving..."
+msgstr "Saving..."
+
+msgid "SCORM Export"
+msgstr "SCORM Export"
+
+msgid "Search languages..."
+msgstr "Search languages..."
+
+msgid "Search sections..."
+msgstr "Search sections..."
+
+#. placeholder {0}: String(group.sectionIndex + 1)
+#. placeholder {0}: String(i + 1)
+msgid "Section {0}"
+msgstr "Section {0}"
+
+#. placeholder {0}: String(group.sectionIndex + 1)
+#. placeholder {1}: group.sectionType
+msgid "Section {0} — {1}"
+msgstr "Section {0} — {1}"
+
+#. placeholder {0}: String(i + 1)
+msgid "Section {0} (pruned)"
+msgstr "Section {0} (pruned)"
+
+msgid "Section Data"
+msgstr "Section Data"
+
+msgid "Section Heading"
+msgstr "Section Heading"
+
+msgid "Section not found."
+msgstr "Section not found."
+
+msgid "Section pruned from flow"
+msgstr "Section pruned from flow"
+
+msgid "Section Render Strategies"
+msgstr "Section Render Strategies"
+
+msgid "Section Text"
+msgstr "Section Text"
+
+msgid "Section Types"
+msgstr "Section Types"
+
+msgid "Sectioning Mode"
+msgstr "Sectioning Mode"
+
+msgid "sections"
+msgstr "sections"
+
+msgid "Segment"
+msgstr "Segment"
+
+msgid "Segmentation Prompt"
+msgstr "Segmentation Prompt"
+
+msgid "Segmenting..."
+msgstr "Segmenting..."
+
+msgid "Select a node type and enter an item ID to view versions."
+msgstr "Select a node type and enter an item ID to view versions."
+
+msgid "Select activity type..."
+msgstr "Select activity type..."
+
+msgid "Select node type..."
+msgstr "Select node type..."
+
+msgid "Select strategy..."
+msgstr "Select strategy..."
+
+msgid "Select styleguide..."
+msgstr "Select styleguide..."
+
+msgid "Select template..."
+msgstr "Select template..."
+
+msgid "Select up to 5 pages to use as visual references. The LLM will analyze them and generate a styleguide."
+msgstr "Select up to 5 pages to use as visual references. The LLM will analyze them and generate a styleguide."
+
+msgid "Selected: {styleImageId}"
+msgstr "Selected: {styleImageId}"
+
+msgid "Separator"
+msgstr "Separator"
+
+msgid "Set"
+msgstr "Set"
+
+msgid "Set a Gemini API key to generate audio"
+msgstr "Set a Gemini API key to generate audio"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Settings for this step are not yet available."
+msgstr "Settings for this step are not yet available."
+
+msgid "Show all"
+msgstr "Show all"
+
+msgid "Show all text & speech"
+msgstr "Show all text & speech"
+
+msgid "Show Pruned"
+msgstr "Show Pruned"
+
+msgid "Show pruned images"
+msgstr "Show pruned images"
+
+msgid "sk-..."
+msgstr "sk-..."
+
+msgid "Skip segmentation for images whose shortest side is below this threshold."
+msgstr "Skip segmentation for images whose shortest side is below this threshold."
+
+msgid "Spanish"
+msgstr "Spanish"
+
+msgid "Speech"
+msgstr "Speech"
+
+msgid "Speech Generation"
+msgstr "Speech Generation"
+
+msgid "Speech Prompts"
+msgstr "Speech Prompts"
+
+msgid "Spread Mode"
+msgstr "Spread Mode"
+
+msgid "Sprinkling some digital fairy dust..."
+msgstr "Sprinkling some digital fairy dust..."
+
+msgid "stage first."
+msgstr "stage first."
+
+msgid "Standalone Text"
+msgstr "Standalone Text"
+
+msgid "Stanza"
+msgstr "Stanza"
+
+msgid "Stats"
+msgstr "Stats"
+
+msgid "Step"
+msgstr "Step"
+
+msgid "Storyboard"
+msgstr "Storyboard"
+
+msgid "Structure"
+msgstr "Structure"
+
+msgid "Style"
+msgstr "Style"
+
+msgid "Style reference"
+msgstr "Style reference"
+
+msgid "Style reference image"
+msgstr "Style reference image"
+
+msgid "Styleguide"
+msgstr "Styleguide"
+
+msgid "Styleguide Preview"
+msgstr "Styleguide Preview"
+
+msgid "Styleguide Preview — {styleguide}"
+msgstr "Styleguide Preview — {styleguide}"
+
+msgid "Subscription Key"
+msgstr "Subscription Key"
+
+msgid "Success"
+msgstr "Success"
+
+msgid "Summary Prompt"
+msgstr "Summary Prompt"
+
+msgid "System Prompt"
+msgstr "System Prompt"
+
+msgid "Table"
+msgstr "Table"
+
+msgid "Table of Contents"
+msgstr "Table of Contents"
+
+msgid "Task running..."
+msgstr "Task running..."
+
+msgid "Teaching the pixels new tricks..."
+msgstr "Teaching the pixels new tricks..."
+
+msgid "Temperature"
+msgstr "Temperature"
+
+msgid "Template Rendering"
+msgstr "Template Rendering"
+
+msgid "Text & Images"
+msgstr "Text & Images"
+
+msgid "Text & Single Image"
+msgstr "Text & Single Image"
+
+msgid "Text & Speech"
+msgstr "Text & Speech"
+
+msgid "Text Catalog"
+msgstr "Text Catalog"
+
+msgid "Text Classification"
+msgstr "Text Classification"
+
+msgid "Text Classification Prompt"
+msgstr "Text Classification Prompt"
+
+#. placeholder {0}: section.textColor
+msgid "Text color: {0}"
+msgstr "Text color: {0}"
+
+msgid "Text Groups"
+msgstr "Text Groups"
+
+msgid "Text Only"
+msgstr "Text Only"
+
+msgid "Text Types"
+msgstr "Text Types"
+
+msgid "The AI is having a think..."
+msgstr "The AI is having a think..."
+
+msgid "The AI will preserve the original style while applying your changes."
+msgstr "The AI will preserve the original style while applying your changes."
+
+msgid "The back cover of the book."
+msgstr "The back cover of the book."
+
+msgid "The credits page."
+msgstr "The credits page."
+
+msgid "The default TTS instruction sent to OpenAI for all languages unless overridden below."
+msgstr "The default TTS instruction sent to OpenAI for all languages unless overridden below."
+
+msgid "The foreword or introduction."
+msgstr "The foreword or introduction."
+
+msgid "The front cover of the book."
+msgstr "The front cover of the book."
+
+msgid "The inside cover of the book."
+msgstr "The inside cover of the book."
+
+msgid "The prompt template used for text classification. This is a Liquid template processed with page context."
+msgstr "The prompt template used for text classification. This is a Liquid template processed with page context."
+
+msgid "The prompt template used to extract book metadata (title, author, etc.) from the first few pages. This is a Liquid template processed with page context."
+msgstr "The prompt template used to extract book metadata (title, author, etc.) from the first few pages. This is a Liquid template processed with page context."
+
+msgid "The prompt template used to generate a short book summary at the end of extract. The summary is generated in the configured editing language."
+msgstr "The prompt template used to generate a short book summary at the end of extract. The summary is generated in the configured editing language."
+
+msgid "The prompt template used to generate captions for images in the book."
+msgstr "The prompt template used to generate captions for images in the book."
+
+msgid "The prompt template used to generate glossary terms from book content."
+msgstr "The prompt template used to generate glossary terms from book content."
+
+msgid "The prompt template used to generate HTML for each section. This is a Liquid template processed with section context."
+msgstr "The prompt template used to generate HTML for each section. This is a Liquid template processed with section context."
+
+msgid "The prompt template used to generate quiz questions from page content."
+msgstr "The prompt template used to generate quiz questions from page content."
+
+msgid "The prompt template used to generate the table of contents from book headings."
+msgstr "The prompt template used to generate the table of contents from book headings."
+
+msgid "The prompt template used to split each page into logical sections. This is a Liquid template processed with page context."
+msgstr "The prompt template used to split each page into logical sections. This is a Liquid template processed with page context."
+
+msgid "The prompt template used to translate text catalog entries."
+msgstr "The prompt template used to translate text catalog entries."
+
+msgid "The rendering strategy used for sections without an explicit mapping."
+msgstr "The rendering strategy used for sections without an explicit mapping."
+
+msgid "The table of contents."
+msgstr "The table of contents."
+
+msgid "This page has no captioned images"
+msgstr "This page has no captioned images"
+
+msgid "This page has no storyboard sections"
+msgstr "This page has no storyboard sections"
+
+msgid "This page has no translatable text entries"
+msgstr "This page has no translatable text entries"
+
+msgid "This section has no storyboard rendering yet"
+msgstr "This section has no storyboard rendering yet"
+
+msgid "This will save your settings and re-generate the table of contents."
+msgstr "This will save your settings and re-generate the table of contents."
+
+msgid "This will save your settings and re-run glossary generation."
+msgstr "This will save your settings and re-run glossary generation."
+
+msgid "This will save your settings and re-run image captioning."
+msgstr "This will save your settings and re-run image captioning."
+
+msgid "This will save your settings and re-run quiz generation."
+msgstr "This will save your settings and re-run quiz generation."
+
+msgid "This will save your settings and re-run the extraction pipeline. Any manual edits to extracted text will be overwritten for affected pages."
+msgstr "This will save your settings and re-run the extraction pipeline. Any manual edits to extracted text will be overwritten for affected pages."
+
+msgid "This will save your settings and re-run the storyboard pipeline. Only rendering will be regenerated — your existing sections will be preserved."
+msgstr "This will save your settings and re-run the storyboard pipeline. Only rendering will be regenerated — your existing sections will be preserved."
+
+msgid "This will save your settings and re-run the storyboard pipeline. Sectioning and rendering will be regenerated for all pages."
+msgstr "This will save your settings and re-run the storyboard pipeline. Sectioning and rendering will be regenerated for all pages."
+
+msgid "This will save your settings and re-run translations and audio generation, rebuilding the text catalog, translating to output languages, and generating speech."
+msgstr "This will save your settings and re-run translations and audio generation, rebuilding the text catalog, translating to output languages, and generating speech."
+
+msgid "Time"
+msgstr "Time"
+
+msgid "to"
+msgstr "to"
+
+msgid "TOC Generation Prompt"
+msgstr "TOC Generation Prompt"
+
+msgid "Tokens"
+msgstr "Tokens"
+
+msgid "Tokens In"
+msgstr "Tokens In"
+
+msgid "Tokens Out"
+msgstr "Tokens Out"
+
+msgid "Total Tokens"
+msgstr "Total Tokens"
+
+msgid "Translate the book content and generate audio narration."
+msgstr "Translate the book content and generate audio narration."
+
+msgid "Translation"
+msgstr "Translation"
+
+msgid "Translation Prompt"
+msgstr "Translation Prompt"
+
+msgid "Treats each page as a single section"
+msgstr "Treats each page as a single section"
+
+msgid "Try Activity"
+msgstr "Try Activity"
+
+msgid "Two-column template for story content"
+msgstr "Two-column template for story content"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Types used during page sectioning. Pruned types are classified but excluded from rendering. Disabled types are hidden from the LLM entirely."
+msgstr "Types used during page sectioning. Pruned types are classified but excluded from rendering. Disabled types are hidden from the LLM entirely."
+
+msgid "Types used during text classification. Pruned types are excluded from rendering."
+msgstr "Types used during text classification. Pruned types are excluded from rendering."
+
+msgid "Unknown stage"
+msgstr "Unknown stage"
+
+msgid "Unknown step slug: {step}"
+msgstr "Unknown step slug: {step}"
+
+msgid "Unknown step: {step}"
+msgstr "Unknown step: {step}"
+
+msgid "Unprune image"
+msgstr "Unprune image"
+
+msgid "Unprune text"
+msgstr "Unprune text"
+
+msgid "Unsaved changes"
+msgstr "Unsaved changes"
+
+msgid "Unsaved:"
+msgstr "Unsaved:"
+
+msgid "Untangling nested divs with care..."
+msgstr "Untangling nested divs with care..."
+
+#~ msgid "Untitled"
+#~ msgstr "Untitled"
+
+msgid "Upload a new image file from your computer"
+msgstr "Upload a new image file from your computer"
+
+msgid "Upload a PDF to get started"
+msgstr "Upload a PDF to get started"
+
+msgid "Upload image"
+msgstr "Upload image"
+
+msgid "Upload Image"
+msgstr "Upload Image"
+
+msgid "Use an LLM to crop away stray text, artifacts, and excessive whitespace from image edges."
+msgstr "Use an LLM to crop away stray text, artifacts, and excessive whitespace from image edges."
+
+msgid "Use an LLM to detect and split composited images (e.g., multiple photos in a single image layer) into individual segments. Requires GPT-5.2+."
+msgstr "Use an LLM to detect and split composited images (e.g., multiple photos in a single image layer) into individual segments. Requires GPT-5.2+."
+
+msgid "Use an LLM to filter out decorative or non-educational images."
+msgstr "Use an LLM to filter out decorative or non-educational images."
+
+msgid "Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts."
+msgstr "Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts."
+
+#. placeholder {0}: data.validationErrors.length
+msgid "Validation Errors ({0})"
+msgstr "Validation Errors ({0})"
+
+#. placeholder {0}: String(version)
+msgid "Version {0}"
+msgstr "Version {0}"
+
+msgid "Versions"
+msgstr "Versions"
+
+msgid "View HTML source"
+msgstr "View HTML source"
+
+msgid "Voice Mappings"
+msgstr "Voice Mappings"
+
+msgid "Voices"
+msgstr "Voices"
+
+msgid "Wall Clock"
+msgstr "Wall Clock"
+
+msgid "Watercolor"
+msgstr "Watercolor"
+
+msgid "Web Package"
+msgstr "Web Package"
+
+msgid "Web Rendering"
+msgstr "Web Rendering"
+
+msgid "WebPub Export"
+msgstr "WebPub Export"
+
+msgid "What should the AI change?"
+msgstr "What should the AI change?"
+
+msgid "When enabled, background colors from the styleguide are applied to the full page body."
+msgstr "When enabled, background colors from the styleguide are applied to the full page body."
+
+msgid "Wraps 'Edit this image' requests. The AI receives the original image alongside this prompt. Supports user_prompt and style variables."
+msgstr "Wraps 'Edit this image' requests. The AI receives the original image alongside this prompt. Supports user_prompt and style variables."
+
+msgid "Wraps 'Generate new' requests. Supports user_prompt, style, and image_type variables. Uses Liquid syntax for conditionals."
+msgstr "Wraps 'Generate new' requests. Supports user_prompt, style, and image_type variables. Uses Liquid syntax for conditionals."
+
+msgid "Your Books"
+msgstr "Your Books"
+
+msgid "Zoom"
+msgstr "Zoom"

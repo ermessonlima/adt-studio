@@ -9,13 +9,14 @@ import { useStepHeader } from "../StepViewRouter"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useApiKey } from "@/hooks/use-api-key"
 import { StageRunCard } from "../StageRunCard"
-import { STAGE_DESCRIPTIONS } from "../stage-config"
 import { cn } from "@/lib/utils"
 import { normalizeLocale } from "@/lib/languages"
 import { languageUsesSpeechProvider } from "@/lib/speech-routing"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { resolveTranslationLanguageState } from "./translations-view-state"
+import { msg } from "@lingui/core/macro"
+import { useLingui } from "@lingui/react/macro"
 
 const IMAGE_ID_RE = /_im\d{3}/
 function isImageEntry(id: string): boolean {
@@ -47,6 +48,7 @@ function VersionPicker({
   onSave: () => void
   onDiscard: () => void
 }) {
+  const { t } = useLingui()
   const [open, setOpen] = useState(false)
   const [versions, setVersions] = useState<VersionEntry[] | null>(null)
   const [loading, setLoading] = useState(false)
@@ -93,7 +95,7 @@ function VersionPicker({
           onClick={onDiscard}
           className="text-[10px] font-medium rounded px-2 py-0.5 bg-black/15 text-black hover:bg-black/25 cursor-pointer transition-colors"
         >
-          Discard
+          {t`Discard`}
         </button>
         <button
           type="button"
@@ -101,7 +103,7 @@ function VersionPicker({
           className="flex items-center gap-1 text-[10px] font-medium rounded px-2 py-0.5 bg-white text-green-800 hover:bg-white/80 cursor-pointer transition-colors"
         >
           <Check className="h-3 w-3" />
-          Save
+          {t`Save`}
         </button>
       </div>
     )
@@ -137,7 +139,7 @@ function VersionPicker({
               </button>
             ))
           ) : (
-            <div className="px-3 py-1 text-xs text-muted-foreground">No versions</div>
+            <div className="px-3 py-1 text-xs text-muted-foreground">{t`No versions`}</div>
           )}
         </div>
       )}
@@ -146,6 +148,7 @@ function VersionPicker({
 }
 
 export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { bookLabel: string; selectedPageId?: string; onSelectPage?: (pageId: string | null) => void }) {
+  const { t, i18n } = useLingui()
   const { setExtra } = useStepHeader()
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const { data: book, isLoading: isBookLoading } = useBook(bookLabel)
@@ -297,7 +300,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   const generateAudioMutation = useMutation({
     mutationFn: async (variables: { textId: string; language: string }) => {
       if (!geminiKey) {
-        throw new Error("Gemini API key is required to generate audio.")
+        throw new Error(i18n._(msg`Gemini API key is required to generate audio.`))
       }
       return api.generateGeminiTTSForItem(
         bookLabel,
@@ -348,20 +351,20 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
     if (!catalog) return
     setExtra(
       <div className="flex items-center gap-1.5 ml-auto">
-        <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{displayEntries.length} texts</span>
+        <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{t`${String(displayEntries.length)} texts`}</span>
         {outputLanguages.length > 1 && (
-          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{outputLanguages.length} languages</span>
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{t`${String(outputLanguages.length)} languages`}</span>
         )}
         {currentLanguageUsesGemini ? (
           <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">
-            {generatedAudioCount}/{displayEntries.length} audio
+            {t`${String(generatedAudioCount)}/${String(displayEntries.length)} audio`}
           </span>
         ) : totalAudioFiles > 0 && (
-          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{totalAudioFiles} audio</span>
+          <span className="text-[10px] bg-white/20 rounded-full px-2 py-0.5">{t`${String(totalAudioFiles)} audio`}</span>
         )}
         {currentLanguageUsesGemini && missingAudioCount > 0 && (
           <span className="text-[10px] bg-amber-100 text-amber-900 rounded-full px-2 py-0.5">
-            {missingAudioCount} missing
+            {t`${missingAudioCount} missing`}
           </span>
         )}
         {selectedLang && translationVersion != null && !isSourceLang && (
@@ -382,13 +385,13 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
       </div>
     )
     return () => setExtra(null)
-  }, [catalog, displayEntries.length, outputLanguages.length, selectedLang, translationVersion, saving, dirty, bookLabel, isSourceLang, totalAudioFiles, selectedPageId, currentLanguageUsesGemini, generatedAudioCount, missingAudioCount])
+  }, [catalog, t, displayEntries.length, outputLanguages.length, selectedLang, translationVersion, saving, dirty, bookLabel, isSourceLang, totalAudioFiles, selectedPageId, currentLanguageUsesGemini, generatedAudioCount, missingAudioCount])
 
   if (!showRunCard && isLoading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
-        <span className="text-sm">Loading text catalog...</span>
+        <span className="text-sm">{t`Loading text catalog...`}</span>
       </div>
     )
   }
@@ -398,7 +401,6 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
       <div className="p-4">
         <StageRunCard
           stageSlug="text-and-speech"
-          description={STAGE_DESCRIPTIONS["text-and-speech"]}
           isRunning={isRunning}
           completed={textAndSpeechDone}
           onRun={handleRunTranslations}
@@ -415,7 +417,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
         onClick={() => onSelectPage?.(null)}
         className="text-xs font-medium text-pink-600 hover:text-pink-700 hover:underline transition-colors"
       >
-        Show all text &amp; speech
+        {t`Show all text & speech`}
       </button>
     </div>
   ) : null
@@ -462,15 +464,15 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
       {isSourceLanguagePending ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          <span className="text-sm">Resolving source language...</span>
+          <span className="text-sm">{t`Resolving source language...`}</span>
         </div>
       ) : selectedPageId && displayEntries.length === 0 && entries.length > 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
           <div className="w-12 h-12 rounded-full bg-pink-50 flex items-center justify-center mb-3">
             <Languages className="w-6 h-6 text-pink-300" />
           </div>
-          <p className="text-sm font-medium">No translations for this page</p>
-          <p className="text-xs mt-1">This page has no translatable text entries</p>
+          <p className="text-sm font-medium">{t`No translations for this page`}</p>
+          <p className="text-xs mt-1">{t`This page has no translatable text entries`}</p>
         </div>
       ) : (
       <div className="space-y-1">
@@ -541,7 +543,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                   <textarea
                     value={translated ?? ""}
                     onChange={(e) => updateEntry(entry.id, e.target.value)}
-                    placeholder="Pending..."
+                    placeholder={t`Pending...`}
                     className="w-full text-sm leading-relaxed mt-0.5 resize-none rounded border border-transparent bg-transparent p-1.5 -ml-1.5 hover:border-border hover:bg-muted/30 focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground placeholder:italic"
                     style={{ fieldSizing: "content" } as React.CSSProperties}
                     rows={1}
@@ -636,6 +638,8 @@ function AudioAction({
   isGenerating: boolean
   errorMessage?: string
 }) {
+  const { t } = useLingui()
+
   if (audio && audioLang) {
     return (
       <PlayButton
@@ -660,8 +664,8 @@ function AudioAction({
         onClick={() => onGenerate(textId)}
         title={
           hasGeminiKey
-            ? "Generate missing Gemini audio"
-            : "Set a Gemini API key to generate audio"
+            ? t`Generate missing Gemini audio`
+            : t`Set a Gemini API key to generate audio`
         }
       >
         {isGenerating ? (
@@ -669,7 +673,7 @@ function AudioAction({
         ) : (
           <WandSparkles className="mr-1 h-3 w-3" />
         )}
-        Generate
+        {t`Generate`}
       </Button>
       {errorMessage && (
         <p className="max-w-44 text-[10px] leading-tight text-red-500 text-right">

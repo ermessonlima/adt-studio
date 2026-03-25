@@ -8,19 +8,16 @@ import { Label } from "@/components/ui/label"
 import { api } from "@/api/client"
 import { useBookConfig, useUpdateBookConfig } from "@/hooks/use-book-config"
 import { useActiveConfig } from "@/hooks/use-debug"
+import { useLingui } from "@lingui/react/macro"
 
 interface VoiceMappingsEditorProps {
   bookLabel: string
   headerTarget?: HTMLDivElement | null
 }
 
-const PROVIDERS = [
-  { key: "openai", label: "OpenAI Voice", placeholder: "e.g. alloy" },
-  { key: "azure", label: "Azure Voice", placeholder: "e.g. en-US-JennyNeural" },
-  { key: "gemini", label: "Gemini Voice", placeholder: "e.g. Kore" },
-] as const
+const PROVIDER_ORDER = ["openai", "azure", "gemini"] as const
 
-type VoiceProviderKey = (typeof PROVIDERS)[number]["key"]
+type VoiceProviderKey = (typeof PROVIDER_ORDER)[number]
 
 interface VoiceRow {
   lang: string
@@ -30,6 +27,7 @@ interface VoiceRow {
 }
 
 export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEditorProps) {
+  const { t } = useLingui()
   const queryClient = useQueryClient()
   const { data: bookConfigData, isLoading: isBookConfigLoading } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
@@ -113,14 +111,14 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
 
       if (dirtyMappings) {
         const nextMappings: Record<string, Record<string, string>> = {}
-        for (const provider of PROVIDERS) {
+        for (const key of PROVIDER_ORDER) {
           const values: Record<string, string> = {}
           for (const row of rows) {
-            const value = row[provider.key].trim()
+            const value = row[key].trim()
             if (value) values[row.lang] = value
           }
           if (Object.keys(values).length > 0) {
-            nextMappings[provider.key] = values
+            nextMappings[key] = values
           }
         }
         saves.push(api.updateVoiceMappings(nextMappings))
@@ -158,7 +156,7 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
   }
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading voice mappings...</div>
+    return <div className="p-4 text-sm text-muted-foreground">{t`Loading voice mappings...`}</div>
   }
 
   return (
@@ -171,14 +169,14 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
           disabled={saving || updateConfig.isPending || (!dirtyMappings && !dirtyDefaultVoice) || (dirtyDefaultVoice && isBookConfigLoading)}
         >
           <Save className="mr-1.5 h-3.5 w-3.5" />
-          {saving ? "Saving..." : "Save"}
+          {saving ? t`Saving...` : t`Save`}
         </Button>,
         headerTarget
       )}
 
       <div className="space-y-1.5">
         <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Default Voice
+          {t`Default Voice`}
         </Label>
         <Input
           value={defaultVoice}
@@ -186,21 +184,21 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
             setDefaultVoice(e.target.value)
             setDirtyDefaultVoice(true)
           }}
-          placeholder="e.g. alloy"
+          placeholder={t`e.g. alloy`}
           className="w-72 h-8 text-xs"
         />
         <p className="text-xs text-muted-foreground">
-          Default voice used when not specified for a language.
+          {t`Default voice used when not specified for a language.`}
         </p>
       </div>
 
       <div className="flex items-center justify-between">
         <div>
           <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Voice Mappings
+            {t`Voice Mappings`}
           </Label>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Map language codes to voice names for each TTS provider.
+            {t`Map language codes to voice names for each TTS provider.`}
           </p>
         </div>
         <Button
@@ -210,7 +208,7 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
           onClick={() => setShowAddLang(true)}
         >
           <Plus className="mr-1 h-3 w-3" />
-          Add Language
+          {t`Add Language`}
         </Button>
       </div>
 
@@ -219,13 +217,13 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
           <Input
             value={newLangKey}
             onChange={(e) => setNewLangKey(e.target.value)}
-            placeholder="e.g. fr, es-mx"
+            placeholder={t`e.g. fr, es-mx`}
             className="w-40 h-7 text-xs"
             onKeyDown={(e) => e.key === "Enter" && addLanguage()}
             autoFocus
           />
           <Button size="sm" className="h-7 text-xs" onClick={addLanguage}>
-            Add
+            {t`Add`}
           </Button>
           <Button
             variant="ghost"
@@ -233,7 +231,7 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
             className="h-7 text-xs"
             onClick={() => { setShowAddLang(false); setNewLangKey("") }}
           >
-            Cancel
+            {t`Cancel`}
           </Button>
         </div>
       )}
@@ -243,10 +241,14 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
         <table className="w-full text-xs">
           <thead>
             <tr className="bg-muted/50 border-b">
-              <th className="text-left font-medium px-3 py-2 w-28">Language</th>
-              {PROVIDERS.map((provider) => (
-                <th key={provider.key} className="text-left font-medium px-3 py-2">
-                  {provider.label}
+              <th className="text-left font-medium px-3 py-2 w-28">{t`Language`}</th>
+              {PROVIDER_ORDER.map((key) => (
+                <th key={key} className="text-left font-medium px-3 py-2">
+                  {key === "openai"
+                    ? t`OpenAI Voice`
+                    : key === "azure"
+                      ? t`Azure Voice`
+                      : t`Gemini Voice`}
                 </th>
               ))}
               <th className="w-10 px-2 py-2" />
@@ -258,13 +260,19 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
                 <td className="px-3 py-1.5 font-medium text-muted-foreground">
                   {row.lang}
                 </td>
-                {PROVIDERS.map((provider) => (
-                  <td key={provider.key} className="px-3 py-1.5">
+                {PROVIDER_ORDER.map((key) => (
+                  <td key={key} className="px-3 py-1.5">
                     <Input
-                      value={row[provider.key]}
-                      onChange={(e) => updateRow(i, provider.key, e.target.value)}
+                      value={row[key]}
+                      onChange={(e) => updateRow(i, key, e.target.value)}
                       className="h-7 text-xs"
-                      placeholder={provider.placeholder}
+                      placeholder={
+                        key === "openai"
+                          ? t`e.g. alloy`
+                          : key === "azure"
+                            ? t`e.g. en-US-JennyNeural`
+                            : t`e.g. Kore`
+                      }
                     />
                   </td>
                 ))}
@@ -284,8 +292,8 @@ export function VoiceMappingsEditor({ bookLabel, headerTarget }: VoiceMappingsEd
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground italic">
-                  No voice mappings configured.
+                <td colSpan={1 + PROVIDER_ORDER.length + 1} className="px-3 py-4 text-center text-muted-foreground italic">
+                  {t`No voice mappings configured.`}
                 </td>
               </tr>
             )}

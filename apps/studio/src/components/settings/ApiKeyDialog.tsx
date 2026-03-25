@@ -12,14 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { Trans } from "@lingui/react/macro"
+import { useLingui } from "@lingui/react/macro"
 
-const TABS = [
-  { key: "openai", label: "OpenAI" },
-  { key: "azure", label: "Azure Speech" },
-  { key: "gemini", label: "Gemini" },
-] as const
-
-type TabKey = (typeof TABS)[number]["key"]
+type TabKey = "openai" | "azure" | "gemini"
 
 interface ApiKeyDialogProps {
   open: boolean
@@ -50,12 +46,19 @@ export function ApiKeyDialog({
   geminiKey,
   onSaveGeminiKey,
 }: ApiKeyDialogProps) {
+  const { t } = useLingui()
   const [tab, setTab] = useState<TabKey>("openai")
   const [openaiDraft, setOpenaiDraft] = useState(apiKey)
   const [azureKeyDraft, setAzureKeyDraft] = useState(azureKey)
   const [azureRegionDraft, setAzureRegionDraft] = useState(azureRegion)
   const [geminiKeyDraft, setGeminiKeyDraft] = useState(geminiKey)
   const [showKey, setShowKey] = useState(false)
+
+  const tabs = [
+    { key: "openai" as const, label: t`OpenAI` },
+    { key: "azure" as const, label: t`Azure Speech` },
+    { key: "gemini" as const, label: t`Gemini` },
+  ]
 
   useEffect(() => {
     if (open) {
@@ -97,30 +100,30 @@ export function ApiKeyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>API Keys</DialogTitle>
+          <DialogTitle><Trans>API Keys</Trans></DialogTitle>
           <DialogDescription>
-            Configure API keys for AI pipeline features.
+            <Trans>Configure API keys for AI pipeline features.</Trans>
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex gap-1 border-b mb-3">
-          {TABS.map((t) => {
+          {tabs.map((item) => {
             const isSaved =
-              t.key === "openai" ? apiKey.length > 0
-                : t.key === "azure" ? azureKey.length > 0
+              item.key === "openai" ? apiKey.length > 0
+                : item.key === "azure" ? azureKey.length > 0
                   : geminiKey.length > 0
             return (
               <button
-                key={t.key}
-                onClick={() => { setTab(t.key); setShowKey(false) }}
+                key={item.key}
+                onClick={() => { setTab(item.key); setShowKey(false) }}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-                  tab === t.key
+                  tab === item.key
                     ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                {t.label}
+                {item.label}
                 {isSaved && <Check className="h-3 w-3 text-green-500" />}
               </button>
             )
@@ -129,12 +132,14 @@ export function ApiKeyDialog({
 
         {tab === "openai" && (
           <div className="space-y-2">
-            <Label htmlFor="openai-key-input">OpenAI API Key</Label>
+            <Label htmlFor="openai-key-input">
+              <Trans>OpenAI API Key</Trans>
+            </Label>
             <div className="relative">
               <Input
                 id="openai-key-input"
                 type={showKey ? "text" : "password"}
-                placeholder="sk-..."
+                placeholder={t`sk-...`}
                 value={openaiDraft}
                 onChange={(e) => setOpenaiDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
@@ -152,7 +157,9 @@ export function ApiKeyDialog({
               </Button>
             </div>
             {openaiDraft.length > 0 && !isValidOpenAIKey(openaiDraft) && (
-              <p className="text-sm text-destructive">Key must start with &quot;sk-&quot;</p>
+              <p className="text-sm text-destructive">
+                <Trans>Key must start with "sk-"</Trans>
+              </p>
             )}
           </div>
         )}
@@ -160,12 +167,14 @@ export function ApiKeyDialog({
         {tab === "azure" && (
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="azure-key-input">Subscription Key</Label>
+              <Label htmlFor="azure-key-input">
+                <Trans>Subscription Key</Trans>
+              </Label>
               <div className="relative">
                 <Input
                   id="azure-key-input"
                   type={showKey ? "text" : "password"}
-                  placeholder="Azure Speech subscription key"
+                  placeholder={t`Azure Speech subscription key`}
                   value={azureKeyDraft}
                   onChange={(e) => setAzureKeyDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
@@ -184,10 +193,12 @@ export function ApiKeyDialog({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="azure-region-input">Region</Label>
+              <Label htmlFor="azure-region-input">
+                <Trans>Region</Trans>
+              </Label>
               <Input
                 id="azure-region-input"
-                placeholder="e.g. eastus, westeurope"
+                placeholder={t`e.g. eastus, westeurope`}
                 value={azureRegionDraft}
                 onChange={(e) => setAzureRegionDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
@@ -198,12 +209,14 @@ export function ApiKeyDialog({
 
         {tab === "gemini" && (
           <div className="space-y-2">
-            <Label htmlFor="gemini-key-input">Gemini API Key</Label>
+            <Label htmlFor="gemini-key-input">
+              <Trans>Gemini API Key</Trans>
+            </Label>
             <div className="relative">
               <Input
                 id="gemini-key-input"
                 type={showKey ? "text" : "password"}
-                placeholder="AIza..."
+                placeholder={t`AIza...`}
                 value={geminiKeyDraft}
                 onChange={(e) => setGeminiKeyDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
@@ -221,17 +234,19 @@ export function ApiKeyDialog({
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts.
+              <Trans>
+                Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts.
+              </Trans>
             </p>
           </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            <Trans>Cancel</Trans>
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>
-            Save
+            <Trans>Save</Trans>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -201,6 +201,12 @@ pnpm test             # Run tests
 pnpm test:coverage    # Run tests with coverage
 pnpm typecheck        # TypeScript strict mode check
 pnpm lint             # Lint all packages
+
+# i18n
+pnpm --filter @adt/studio lint     # Lint Studio only (includes lingui/no-unlocalized-strings)
+pnpm --filter @adt/studio extract  # Extract strings and update .po catalogs
+OPENAI_API_KEY=<key> pnpm --filter @adt/studio translate:missing                          # Auto-translate missing strings (default: gpt-4o)
+OPENAI_API_KEY=<key> TRANSLATE_MODEL=openai:gpt-4o-mini pnpm --filter @adt/studio translate:missing  # Use a different model
 ```
 
 ## Core Principles
@@ -223,6 +229,7 @@ pnpm lint             # Lint all packages
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Full coding standards, security, patterns |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Architecture decision records with reasoning |
 | [docs/architecture.html](docs/architecture.html) | Interactive architecture diagram (open in browser) |
+| [docs/I18N_ADD_LANGUAGE.md](docs/I18N_ADD_LANGUAGE.md) | How to add a new UI language (Lingui i18n) |
 
 ## License
 
