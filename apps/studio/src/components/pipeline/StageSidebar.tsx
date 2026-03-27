@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom"
 import { Link, useMatchRoute, useSearch } from "@tanstack/react-router"
 import { Trans } from "@lingui/react/macro"
@@ -7,6 +7,7 @@ import {
   RotateCcw,
   Settings,
 } from "lucide-react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { cn } from "@/lib/utils"
 import { useLingui } from "@lingui/react"
 import { msg } from "@lingui/core/macro"
@@ -320,16 +321,14 @@ export function StageSidebar({
         {/* Pages panel — only when pages are open and not in settings */}
         {effectivePagesOpen && !isSettings && (
           <div className="flex-1 min-w-0 flex flex-col overflow-hidden border-l">
-            <div className="flex-1 overflow-y-auto">
-              <PageIndex
-                bookLabel={bookLabel}
-                activeStep={activeStep}
-                selectedPageId={selectedPageId}
-                onSelectPage={onSelectPage}
-                sectionIndex={sectionIndex}
-                onSelectSection={onSelectSection}
-              />
-            </div>
+            <PageIndex
+              bookLabel={bookLabel}
+              activeStep={activeStep}
+              selectedPageId={selectedPageId}
+              onSelectPage={onSelectPage}
+              sectionIndex={sectionIndex}
+              onSelectSection={onSelectSection}
+            />
           </div>
         )}
       </div>
@@ -429,32 +428,72 @@ function PageIndex({
 }) {
   const { data: pages } = usePages(bookLabel)
   const activeStepDef = STAGES.find((s) => s.slug === activeStep)
+  const parentRef = useRef<HTMLDivElement>(null)
+
+  const selectedIndex = useMemo(
+    () => pages?.findIndex((p) => p.pageId === selectedPageId) ?? -1,
+    [pages, selectedPageId],
+  )
+
+  const virtualizer = useVirtualizer({
+    count: pages?.length ?? 0,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 52,
+    overscan: 5,
+  })
+
+  useEffect(() => {
+    if (selectedIndex >= 0) {
+      virtualizer.scrollToIndex(selectedIndex, { align: "auto" })
+    }
+  }, [selectedIndex, virtualizer])
 
   if (!pages?.length) {
     return (
-      <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+      <div className="flex-1 overflow-y-auto px-3 py-4 text-xs text-muted-foreground text-center">
         <Trans>No pages extracted yet</Trans>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col py-1">
-      {pages.map((page) => {
-        const isActive = page.pageId === selectedPageId
-        return (
-          <PageRow
-            key={page.pageId}
-            bookLabel={bookLabel}
-            page={page}
-            isActive={isActive}
-            activeStepDef={activeStepDef}
-            onSelect={() => onSelectPage?.(page.pageId)}
-            sectionIndex={isActive ? sectionIndex : undefined}
-            onSelectSection={isActive ? onSelectSection : undefined}
-          />
-        )
-      })}
+    <div ref={parentRef} className="flex-1 overflow-y-auto">
+      <div
+        style={{
+          height: virtualizer.getTotalSize(),
+          width: "100%",
+          position: "relative",
+        }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const page = pages[virtualRow.index]
+          const isActive = page.pageId === selectedPageId
+          return (
+            <div
+              key={page.pageId}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <PageRow
+                bookLabel={bookLabel}
+                page={page}
+                isActive={isActive}
+                activeStepDef={activeStepDef}
+                onSelect={() => onSelectPage?.(page.pageId)}
+                sectionIndex={isActive ? sectionIndex : undefined}
+                onSelectSection={isActive ? onSelectSection : undefined}
+              />
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
