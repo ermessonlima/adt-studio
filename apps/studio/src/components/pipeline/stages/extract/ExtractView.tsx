@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AlignLeft, ArrowLeft, ArrowRight, BookOpen, Building2, FileText, Globe, Image, Loader2, User } from "lucide-react"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
@@ -11,6 +11,28 @@ import { useStepHeader } from "../../components/StepViewRouter"
 import { StageRunCard } from "../../components/StageRunCard"
 import type { PageSummaryItem } from "@/api/client"
 
+/** Returns true once the element has scrolled into view. */
+function useInView(): [React.RefObject<HTMLDivElement | null>, boolean] {
+  const ref = useRef<HTMLDivElement>(null)
+  const [inView, setInView] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: "200px" },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return [ref, inView]
+}
+
 function PageCard({
   bookLabel,
   page,
@@ -21,28 +43,34 @@ function PageCard({
   onClick: () => void
 }) {
   const { t } = useLingui()
-  const { data: imageData, isLoading: imageLoading } = usePageImage(bookLabel, page.pageId)
+  const [ref, inView] = useInView()
+  const { data: imageData, isLoading: imageLoading } = usePageImage(
+    bookLabel,
+    page.pageId,
+    { enabled: inView },
+  )
 
   return (
+    <div ref={ref}>
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col rounded-lg border bg-card overflow-hidden hover:border-blue-300 transition-colors cursor-pointer text-left"
+      className="flex flex-col w-full rounded-lg border bg-card overflow-hidden hover:border-blue-300 transition-colors cursor-pointer text-left"
     >
-      {/* Page image — edge-to-edge, no crop */}
-      <div className="w-full bg-muted/30">
-        {imageLoading ? (
-          <div className="flex aspect-[3/4] items-center justify-center text-[10px] text-muted-foreground">
+      {/* Page image — fixed aspect ratio so all cards in a row match */}
+      <div className="w-full aspect-[3/4] bg-muted/30">
+        {!inView || imageLoading ? (
+          <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">
             ...
           </div>
         ) : imageData ? (
           <img
             src={`data:image/png;base64,${imageData.imageBase64}`}
             alt={t`Page ${String(page.pageNumber)}`}
-            className="w-full h-auto block"
+            className="w-full h-full object-contain block"
           />
         ) : (
-          <div className="flex aspect-[3/4] items-center justify-center text-[10px] text-muted-foreground">
+          <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">
             <Trans>No image</Trans>
           </div>
         )}
@@ -72,6 +100,7 @@ function PageCard({
         </p>
       </div>
     </button>
+    </div>
   )
 }
 

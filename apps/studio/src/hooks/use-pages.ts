@@ -18,11 +18,11 @@ export function usePage(label: string, pageId: string) {
   })
 }
 
-export function usePageImage(label: string, pageId: string) {
+export function usePageImage(label: string, pageId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["books", label, "pages", pageId, "image"],
     queryFn: () => api.getPageImage(label, pageId),
-    enabled: !!label && !!pageId,
+    enabled: !!label && !!pageId && (options?.enabled ?? true),
     staleTime: Infinity, // Images don't change
   })
 }

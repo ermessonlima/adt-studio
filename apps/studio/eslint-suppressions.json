@@ -124,11 +124,6 @@
       "count": 15
     }
   },
-  "src/components/pipeline/stages/TextToSpeechView.tsx": {
-    "lingui/no-unlocalized-strings": {
-      "count": 2
-    }
-  },
   "src/components/pipeline/stages/quizzes-image-state.test.ts": {
     "lingui/no-unlocalized-strings": {
       "count": 15

@@ -53,7 +53,7 @@ const VIEW_MAP: Record<string, ViewEntry> = {
   captions: { component: CaptionsView },
   glossary: { component: GlossaryView },
   toc: { component: TocView },
-  "text-and-speech": { component: TranslationsView },
+  "text-and-speech": { component: TranslationsView, fullHeight: true },
   validation: { component: ValidationView, fullHeight: true },
   preview: { component: PreviewView, fullHeight: true },
   export: { component: ExportView, fullHeight: true },

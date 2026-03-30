@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Check, ChevronDown, Languages, Loader2, Play, Pause, WandSparkles } from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api, getAudioUrl, BASE_URL } from "@/api/client"
@@ -9,6 +9,7 @@ import { useStepHeader } from "../../components/StepViewRouter"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useApiKey } from "@/hooks/use-api-key"
 import { StageRunCard } from "../../components/StageRunCard"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { cn } from "@/lib/utils"
 import { normalizeLocale } from "@/lib/languages"
 import { languageUsesSpeechProvider } from "@/lib/speech-routing"
@@ -297,6 +298,14 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
   const generatedAudioCount = displayEntries.filter((entry) => audioMap.has(entry.id)).length
   const missingAudioCount = Math.max(displayEntries.length - generatedAudioCount, 0)
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer({
+    count: displayEntries.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 60,
+    overscan: 5,
+  })
+
   const generateAudioMutation = useMutation({
     mutationFn: async (variables: { textId: string; language: string }) => {
       if (!geminiKey) {
@@ -424,41 +433,53 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
 
   // Language tabs + entries
   return (
-    <div className="space-y-3">
-      {allowGeminiPartialView && runError && (
-        <Alert variant="destructive" className="rounded-md">
-          <AlertDescription className="text-xs whitespace-pre-wrap break-words">
-            {runError}
-          </AlertDescription>
-        </Alert>
-      )}
+    <div className="flex flex-col h-full">
+      {/* Fixed header: alerts, language tabs, column headers */}
+      <div className="shrink-0 px-4 pt-4 space-y-3">
+        {allowGeminiPartialView && runError && (
+          <Alert variant="destructive" className="rounded-md">
+            <AlertDescription className="text-xs whitespace-pre-wrap break-words">
+              {runError}
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Language tabs — only when there are multiple output languages */}
-      {outputLanguages.length > 1 && (
-      <div className="flex gap-1.5">
-        {outputLanguages.map((lang) => (
-            <button
-              key={lang}
-              type="button"
-              onClick={() => setSelectedLang(lang)}
-              className={cn(
-                "text-xs h-7 px-3 rounded-md font-medium transition-colors cursor-pointer",
-                selectedLang === lang
-                  ? "bg-foreground text-background"
-                  : "bg-muted text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {displayLang(lang)}
-              <span className={cn(
-                "ml-1 text-[10px]",
-                selectedLang === lang ? "opacity-60" : "opacity-50"
-              )}>
-                ({lang})
-              </span>
-            </button>
-        ))}
+        {/* Language tabs — only when there are multiple output languages */}
+        {outputLanguages.length > 1 && (
+        <div className="flex gap-1.5">
+          {outputLanguages.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setSelectedLang(lang)}
+                className={cn(
+                  "text-xs h-7 px-3 rounded-md font-medium transition-colors cursor-pointer",
+                  selectedLang === lang
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {displayLang(lang)}
+                <span className={cn(
+                  "ml-1 text-[10px]",
+                  selectedLang === lang ? "opacity-60" : "opacity-50"
+                )}>
+                  ({lang})
+                </span>
+              </button>
+          ))}
+        </div>
+        )}
+
+        {!isSourceLang && !isSourceLanguagePending && displayEntries.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 px-3 py-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+              {displayLang(editingLanguage)}
+            </span>
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{selectedLang ? displayLang(selectedLang) : selectedLang}</span>
+          </div>
+        )}
       </div>
-      )}
 
       {/* Entries */}
       {isSourceLanguagePending ? (
@@ -475,102 +496,110 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
           <p className="text-xs mt-1">{t`This page has no translatable text entries`}</p>
         </div>
       ) : (
-      <div className="space-y-1">
-        {!isSourceLang && (
-          <div className="grid grid-cols-2 gap-3 px-3 py-1.5">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-              {displayLang(editingLanguage)}
-            </span>
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{selectedLang ? displayLang(selectedLang) : selectedLang}</span>
-          </div>
-        )}
-        {displayEntries.map((entry) => {
-          const translated = translatedMap.get(entry.id)
-          const audio = audioMap.get(entry.id)
-          const isImg = isImageEntry(entry.id)
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">
+        <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const entry = displayEntries[virtualRow.index]
+            const translated = translatedMap.get(entry.id)
+            const audio = audioMap.get(entry.id)
+            const isImg = isImageEntry(entry.id)
 
-          if (isSourceLang) {
             return (
-              <div key={entry.id} className="flex items-start gap-3 px-3 py-2.5 rounded-md border bg-card">
-                {isImg && (
-                  <img
-                    src={`${BASE_URL}/books/${bookLabel}/images/${entry.id}`}
-                    alt=""
-                    className="shrink-0 w-16 h-12 rounded object-cover ring-1 ring-border"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] text-muted-foreground">{entry.id}</span>
-                  <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
+              <div
+                key={entry.id}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <div className="pb-1">
+                  {isSourceLang ? (
+                    <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border bg-card">
+                      {isImg && (
+                        <img
+                          src={`${BASE_URL}/books/${bookLabel}/images/${entry.id}`}
+                          alt=""
+                          className="shrink-0 w-16 h-12 rounded object-cover ring-1 ring-border"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] text-muted-foreground">{entry.id}</span>
+                        <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
+                      </div>
+                      <AudioAction
+                        audio={audio}
+                        audioLang={audioLang}
+                        bookLabel={bookLabel}
+                        textId={entry.id}
+                        canGenerate={currentLanguageUsesGemini}
+                        hasGeminiKey={geminiKey.length > 0}
+                        onGenerate={handleGenerateAudio}
+                        isGenerating={
+                          generateAudioMutation.isPending &&
+                          generateAudioMutation.variables?.textId === entry.id &&
+                          generateAudioMutation.variables?.language === audioLang
+                        }
+                        errorMessage={generateErrorById[entry.id]}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border bg-card">
+                      <div className="flex items-start gap-3">
+                        {isImg && (
+                          <img
+                            src={`${BASE_URL}/books/${bookLabel}/images/${entry.id}`}
+                            alt=""
+                            className="shrink-0 w-16 h-12 rounded object-cover ring-1 ring-border"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-muted-foreground">{entry.id}</span>
+                          <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] text-muted-foreground">&nbsp;</span>
+                          <textarea
+                            value={translated ?? ""}
+                            onChange={(e) => updateEntry(entry.id, e.target.value)}
+                            placeholder={t`Pending...`}
+                            className="w-full text-sm leading-relaxed mt-0.5 resize-none rounded border border-transparent bg-transparent p-1.5 -ml-1.5 hover:border-border hover:bg-muted/30 focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground placeholder:italic"
+                            style={{ fieldSizing: "content" } as React.CSSProperties}
+                            rows={1}
+                          />
+                        </div>
+                        <AudioAction
+                          audio={audio}
+                          audioLang={audioLang}
+                          bookLabel={bookLabel}
+                          textId={entry.id}
+                          canGenerate={currentLanguageUsesGemini}
+                          hasGeminiKey={geminiKey.length > 0}
+                          onGenerate={handleGenerateAudio}
+                          isGenerating={
+                            generateAudioMutation.isPending &&
+                            generateAudioMutation.variables?.textId === entry.id &&
+                            generateAudioMutation.variables?.language === audioLang
+                          }
+                          errorMessage={generateErrorById[entry.id]}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <AudioAction
-                  audio={audio}
-                  audioLang={audioLang}
-                  bookLabel={bookLabel}
-                  textId={entry.id}
-                  canGenerate={currentLanguageUsesGemini}
-                  hasGeminiKey={geminiKey.length > 0}
-                  onGenerate={handleGenerateAudio}
-                  isGenerating={
-                    generateAudioMutation.isPending &&
-                    generateAudioMutation.variables?.textId === entry.id &&
-                    generateAudioMutation.variables?.language === audioLang
-                  }
-                  errorMessage={generateErrorById[entry.id]}
-                />
               </div>
             )
-          }
-
-          return (
-            <div key={entry.id} className="grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border bg-card">
-              <div className="flex items-start gap-3">
-                {isImg && (
-                  <img
-                    src={`${BASE_URL}/books/${bookLabel}/images/${entry.id}`}
-                    alt=""
-                    className="shrink-0 w-16 h-12 rounded object-cover ring-1 ring-border"
-                  />
-                )}
-                <div className="min-w-0">
-                  <span className="text-[10px] text-muted-foreground">{entry.id}</span>
-                  <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <span className="text-[10px] text-muted-foreground">&nbsp;</span>
-                  <textarea
-                    value={translated ?? ""}
-                    onChange={(e) => updateEntry(entry.id, e.target.value)}
-                    placeholder={t`Pending...`}
-                    className="w-full text-sm leading-relaxed mt-0.5 resize-none rounded border border-transparent bg-transparent p-1.5 -ml-1.5 hover:border-border hover:bg-muted/30 focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground placeholder:italic"
-                    style={{ fieldSizing: "content" } as React.CSSProperties}
-                    rows={1}
-                  />
-                </div>
-                <AudioAction
-                  audio={audio}
-                  audioLang={audioLang}
-                  bookLabel={bookLabel}
-                  textId={entry.id}
-                  canGenerate={currentLanguageUsesGemini}
-                  hasGeminiKey={geminiKey.length > 0}
-                  onGenerate={handleGenerateAudio}
-                  isGenerating={
-                    generateAudioMutation.isPending &&
-                    generateAudioMutation.variables?.textId === entry.id &&
-                    generateAudioMutation.variables?.language === audioLang
-                  }
-                  errorMessage={generateErrorById[entry.id]}
-                />
-              </div>
-            </div>
-          )
-        })}
+          })}
+        </div>
+        {showAllButton}
       </div>
       )}
-      {showAllButton}
     </div>
   )
 }
