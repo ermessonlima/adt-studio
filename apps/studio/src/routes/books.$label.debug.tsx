@@ -7,6 +7,7 @@ import { StatsTab } from "@/components/debug/StatsTab"
 import { LlmLogsTab } from "@/components/debug/LlmLogsTab"
 import { ConfigTab } from "@/components/debug/ConfigTab"
 import { VersionsTab } from "@/components/debug/VersionsTab"
+import { Trans } from "@lingui/react/macro"
 
 export const Route = createFileRoute("/books/$label/debug")({
   component: DebugPage,
@@ -31,26 +32,28 @@ function DebugPage() {
     <div className="flex flex-col h-full">
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border shrink-0">
         <Terminal className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">Debug - {label}</span>
+        <span className="text-sm font-medium">
+          <Trans>Debug - {label}</Trans>
+        </span>
       </div>
 
       <Tabs defaultValue="stats" className="flex flex-col flex-1 min-h-0">
         <div className="flex items-center px-4 py-1 border-b border-border shrink-0">
           <TabsList className="h-8">
             <TabsTrigger value="stats" className="text-xs px-2 py-1">
-              Stats
+              <Trans>Stats</Trans>
             </TabsTrigger>
             <TabsTrigger value="logs" className="text-xs px-2 py-1">
-              Logs
+              <Trans>Logs</Trans>
               {isRunning && (
                 <span className="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               )}
             </TabsTrigger>
             <TabsTrigger value="config" className="text-xs px-2 py-1">
-              Config
+              <Trans>Config</Trans>
             </TabsTrigger>
             <TabsTrigger value="versions" className="text-xs px-2 py-1">
-              Versions
+              <Trans>Versions</Trans>
             </TabsTrigger>
           </TabsList>
         </div>

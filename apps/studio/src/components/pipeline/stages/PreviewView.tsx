@@ -26,7 +26,7 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
       // Packaging just finished — check if it succeeded
       const packagingTask = tasks.find((t) => t.kind === "package-adt")
       if (packagingTask?.status === "failed") {
-        setError(packagingTask.error ?? "Packaging failed")
+        setError(packagingTask.error ?? t`Packaging failed`)
       } else {
         // completed (or removed) — show preview
         queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] })
@@ -34,7 +34,7 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
       }
     }
     prevPackagingRef.current = packaging
-  }, [packaging, tasks, bookLabel, queryClient])
+  }, [packaging, tasks, bookLabel, queryClient, t])
 
   const runPackage = useCallback(async () => {
     setError(null)
@@ -43,9 +43,9 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
       await api.packageAdt(bookLabel)
       // Task is now submitted — SSE events will update the packaging state
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Packaging failed")
+      setError(e instanceof Error ? e.message : t`Packaging failed`)
     }
-  }, [bookLabel])
+  }, [bookLabel, t])
 
   // Only trigger packaging when storyboard is done
   useEffect(() => {
@@ -67,11 +67,14 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
       <div className="p-6 max-w-xl flex flex-col items-center gap-3 text-center">
         <AlertCircle className="w-8 h-8 text-muted-foreground/50" />
         <p className="text-sm text-muted-foreground">
-          A storyboard must be built before previewing.
+          <Trans>A storyboard must be built before previewing.</Trans>
         </p>
         <p className="text-sm text-muted-foreground">
-          Run the pipeline through
-          at least the <span className="font-medium text-foreground">Storyboard</span> stage first.
+          <Trans>Run the pipeline through at least the</Trans>{" "}
+          <span className="font-medium text-foreground">
+            <Trans>Storyboard</Trans>
+          </span>{" "}
+          <Trans>stage first.</Trans>
         </p>
       </div>
     )

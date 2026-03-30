@@ -12,25 +12,8 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. js-lingui-explicit-id
-#~ msgid "Settings"
-#~ msgstr "Configuración"
-
-#. js-lingui-explicit-id
-#~ msgid "API Key Settings"
-#~ msgstr "Configuración de clave API"
-
-#. js-lingui-explicit-id
-#~ msgid "Re-package ADT"
-#~ msgstr "Reempaquetar ADT"
-
-#. js-lingui-explicit-id
-#~ msgid "No pages extracted yet"
-#~ msgstr "Aún no se han extraído páginas"
-
-#. js-lingui-explicit-id
-#~ msgid "Untitled"
-#~ msgstr "Sin título"
+msgid "_page"
+msgstr "_página"
 
 msgid "? This will remove all extracted data and cannot be undone."
 msgstr "? Esto eliminará todos los datos extraídos y no se puede deshacer."
@@ -109,8 +92,8 @@ msgstr "{elapsed}s"
 msgid "{missingAudioCount} missing"
 msgstr "{missingAudioCount} faltantes"
 
-#~ msgid "{stepLabel} Settings"
-#~ msgstr "Configuración de {0}"
+msgid "{regionCount} {regionCount, plural, one {region} other {regions}} detected"
+msgstr "{regionCount, plural, one {{regionCount} región detectada} other {{regionCount} regiones detectadas}}"
 
 #. placeholder {0}: String(filterSectionIndex + 1)
 msgid "/ Section {0}"
@@ -160,6 +143,9 @@ msgstr "Una actividad de ordenamiento."
 
 msgid "A storyboard must be built before exporting."
 msgstr "Se debe crear un storyboard antes de exportar."
+
+msgid "A storyboard must be built before previewing."
+msgstr "Se debe crear un storyboard antes de previsualizar."
 
 msgid "A table-filling activity."
 msgstr "Una actividad de completar tablas."
@@ -255,6 +241,9 @@ msgstr "Exportación ADT"
 msgid "ADT Preview"
 msgstr "Vista previa ADT"
 
+msgid "ADT Studio"
+msgstr "ADT Studio"
+
 #. placeholder {0}: quiz.afterPageId
 msgid "After {0}"
 msgstr "Después de {0}"
@@ -264,6 +253,9 @@ msgstr "IA"
 
 msgid "AI Edit"
 msgstr "Edición con IA"
+
+msgid "AI edit failed"
+msgstr "Error al editar con IA"
 
 msgid "AI editing..."
 msgstr "Edición con IA..."
@@ -276,9 +268,6 @@ msgstr "Imagen con IA"
 
 msgid "AI Overlay"
 msgstr "Superposición por IA"
-
-#~ msgid "AI reasoning"
-#~ msgstr "Razonamiento de la IA"
 
 msgid "AI Rendering"
 msgstr "Renderizado con IA"
@@ -324,6 +313,9 @@ msgstr "Aplicar"
 
 msgid "Apply page background colors"
 msgstr "Aplicar colores de fondo de página"
+
+msgid "Apply Segmentation"
+msgstr "Aplicar segmentación"
 
 msgid "Are you sure you want to delete"
 msgstr "¿Seguro que quieres eliminar"
@@ -373,14 +365,14 @@ msgstr "Voz Azure"
 msgid "Back Cover"
 msgstr "Contraportada"
 
+msgid "Back to books"
+msgstr "Volver a libros"
+
 msgid "Back to Editor"
 msgstr "Volver al editor"
 
 msgid "Back to preview"
 msgstr "Volver a vista previa"
-
-msgid "Background Tasks"
-msgstr "Tareas en segundo plano"
 
 #. placeholder {0}: section.backgroundColor
 msgid "Background: {0}"
@@ -512,8 +504,14 @@ msgstr "Haz clic para elegir una imagen de referencia de estilo"
 msgid "Click to select an image"
 msgstr "Haz clic para seleccionar una imagen"
 
+msgid "Clone failed"
+msgstr "Error al clonar"
+
 msgid "Clone this section"
 msgstr "Clonar esta sección"
+
+msgid "Close"
+msgstr "Cerrar"
 
 msgid "Close section data"
 msgstr "Cerrar datos de sección"
@@ -575,8 +573,14 @@ msgstr "Actual"
 msgid "Custom"
 msgstr "Personalizado"
 
+msgid "Debug - {label}"
+msgstr "Depuración - {label}"
+
 msgid "Debug Panel"
 msgstr "Panel de depuración"
+
+msgid "Debug Panel (Cmd+Shift+D)"
+msgstr "Panel de depuración (Cmd+Shift+D)"
 
 msgid "Decrease indent"
 msgstr "Disminuir sangría"
@@ -607,6 +611,9 @@ msgstr "Eliminar"
 
 msgid "Delete book"
 msgstr "Eliminar libro"
+
+msgid "Delete failed"
+msgstr "Error al eliminar"
 
 msgid "Delete group"
 msgstr "Eliminar grupo"
@@ -643,6 +650,9 @@ msgstr "Descartar"
 
 msgid "Display"
 msgstr "Visualización"
+
+msgid "Drag to move boxes, drag edges/corners to resize"
+msgstr "Arrastra para mover los recuadros; arrastra los bordes o las esquinas para cambiar el tamaño"
 
 msgid "Drag to reorder"
 msgstr "Arrastra para reordenar"
@@ -769,9 +779,6 @@ msgstr "Exporta el libro como un paquete Readium WebPub — un formato basado en
 
 msgid "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
 msgstr "Exporta el Libro de Texto Digital Accesible completo como un archivo ZIP. Incluye todas las páginas HTML, imágenes, archivos de audio, cuestionarios y la aplicación web compilada — listo para subirlo a una plataforma de distribución o abrirlo localmente."
-
-#~ msgid "Export timed out — the book may be too large"
-#~ msgstr "La exportación expiró — el libro puede ser demasiado grande"
 
 msgid "Export WebPub"
 msgstr "Exportar WebPub"
@@ -967,6 +974,12 @@ msgstr "Ocultar imágenes eliminadas"
 msgid "Higher values filter out simple or blank images."
 msgstr "Valores más altos filtran imágenes simples o en blanco."
 
+msgid "Hit"
+msgstr "Acierto"
+
+msgid "HTML"
+msgstr "HTML"
+
 msgid "Illustration"
 msgstr "Ilustración"
 
@@ -1021,6 +1034,9 @@ msgstr "Tipo de imagen"
 msgid "Image unavailable"
 msgstr "Imagen no disponible"
 
+msgid "Image upload failed"
+msgstr "Error al subir imagen"
+
 msgid "Images"
 msgstr "Imágenes"
 
@@ -1056,6 +1072,9 @@ msgstr "Ítem"
 
 msgid "Item ID..."
 msgstr "ID del elemento..."
+
+msgid "KB"
+msgstr "KB"
 
 msgid "Keeps pages whole unless mixed activity types require splitting"
 msgstr "Mantiene las páginas completas a menos que tipos mixtos de actividad requieran división"
@@ -1154,6 +1173,9 @@ msgstr "Cargando páginas..."
 msgid "Loading preview..."
 msgstr "Cargando vista previa..."
 
+msgid "Loading prompt..."
+msgstr "Cargando prompt..."
+
 msgid "Loading quizzes..."
 msgstr "Cargando quizzes..."
 
@@ -1165,6 +1187,9 @@ msgstr "Cargando estadísticas..."
 
 msgid "Loading table of contents..."
 msgstr "Cargando tabla de contenidos..."
+
+msgid "Loading template..."
+msgstr "Cargando plantilla..."
 
 msgid "Loading text catalog..."
 msgstr "Cargando catálogo de textos..."
@@ -1199,6 +1224,9 @@ msgstr "Indicación de significado"
 msgid "Merge facing pages as spreads"
 msgstr "Combinar páginas enfrentadas como dobles"
 
+msgid "Merge failed"
+msgstr "Error al fusionar"
+
 msgid "Merge with next section"
 msgstr "Fusionar con la siguiente sección"
 
@@ -1228,6 +1256,9 @@ msgstr "Dimensión mínima de imagen (px)"
 
 msgid "Min side (px)"
 msgstr "Lado mínimo (px)"
+
+msgid "Miss"
+msgstr "Fallo"
 
 msgid "Misses"
 msgstr "Fallos"
@@ -1325,6 +1356,9 @@ msgstr "Sin secciones para esta página"
 msgid "No sections on this page"
 msgstr "Sin secciones en esta página"
 
+msgid "No segmentation needed for this image"
+msgstr "No se necesita segmentación para esta imagen"
+
 msgid "No text extracted"
 msgstr "No se extrajo texto"
 
@@ -1345,6 +1379,9 @@ msgstr "Ninguno"
 
 msgid "Number of pages of content to include per quiz question."
 msgstr "Número de páginas de contenido a incluir por pregunta de quiz."
+
+msgid "of"
+msgstr "de"
 
 msgid "Only pages containing these section types are counted when grouping pages for quiz generation."
 msgstr "Solo las páginas que contienen estos tipos de sección se cuentan al agrupar páginas para la generación de quiz."
@@ -1387,6 +1424,9 @@ msgstr "Empaqueta y previsualiza la aplicación web ADT final."
 
 msgid "Packaging"
 msgstr "Empaquetando"
+
+msgid "Packaging failed"
+msgstr "El empaquetado falló"
 
 msgid "Packaging preview..."
 msgstr "Empaquetando vista previa..."
@@ -1445,9 +1485,6 @@ msgstr "Pendiente..."
 msgid "Per-Step Breakdown"
 msgstr "Desglose por etapa"
 
-#~ msgid "pg {0}"
-#~ msgstr "pg {0}"
-
 msgid "Photograph"
 msgstr "Fotografía"
 
@@ -1486,6 +1523,9 @@ msgstr "Vista previa de los patrones HTML/CSS usados para páginas generadas por
 
 msgid "Prompt"
 msgstr "Prompt"
+
+msgid "Prompt template not found."
+msgstr "No se encontró la plantilla de prompt."
 
 msgid "Provider Routing"
 msgstr "Enrutamiento de proveedores"
@@ -1551,14 +1591,14 @@ msgstr "Reempaquetar ADT"
 msgid "Re-render"
 msgstr "Re-renderizar"
 
+msgid "Re-render failed"
+msgstr "Error al re-renderizar"
+
 msgid "Re-render section"
 msgstr "Re-renderizar sección"
 
 msgid "Re-render this section"
 msgstr "Re-renderizar esta sección"
-
-#~ msgid "Re-rendering page..."
-#~ msgstr "Rerenderizando página..."
 
 msgid "Re-rendering..."
 msgstr "Volviendo a renderizar..."
@@ -1613,6 +1653,9 @@ msgstr "Restaurar elemento"
 
 msgid "Restore section to flow"
 msgstr "Restaurar sección al flujo"
+
+msgid "Retries"
+msgstr "Reintentos"
 
 msgid "Retry"
 msgstr "Reintentar"
@@ -1677,6 +1720,9 @@ msgstr "Guarda los cambios antes de re-renderizar"
 msgid "Save changes first to preview the latest version"
 msgstr "Guarda los cambios primero para previsualizar la versión más reciente"
 
+msgid "Save failed"
+msgstr "Error al guardar"
+
 msgid "Saving..."
 msgstr "Guardando..."
 
@@ -1737,6 +1783,21 @@ msgstr "secciones"
 
 msgid "Segment"
 msgstr "Segmentar"
+
+msgid "Segment Preview"
+msgstr "Vista previa de segmentos"
+
+msgid "Segmentation apply failed"
+msgstr "Error al aplicar segmentación"
+
+msgid "Segmentation failed"
+msgstr "Error de segmentación"
+
+msgid "Segmentation preview"
+msgstr "Vista previa de segmentación"
+
+msgid "Segmentation produced no valid segments"
+msgstr "La segmentación no produjo segmentos válidos"
 
 msgid "Segmentation Prompt"
 msgstr "Indicación de segmentación"
@@ -1834,6 +1895,12 @@ msgstr "Estadísticas"
 msgid "Step"
 msgstr "Etapa"
 
+msgid "Step failed"
+msgstr "Paso fallido"
+
+msgid "Step run failed"
+msgstr "Fallo al ejecutar el paso"
+
 msgid "Storyboard"
 msgstr "Storyboard"
 
@@ -1876,14 +1943,23 @@ msgstr "Tabla"
 msgid "Table of Contents"
 msgstr "Índice"
 
+msgid "Task Running"
+msgstr "Tarea en ejecución"
+
 msgid "Task running..."
 msgstr "Tarea en ejecución..."
+
+msgid "Tasks Running"
+msgstr "Tareas en ejecución"
 
 msgid "Teaching the pixels new tricks..."
 msgstr "Enseñando nuevos trucos a los píxeles..."
 
 msgid "Temperature"
 msgstr "Temperatura"
+
+msgid "Template not found."
+msgstr "No se encontró la plantilla."
 
 msgid "Template Rendering"
 msgstr "Renderización por plantilla"

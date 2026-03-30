@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router"
 import { getPipelineStages } from "../stage-config"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useApiKey } from "@/hooks/use-api-key"
-import { StageRunCard } from "../StageRunCard"
+import { StageRunCard } from "../components/StageRunCard"
 
 interface ViewProps {
   bookLabel: string

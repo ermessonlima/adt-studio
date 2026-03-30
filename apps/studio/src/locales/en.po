@@ -12,25 +12,8 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#. js-lingui-explicit-id
-#~ msgid "Settings"
-#~ msgstr "Settings"
-
-#. js-lingui-explicit-id
-#~ msgid "API Key Settings"
-#~ msgstr "API Key Settings"
-
-#. js-lingui-explicit-id
-#~ msgid "Re-package ADT"
-#~ msgstr "Re-package ADT"
-
-#. js-lingui-explicit-id
-#~ msgid "No pages extracted yet"
-#~ msgstr "No pages extracted yet"
-
-#. js-lingui-explicit-id
-#~ msgid "Untitled"
-#~ msgstr "Untitled"
+msgid "_page"
+msgstr "_page"
 
 msgid "? This will remove all extracted data and cannot be undone."
 msgstr "? This will remove all extracted data and cannot be undone."
@@ -109,8 +92,8 @@ msgstr "{elapsed}s"
 msgid "{missingAudioCount} missing"
 msgstr "{missingAudioCount} missing"
 
-#~ msgid "{stepLabel} Settings"
-#~ msgstr "{stepLabel} Settings"
+msgid "{regionCount} {regionCount, plural, one {region} other {regions}} detected"
+msgstr "{regionCount} {regionCount, plural, one {region} other {regions}} detected"
 
 #. placeholder {0}: String(filterSectionIndex + 1)
 msgid "/ Section {0}"
@@ -160,6 +143,9 @@ msgstr "A sorting activity."
 
 msgid "A storyboard must be built before exporting."
 msgstr "A storyboard must be built before exporting."
+
+msgid "A storyboard must be built before previewing."
+msgstr "A storyboard must be built before previewing."
 
 msgid "A table-filling activity."
 msgstr "A table-filling activity."
@@ -255,6 +241,9 @@ msgstr "ADT Export"
 msgid "ADT Preview"
 msgstr "ADT Preview"
 
+msgid "ADT Studio"
+msgstr "ADT Studio"
+
 #. placeholder {0}: quiz.afterPageId
 msgid "After {0}"
 msgstr "After {0}"
@@ -264,6 +253,9 @@ msgstr "AI"
 
 msgid "AI Edit"
 msgstr "AI Edit"
+
+msgid "AI edit failed"
+msgstr "AI edit failed"
 
 msgid "AI editing..."
 msgstr "AI editing..."
@@ -276,9 +268,6 @@ msgstr "AI Image"
 
 msgid "AI Overlay"
 msgstr "AI Overlay"
-
-#~ msgid "AI reasoning"
-#~ msgstr "AI reasoning"
 
 msgid "AI Rendering"
 msgstr "AI Rendering"
@@ -324,6 +313,9 @@ msgstr "Apply"
 
 msgid "Apply page background colors"
 msgstr "Apply page background colors"
+
+msgid "Apply Segmentation"
+msgstr "Apply Segmentation"
 
 msgid "Are you sure you want to delete"
 msgstr "Are you sure you want to delete"
@@ -373,14 +365,14 @@ msgstr "Azure Voice"
 msgid "Back Cover"
 msgstr "Back Cover"
 
+msgid "Back to books"
+msgstr "Back to books"
+
 msgid "Back to Editor"
 msgstr "Back to Editor"
 
 msgid "Back to preview"
 msgstr "Back to preview"
-
-msgid "Background Tasks"
-msgstr "Background Tasks"
 
 #. placeholder {0}: section.backgroundColor
 msgid "Background: {0}"
@@ -512,8 +504,14 @@ msgstr "Click to pick a style reference image"
 msgid "Click to select an image"
 msgstr "Click to select an image"
 
+msgid "Clone failed"
+msgstr "Clone failed"
+
 msgid "Clone this section"
 msgstr "Clone this section"
+
+msgid "Close"
+msgstr "Close"
 
 msgid "Close section data"
 msgstr "Close section data"
@@ -575,8 +573,14 @@ msgstr "Current"
 msgid "Custom"
 msgstr "Custom"
 
+msgid "Debug - {label}"
+msgstr "Debug - {label}"
+
 msgid "Debug Panel"
 msgstr "Debug Panel"
+
+msgid "Debug Panel (Cmd+Shift+D)"
+msgstr "Debug Panel (Cmd+Shift+D)"
 
 msgid "Decrease indent"
 msgstr "Decrease indent"
@@ -607,6 +611,9 @@ msgstr "Delete"
 
 msgid "Delete book"
 msgstr "Delete book"
+
+msgid "Delete failed"
+msgstr "Delete failed"
 
 msgid "Delete group"
 msgstr "Delete group"
@@ -643,6 +650,9 @@ msgstr "Discard"
 
 msgid "Display"
 msgstr "Display"
+
+msgid "Drag to move boxes, drag edges/corners to resize"
+msgstr "Drag to move boxes, drag edges/corners to resize"
 
 msgid "Drag to reorder"
 msgstr "Drag to reorder"
@@ -769,9 +779,6 @@ msgstr "Export the book as a Readium WebPub package — a standards-based format
 
 msgid "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
 msgstr "Export the complete Accessible Digital Textbook as a ZIP archive. Includes all HTML pages, images, audio files, quizzes, and the compiled web application — ready to upload to a distribution platform or open locally."
-
-#~ msgid "Export timed out — the book may be too large"
-#~ msgstr "Export timed out — the book may be too large"
 
 msgid "Export WebPub"
 msgstr "Export WebPub"
@@ -967,6 +974,12 @@ msgstr "Hide pruned images"
 msgid "Higher values filter out simple or blank images."
 msgstr "Higher values filter out simple or blank images."
 
+msgid "Hit"
+msgstr "Hit"
+
+msgid "HTML"
+msgstr "HTML"
+
 msgid "Illustration"
 msgstr "Illustration"
 
@@ -1021,6 +1034,9 @@ msgstr "Image Type"
 msgid "Image unavailable"
 msgstr "Image unavailable"
 
+msgid "Image upload failed"
+msgstr "Image upload failed"
+
 msgid "Images"
 msgstr "Images"
 
@@ -1056,6 +1072,9 @@ msgstr "Item"
 
 msgid "Item ID..."
 msgstr "Item ID..."
+
+msgid "KB"
+msgstr "KB"
 
 msgid "Keeps pages whole unless mixed activity types require splitting"
 msgstr "Keeps pages whole unless mixed activity types require splitting"
@@ -1154,6 +1173,9 @@ msgstr "Loading pages..."
 msgid "Loading preview..."
 msgstr "Loading preview..."
 
+msgid "Loading prompt..."
+msgstr "Loading prompt..."
+
 msgid "Loading quizzes..."
 msgstr "Loading quizzes..."
 
@@ -1165,6 +1187,9 @@ msgstr "Loading stats..."
 
 msgid "Loading table of contents..."
 msgstr "Loading table of contents..."
+
+msgid "Loading template..."
+msgstr "Loading template..."
 
 msgid "Loading text catalog..."
 msgstr "Loading text catalog..."
@@ -1199,6 +1224,9 @@ msgstr "Meaningfulness Prompt"
 msgid "Merge facing pages as spreads"
 msgstr "Merge facing pages as spreads"
 
+msgid "Merge failed"
+msgstr "Merge failed"
+
 msgid "Merge with next section"
 msgstr "Merge with next section"
 
@@ -1228,6 +1256,9 @@ msgstr "Min image dimension (px)"
 
 msgid "Min side (px)"
 msgstr "Min side (px)"
+
+msgid "Miss"
+msgstr "Miss"
 
 msgid "Misses"
 msgstr "Misses"
@@ -1325,6 +1356,9 @@ msgstr "No sections for this page"
 msgid "No sections on this page"
 msgstr "No sections on this page"
 
+msgid "No segmentation needed for this image"
+msgstr "No segmentation needed for this image"
+
 msgid "No text extracted"
 msgstr "No text extracted"
 
@@ -1345,6 +1379,9 @@ msgstr "None"
 
 msgid "Number of pages of content to include per quiz question."
 msgstr "Number of pages of content to include per quiz question."
+
+msgid "of"
+msgstr "of"
 
 msgid "Only pages containing these section types are counted when grouping pages for quiz generation."
 msgstr "Only pages containing these section types are counted when grouping pages for quiz generation."
@@ -1387,6 +1424,9 @@ msgstr "Package and preview the final ADT web application."
 
 msgid "Packaging"
 msgstr "Packaging"
+
+msgid "Packaging failed"
+msgstr "Packaging failed"
 
 msgid "Packaging preview..."
 msgstr "Packaging preview..."
@@ -1445,9 +1485,6 @@ msgstr "Pending..."
 msgid "Per-Step Breakdown"
 msgstr "Per-Step Breakdown"
 
-#~ msgid "pg {0}"
-#~ msgstr "pg {0}"
-
 msgid "Photograph"
 msgstr "Photograph"
 
@@ -1486,6 +1523,9 @@ msgstr "Preview of the HTML/CSS patterns used for LLM-generated pages."
 
 msgid "Prompt"
 msgstr "Prompt"
+
+msgid "Prompt template not found."
+msgstr "Prompt template not found."
 
 msgid "Provider Routing"
 msgstr "Provider Routing"
@@ -1551,14 +1591,14 @@ msgstr "Re-package ADT"
 msgid "Re-render"
 msgstr "Re-render"
 
+msgid "Re-render failed"
+msgstr "Re-render failed"
+
 msgid "Re-render section"
 msgstr "Re-render section"
 
 msgid "Re-render this section"
 msgstr "Re-render this section"
-
-#~ msgid "Re-rendering page..."
-#~ msgstr "Re-rendering page..."
 
 msgid "Re-rendering..."
 msgstr "Re-rendering..."
@@ -1613,6 +1653,9 @@ msgstr "Restore element"
 
 msgid "Restore section to flow"
 msgstr "Restore section to flow"
+
+msgid "Retries"
+msgstr "Retries"
 
 msgid "Retry"
 msgstr "Retry"
@@ -1677,6 +1720,9 @@ msgstr "Save changes before re-rendering"
 msgid "Save changes first to preview the latest version"
 msgstr "Save changes first to preview the latest version"
 
+msgid "Save failed"
+msgstr "Save failed"
+
 msgid "Saving..."
 msgstr "Saving..."
 
@@ -1737,6 +1783,21 @@ msgstr "sections"
 
 msgid "Segment"
 msgstr "Segment"
+
+msgid "Segment Preview"
+msgstr "Segment Preview"
+
+msgid "Segmentation apply failed"
+msgstr "Segmentation apply failed"
+
+msgid "Segmentation failed"
+msgstr "Segmentation failed"
+
+msgid "Segmentation preview"
+msgstr "Segmentation preview"
+
+msgid "Segmentation produced no valid segments"
+msgstr "Segmentation produced no valid segments"
 
 msgid "Segmentation Prompt"
 msgstr "Segmentation Prompt"
@@ -1834,6 +1895,12 @@ msgstr "Stats"
 msgid "Step"
 msgstr "Step"
 
+msgid "Step failed"
+msgstr "Step failed"
+
+msgid "Step run failed"
+msgstr "Step run failed"
+
 msgid "Storyboard"
 msgstr "Storyboard"
 
@@ -1876,14 +1943,23 @@ msgstr "Table"
 msgid "Table of Contents"
 msgstr "Table of Contents"
 
+msgid "Task Running"
+msgstr "Task Running"
+
 msgid "Task running..."
 msgstr "Task running..."
+
+msgid "Tasks Running"
+msgstr "Tasks Running"
 
 msgid "Teaching the pixels new tricks..."
 msgstr "Teaching the pixels new tricks..."
 
 msgid "Temperature"
 msgstr "Temperature"
+
+msgid "Template not found."
+msgstr "Template not found."
 
 msgid "Template Rendering"
 msgstr "Template Rendering"

@@ -15,8 +15,6 @@ import {
 export const STAGES = [
   {
     slug: "book",
-    label: "Book",
-    runningLabel: "Loading Book...",
     icon: BookMarked,
     color: "bg-gray-600",
     hex: "#4b5563",
@@ -27,8 +25,6 @@ export const STAGES = [
   },
   {
     slug: "extract",
-    label: "Extract",
-    runningLabel: "Extracting...",
     icon: FileText,
     color: "bg-blue-600",
     hex: "#2563eb",
@@ -39,8 +35,6 @@ export const STAGES = [
   },
   {
     slug: "storyboard",
-    label: "Storyboard",
-    runningLabel: "Building Storyboard...",
     icon: LayoutGrid,
     color: "bg-violet-600",
     hex: "#7c3aed",
@@ -51,8 +45,6 @@ export const STAGES = [
   },
   {
     slug: "quizzes",
-    label: "Quizzes",
-    runningLabel: "Generating Quizzes...",
     icon: HelpCircle,
     color: "bg-orange-600",
     hex: "#ea580c",
@@ -63,8 +55,6 @@ export const STAGES = [
   },
   {
     slug: "captions",
-    label: "Captions",
-    runningLabel: "Captioning Images...",
     icon: Image,
     color: "bg-teal-600",
     hex: "#0d9488",
@@ -75,8 +65,6 @@ export const STAGES = [
   },
   {
     slug: "glossary",
-    label: "Glossary",
-    runningLabel: "Generating Glossary...",
     icon: BookOpen,
     color: "bg-lime-600",
     hex: "#65a30d",
@@ -87,8 +75,6 @@ export const STAGES = [
   },
   {
     slug: "toc",
-    label: "Table of Contents",
-    runningLabel: "Generating TOC...",
     icon: List,
     color: "bg-amber-600",
     hex: "#d97706",
@@ -99,8 +85,6 @@ export const STAGES = [
   },
   {
     slug: "text-and-speech",
-    label: "Text & Speech",
-    runningLabel: "Generating Text & Speech...",
     icon: Languages,
     color: "bg-pink-600",
     hex: "#db2777",
@@ -111,8 +95,6 @@ export const STAGES = [
   },
   {
     slug: "preview",
-    label: "Preview",
-    runningLabel: "Building Preview...",
     icon: Eye,
     color: "bg-gray-600",
     hex: "#4b5563",
@@ -123,8 +105,6 @@ export const STAGES = [
   },
   {
     slug: "export",
-    label: "Export",
-    runningLabel: "Exporting...",
     icon: FileDown,
     color: "bg-emerald-600",
     hex: "#059669",
@@ -135,8 +115,6 @@ export const STAGES = [
   },
 ] as const satisfies ReadonlyArray<{
   slug: string
-  label: string
-  runningLabel: string
   icon: LucideIcon
   color: string
   hex: string

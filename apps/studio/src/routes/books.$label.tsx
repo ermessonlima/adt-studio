@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo, createContext, useContext } from "react"
 import { createFileRoute, Outlet, useParams, useNavigate, Link, useMatchRoute } from "@tanstack/react-router"
 import { Home, Terminal } from "lucide-react"
+import { Trans, useLingui } from "@lingui/react/macro"
 import { Button } from "@/components/ui/button"
-import { StageSidebar } from "@/components/pipeline/StageSidebar"
+import { StageSidebar } from "@/components/pipeline/components/StageSidebar"
 import { useBook } from "@/hooks/use-books"
 import { useBookRunStatus, BookRunProvider } from "@/hooks/use-book-run"
 import { useExportWatcherSetup, ExportWatcherProvider } from "@/hooks/use-export-watcher"
@@ -38,6 +39,7 @@ function BookLayout() {
 
 function BookLayoutInner({ label }: { label: string }) {
   const { step, pageId } = useParams({ strict: false }) as { step?: string; pageId?: string }
+  const { t } = useLingui()
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
   const { data: book } = useBook(label)
@@ -120,11 +122,11 @@ function BookLayoutInner({ label }: { label: string }) {
                 <Link
                   to="/"
                   className="flex-1 min-w-0 h-full px-4 flex items-center justify-start gap-2.5 hover:bg-gray-800 transition-colors"
-                  title="Back to books"
+                  title={t`Back to books`}
                 >
                   <Home className="w-4 h-4 shrink-0" />
                   <span className="text-sm font-semibold truncate">
-                    ADT Studio
+                    <Trans>ADT Studio</Trans>
                   </span>
                 </Link>
               </div>
@@ -154,7 +156,7 @@ function BookLayoutInner({ label }: { label: string }) {
           size="icon"
           className="fixed bottom-4 right-4 h-8 w-8 rounded-full shadow-md z-50 opacity-60 hover:opacity-100"
           onClick={openDebugWindow}
-          title="Debug Panel (Cmd+Shift+D)"
+          title={t`Debug Panel (Cmd+Shift+D)`}
         >
           <Terminal className="h-4 w-4" />
         </Button>

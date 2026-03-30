@@ -62,6 +62,8 @@ function getStatus(entry: LlmLogEntry): RowStatus {
 }
 
 function LogDetail({ data, label }: { data: LlmLogEntry["data"]; label: string }) {
+  const { t } = useLingui()
+
   return (
     <td colSpan={8} className="p-0">
       <div className="px-4 py-3 bg-muted/20 space-y-3 text-xs">
@@ -88,7 +90,7 @@ function LogDetail({ data, label }: { data: LlmLogEntry["data"]; label: string }
             <div className="text-muted-foreground mb-0.5">
               <Trans>Cache</Trans>
             </div>
-            <div className="font-medium">{data.cacheHit ? "Hit" : "Miss"}</div>
+            <div className="font-medium">{data.cacheHit ? t`Hit` : t`Miss`}</div>
           </div>
           {data.usage && (
             <>
@@ -149,7 +151,7 @@ function LogDetail({ data, label }: { data: LlmLogEntry["data"]; label: string }
                             loading="lazy"
                           />
                           <div className="text-[10px] text-muted-foreground mt-0.5">
-                            {part.width}x{part.height}, {Math.round(part.byteLength / 1024)}KB
+                            {part.width}x{part.height}, {Math.round(part.byteLength / 1024)} {t`KB`}
                           </div>
                         </div>
                       )}
@@ -363,7 +365,7 @@ export function LlmLogsTab({ label, isRunning }: LlmLogsTabProps) {
         {data && data.total > limit && (
           <div className="flex items-center justify-between px-4 py-2 border-t border-border text-xs">
             <span className="text-muted-foreground tabular-nums">
-              {offset + 1}-{Math.min(offset + limit, data.total)} of {data.total}
+              {offset + 1}-{Math.min(offset + limit, data.total)} {t`of`} {data.total}
             </span>
             <div className="flex gap-1">
               <Button

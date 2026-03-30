@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro"
+import { Trans, useLingui } from "@lingui/react/macro"
 import { usePipelineStats } from "@/hooks/use-debug"
 import { Badge } from "@/components/ui/badge"
 
@@ -13,10 +13,11 @@ function formatDuration(ms: number): string {
   return `${(ms / 60_000).toFixed(1)}m`
 }
 
-function formatTokens(n: number): string {
-  if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`
-  return `${(n / 1_000_000).toFixed(2)}M`
+function formatTokens(n: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n)
 }
 
 function estimateCost(inputTokens: number, outputTokens: number): string {
@@ -25,6 +26,7 @@ function estimateCost(inputTokens: number, outputTokens: number): string {
 }
 
 export function StatsTab({ label, isRunning }: StatsTabProps) {
+  const { i18n } = useLingui()
   const { data, isLoading, error } = usePipelineStats(label, {
     refetchInterval: isRunning ? 3000 : false,
   })
@@ -72,7 +74,7 @@ export function StatsTab({ label, isRunning }: StatsTabProps) {
             <Trans>Total Tokens</Trans>
           </div>
           <div className="text-2xl font-semibold tabular-nums">
-            {formatTokens(totals.inputTokens + totals.outputTokens)}
+            {formatTokens(totals.inputTokens + totals.outputTokens, i18n.locale)}
           </div>
         </div>
         {pipelineRun?.wallClockMs != null ? (
@@ -160,10 +162,10 @@ export function StatsTab({ label, isRunning }: StatsTabProps) {
                     <td className="py-2.5 px-4 text-right tabular-nums">{s.cacheHits}</td>
                     <td className="py-2.5 px-4 text-right tabular-nums">{s.cacheMisses}</td>
                     <td className="py-2.5 px-4 text-right tabular-nums">
-                      {formatTokens(s.inputTokens)}
+                      {formatTokens(s.inputTokens, i18n.locale)}
                     </td>
                     <td className="py-2.5 px-4 text-right tabular-nums">
-                      {formatTokens(s.outputTokens)}
+                      {formatTokens(s.outputTokens, i18n.locale)}
                     </td>
                     <td className="py-2.5 px-4 text-right tabular-nums">
                       {formatDuration(s.avgDurationMs)}

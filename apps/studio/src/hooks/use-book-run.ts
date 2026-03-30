@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useRef, createContext, useContext, useState } from "react"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
+import { i18n } from "@lingui/core"
+import { msg } from "@lingui/core/macro"
 import {
   api,
   BASE_URL,
@@ -186,8 +188,8 @@ export function useBookRunStatus(label: string): BookRunContextValue {
             ...old,
             stages: { ...old.stages, [uiStage]: "error" },
             steps: { ...old.steps, [pipelineStep]: "error" },
-            stepErrors: { ...old.stepErrors, [pipelineStep]: d.error ?? "Step failed" },
-            error: d.error ?? "Step failed",
+            stepErrors: { ...old.stepErrors, [pipelineStep]: d.error ?? i18n._(msg`Step failed`) },
+            error: d.error ?? i18n._(msg`Step failed`),
           }
         })
       }
@@ -214,7 +216,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
           const d = JSON.parse(me.data)
           queryClient.setQueryData<StepStatusResponse>(stepStatusKey(label), (old) => {
             if (!old) return old
-            return { ...old, error: d.error ?? "Step run failed" }
+            return { ...old, error: d.error ?? i18n._(msg`Step run failed`) }
           })
         } catch { /* ignore */ }
       }
