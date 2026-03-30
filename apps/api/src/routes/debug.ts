@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
-import { parseBookLabel } from "@adt/types"
+import { AccessibilityAssessmentOutput, parseBookLabel } from "@adt/types"
 import { openBookDb } from "@adt/storage"
 
 function getDbPath(label: string, booksDir: string): string {
@@ -220,6 +220,35 @@ export function createDebugRoutes(
       }
 
       throw new HTTPException(404, { message: `Image not found for hash: ${hash}` })
+    } finally {
+      db.close()
+    }
+  })
+
+  // GET /books/:label/debug/accessibility — latest accessibility assessment
+  app.get("/books/:label/debug/accessibility", (c) => {
+    const { label } = c.req.param()
+    const { dbPath } = requireDb(label, booksDir)
+
+    const db = openBookDb(dbPath)
+    try {
+      const rows = db.all(
+        "SELECT version, data FROM node_data WHERE node = ? AND item_id = ? ORDER BY version DESC LIMIT 1",
+        ["accessibility-assessment", "book"]
+      ) as Array<{ version: number; data: string }>
+
+      if (rows.length === 0) {
+        return c.json({ version: null, assessment: null })
+      }
+
+      const parsed = AccessibilityAssessmentOutput.safeParse(JSON.parse(rows[0].data))
+      if (!parsed.success) {
+        throw new HTTPException(500, {
+          message: `Stored accessibility assessment is invalid: ${parsed.error.message}`,
+        })
+      }
+
+      return c.json({ version: rows[0].version, assessment: parsed.data })
     } finally {
       db.close()
     }

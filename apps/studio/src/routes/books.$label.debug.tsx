@@ -1,20 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { Terminal } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { useQuery } from "@tanstack/react-query"
 import { api } from "@/api/client"
 import { StatsTab } from "@/components/debug/StatsTab"
 import { LlmLogsTab } from "@/components/debug/LlmLogsTab"
 import { ConfigTab } from "@/components/debug/ConfigTab"
 import { VersionsTab } from "@/components/debug/VersionsTab"
-import { Trans } from "@lingui/react/macro"
+import { DebugTabsNav } from "@/components/debug/DebugTabsNav"
+import { normalizeDebugTabValue, type DebugTabValue } from "@/components/debug/debug-panel-state"
 
 export const Route = createFileRoute("/books/$label/debug")({
   component: DebugPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: normalizeDebugTabValue(search.tab) ?? "stats",
+  }),
 })
 
 function DebugPage() {
   const { label } = Route.useParams()
+  const { tab } = Route.useSearch()
+  const navigate = useNavigate({ from: "/books/$label/debug" })
 
   const { data: stageStatus } = useQuery({
     queryKey: ["books", label, "stage-status"],
@@ -29,33 +35,24 @@ function DebugPage() {
   const isRunning = stageStatus?.status === "running"
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-border shrink-0">
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-2">
         <Terminal className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-medium">
-          <Trans>Debug - {label}</Trans>
-        </span>
+        <span className="text-sm font-medium">Debug - {label}</span>
       </div>
 
-      <Tabs defaultValue="stats" className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center px-4 py-1 border-b border-border shrink-0">
-          <TabsList className="h-8">
-            <TabsTrigger value="stats" className="text-xs px-2 py-1">
-              <Trans>Stats</Trans>
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="text-xs px-2 py-1">
-              <Trans>Logs</Trans>
-              {isRunning && (
-                <span className="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="config" className="text-xs px-2 py-1">
-              <Trans>Config</Trans>
-            </TabsTrigger>
-            <TabsTrigger value="versions" className="text-xs px-2 py-1">
-              <Trans>Versions</Trans>
-            </TabsTrigger>
-          </TabsList>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => {
+          navigate({
+            search: { tab: value as DebugTabValue },
+            replace: true,
+          })
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <div className="flex items-start border-b border-border px-4 py-1 shrink-0">
+          <DebugTabsNav isRunning={isRunning} />
         </div>
 
         <div className="flex-1 min-h-0 overflow-auto">

@@ -4,18 +4,22 @@ import { Hono } from "hono"
 import { HTTPException } from "hono/http-exception"
 import { parseBookLabel } from "@adt/types"
 import { createBookStorage } from "@adt/storage"
-import { packageAdtWeb, loadBookConfig, normalizeLocale } from "@adt/pipeline"
+import {
+  packageAdtWeb,
+  loadBookConfig,
+  normalizeLocale,
+  runAccessibilityAssessment,
+} from "@adt/pipeline"
 import type { TaskService } from "../services/task-service.js"
 
 export function createPackageRoutes(
   booksDir: string,
   webAssetsDir: string,
   configPath?: string,
-  taskService?: TaskService
+  taskService?: TaskService,
 ): Hono {
   const app = new Hono()
 
-  // POST /books/:label/package-adt — Package the ADT web application
   app.post("/books/:label/package-adt", async (c) => {
     const { label } = c.req.param()
     let safeLabel: string
@@ -40,7 +44,6 @@ export function createPackageRoutes(
       })
     }
 
-    // Validate before submitting task
     const storage = createBookStorage(safeLabel, booksDir)
     try {
       const pages = storage.getPages()
@@ -56,7 +59,6 @@ export function createPackageRoutes(
       storage.close()
     }
 
-    // If TaskService is available, run as a tracked task
     if (taskService) {
       const { taskId } = taskService.submitTask(
         safeLabel,
@@ -65,12 +67,11 @@ export function createPackageRoutes(
         async () => {
           await runPackaging(safeLabel, booksDir, bookDir, webAssetsDir, configPath)
         },
-        { url: `/books/${safeLabel}/preview` }
+        { url: `/books/${safeLabel}/preview` },
       )
       return c.json({ status: "submitted", taskId, label: safeLabel })
     }
 
-    // Fallback: run synchronously (shouldn't happen in practice)
     try {
       await runPackaging(safeLabel, booksDir, bookDir, webAssetsDir, configPath)
       return c.json({ status: "completed", label: safeLabel })
@@ -81,7 +82,6 @@ export function createPackageRoutes(
     }
   })
 
-  // GET /books/:label/package-adt/status — Check if ADT is packaged
   app.get("/books/:label/package-adt/status", (c) => {
     const { label } = c.req.param()
     let safeLabel: string
@@ -107,7 +107,7 @@ async function runPackaging(
   booksDir: string,
   bookDir: string,
   webAssetsDir: string,
-  configPath?: string
+  configPath?: string,
 ): Promise<void> {
   const storage = createBookStorage(safeLabel, booksDir)
   try {
@@ -118,14 +118,14 @@ async function runPackaging(
       language_code?: string | null
     } | null
     const language = normalizeLocale(
-      config.editing_language ?? metadata?.language_code ?? "en"
+      config.editing_language ?? metadata?.language_code ?? "en",
     )
     const outputLanguages = Array.from(
       new Set(
         (config.output_languages && config.output_languages.length > 0
           ? config.output_languages
-          : [language]).map((code) => normalizeLocale(code))
-      )
+          : [language]).map((code) => normalizeLocale(code)),
+      ),
     )
     const title = metadata?.title ?? safeLabel
 
@@ -138,6 +138,12 @@ async function runPackaging(
       webAssetsDir,
       applyBodyBackground: config.apply_body_background,
     })
+
+    const accessibilityOutput = await runAccessibilityAssessment({
+      bookDir,
+      config: config.accessibility_assessment,
+    })
+    storage.putNodeData("accessibility-assessment", "book", accessibilityOutput)
   } finally {
     storage.close()
   }

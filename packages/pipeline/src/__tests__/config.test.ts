@@ -136,6 +136,45 @@ end_page: 2
     )
   })
 
+
+  it("merges accessibility assessment book overrides", () => {
+    const booksRoot = makeTempDir()
+    const baseConfigPath = path.join(booksRoot, "config.yaml")
+    const label = "book-a11y-config"
+    const bookDir = path.join(booksRoot, label)
+    fs.mkdirSync(bookDir, { recursive: true })
+
+    fs.writeFileSync(
+      baseConfigPath,
+      `text_types:
+  heading: Heading
+text_group_types:
+  paragraph: Paragraph
+accessibility_assessment:
+  run_only_tags:
+    - wcag2a
+    - wcag2aa
+  disabled_rules:
+    - color-contrast
+`
+    )
+
+    fs.writeFileSync(
+      path.join(bookDir, "config.yaml"),
+      `accessibility_assessment:
+  run_only_tags:
+    - wcag2a
+    - cat.forms
+  disabled_rules: []
+`
+    )
+
+    const config = loadBookConfig(label, booksRoot, baseConfigPath)
+
+    expect(config.accessibility_assessment?.run_only_tags).toEqual(["wcag2a", "cat.forms"])
+    expect(config.accessibility_assessment?.disabled_rules).toEqual([])
+  })
+
   it("rejects unsafe labels before resolving book config path", () => {
     const booksRoot = makeTempDir()
     const baseConfigPath = path.join(booksRoot, "config.yaml")

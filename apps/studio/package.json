@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "extract": "lingui extract",
     "compile": "lingui compile",
-    "lint": "eslint src",
+    "lint": "eslint src --suppressions-location eslint-suppressions.json --pass-on-unpruned-suppressions",
     "translate:missing": "tsx scripts/translate-missing.ts"
   },
   "dependencies": {

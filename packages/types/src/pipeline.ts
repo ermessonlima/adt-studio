@@ -22,6 +22,7 @@ export const StepName = z.enum([
   "catalog-translation",
   "tts",
   "package-web",
+  "accessibility-assessment",
 ])
 export type StepName = z.infer<typeof StepName>
 
@@ -130,6 +131,11 @@ export const PIPELINE: StageDef[] = [
     dependsOn: ["text-and-speech"],
     steps: [
       { name: "package-web", label: "Web Package" },
+      {
+        name: "accessibility-assessment",
+        label: "Accessibility Assessment",
+        dependsOn: ["package-web"],
+      },
     ],
   },
 ]

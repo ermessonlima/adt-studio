@@ -5,6 +5,7 @@ import os from "node:os"
 import { Hono } from "hono"
 import { createBookStorage } from "@adt/storage"
 import { openBookDb } from "@adt/storage"
+import type { AccessibilityAssessmentOutput } from "@adt/types"
 import { errorHandler } from "../middleware/error-handler.js"
 import { createDebugRoutes } from "./debug.js"
 
@@ -116,6 +117,45 @@ describe("Debug routes", () => {
       storage.putNodeData("text-classification", `${label}_p1`, { version: "v1" })
       storage.putNodeData("text-classification", `${label}_p1`, { version: "v2" })
       storage.putNodeData("text-classification", `${label}_p1`, { version: "v3" })
+      const assessment: AccessibilityAssessmentOutput = {
+        generatedAt: "2026-03-09T00:00:00.000Z",
+        tool: "axe-core",
+        runOnlyTags: ["wcag2a"],
+        disabledRules: ["color-contrast"],
+        summary: {
+          pageCount: 1,
+          pagesWithViolations: 1,
+          pagesWithErrors: 0,
+          violationCount: 1,
+          incompleteCount: 0,
+        },
+        pages: [
+          {
+            pageId: `${label}_p1`,
+            sectionId: `${label}_p1_sec001`,
+            href: "index.html",
+            pageNumber: 1,
+            title: "Page One",
+            violationCount: 1,
+            incompleteCount: 0,
+            passCount: 3,
+            inapplicableCount: 1,
+            violations: [
+              {
+                id: "image-alt",
+                impact: "critical",
+                description: "Images must have alternate text",
+                help: "Add alternate text to image",
+                helpUrl: "https://example.com/image-alt",
+                tags: ["wcag2a"],
+                nodes: [{ target: ["img"] }],
+              },
+            ],
+            incomplete: [],
+          },
+        ],
+      }
+      storage.putNodeData("accessibility-assessment", "book", assessment)
     } finally {
       storage.close()
     }
@@ -224,6 +264,35 @@ describe("Debug routes", () => {
 
     it("returns 404 for nonexistent book", async () => {
       const res = await app.request("/api/books/no-such-book/debug/stats")
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe("GET /api/books/:label/debug/accessibility", () => {
+    it("returns the latest accessibility assessment", async () => {
+      const res = await app.request(`/api/books/${label}/debug/accessibility`)
+      expect(res.status).toBe(200)
+      const body = await res.json()
+
+      expect(body.version).toBe(1)
+      expect(body.assessment).toBeDefined()
+      expect(body.assessment.tool).toBe("axe-core")
+      expect(body.assessment.summary.violationCount).toBe(1)
+      expect(body.assessment.pages[0].violations[0].id).toBe("image-alt")
+    })
+
+    it("returns null when no accessibility assessment exists", async () => {
+      const emptyLabel = "no-accessibility"
+      const storage = createBookStorage(emptyLabel, tmpDir)
+      storage.close()
+
+      const res = await app.request(`/api/books/${emptyLabel}/debug/accessibility`)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ version: null, assessment: null })
+    })
+
+    it("returns 404 for nonexistent book", async () => {
+      const res = await app.request("/api/books/no-such-book/debug/accessibility")
       expect(res.status).toBe(404)
     })
   })

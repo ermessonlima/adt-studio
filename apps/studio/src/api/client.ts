@@ -1,3 +1,12 @@
+import type {
+  AccessibilityAssessmentOutput,
+  ReviewerPageValidationRecord,
+  ReviewerValidationIdentificationField,
+  ReviewerValidationInstruction,
+  ReviewerValidationSection,
+  ReviewerValidationSession,
+} from "@adt/types"
+
 export function resolveBaseUrl(
   loc: Pick<Location, "protocol" | "hostname"> = window.location,
 ): string {
@@ -381,6 +390,36 @@ export interface VersionListResponse {
   versions: VersionEntry[]
 }
 
+export interface AccessibilityAssessmentResponse {
+  version: number | null
+  assessment: AccessibilityAssessmentOutput | null
+}
+
+export interface ReviewerValidationCatalogResponse {
+  enabled: boolean
+  identificationFields: ReviewerValidationIdentificationField[]
+  instructions: ReviewerValidationInstruction[]
+  pageSections: ReviewerValidationSection[]
+}
+
+export interface ReviewerValidationSessionEntry {
+  version: number
+  session: ReviewerValidationSession
+}
+
+export interface ReviewerValidationSessionsResponse {
+  sessions: ReviewerValidationSessionEntry[]
+}
+
+export interface ReviewerPageValidationRecordEntry {
+  version: number
+  record: ReviewerPageValidationRecord
+}
+
+export interface ReviewerPageValidationRecordsResponse {
+  records: ReviewerPageValidationRecordEntry[]
+}
+
 export interface LlmLogsParams {
   step?: string
   itemId?: string
@@ -639,6 +678,40 @@ export const api = {
 
   getActiveConfig: (label: string) =>
     request<ActiveConfigResponse>(`/books/${label}/debug/config`),
+
+  getAccessibilityAssessment: (label: string) =>
+    request<AccessibilityAssessmentResponse>(`/books/${label}/debug/accessibility`),
+
+  getReviewerValidationCatalog: (label: string) =>
+    request<ReviewerValidationCatalogResponse>(`/books/${label}/validation/catalog`),
+
+  getReviewerValidationSessions: (label: string) =>
+    request<ReviewerValidationSessionsResponse>(`/books/${label}/validation/sessions`),
+
+  saveReviewerValidationSession: (label: string, session: ReviewerValidationSession) =>
+    request<ReviewerValidationSessionEntry>(`/books/${label}/validation/sessions`, {
+      method: "POST",
+      body: JSON.stringify(session),
+    }),
+
+  getReviewerPageValidationRecords: (
+    label: string,
+    params: { sessionId: string; pageId?: string; language?: string },
+  ) => {
+    const qs = new URLSearchParams()
+    qs.set("sessionId", params.sessionId)
+    if (params.pageId) qs.set("pageId", params.pageId)
+    if (params.language) qs.set("language", params.language)
+    return request<ReviewerPageValidationRecordsResponse>(
+      `/books/${label}/validation/page-results?${qs.toString()}`,
+    )
+  },
+
+  saveReviewerPageValidationRecord: (label: string, record: ReviewerPageValidationRecord) =>
+    request<ReviewerPageValidationRecordEntry>(`/books/${label}/validation/page-results`, {
+      method: "POST",
+      body: JSON.stringify(record),
+    }),
 
   getVersionHistory: (
     label: string,

@@ -1,0 +1,119 @@
+// @vitest-environment jsdom
+import React from "react"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { cleanup, render, screen } from "@testing-library/react"
+
+const stageStateMock = vi.fn((slug: string) => {
+  if (slug === "storyboard" || slug === "validation") return "done"
+  return "idle"
+})
+const matchRouteMock = vi.fn(() => true)
+const searchMock = { tab: "reviewer-checklist" }
+
+vi.mock("@lingui/core", () => ({
+  i18n: {
+    _: (value: unknown) => {
+      if (typeof value === "string") return value
+      if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
+        return value.id
+      }
+      return String(value ?? "")
+    },
+  },
+}))
+
+vi.mock("@lingui/core/macro", () => ({
+  msg(strings: TemplateStringsArray, ...values: unknown[]) {
+    let text = ""
+    for (let index = 0; index < strings.length; index += 1) {
+      text += strings[index]
+      if (index < values.length) text += String(values[index])
+    }
+    return { id: text }
+  },
+}))
+
+vi.mock("@lingui/react", () => ({
+  useLingui: () => ({
+    i18n: {
+      _: (value: unknown) => {
+        if (typeof value === "string") return value
+        if (value && typeof value === "object" && "id" in value && typeof value.id === "string") {
+          return value.id
+        }
+        return String(value ?? "")
+      },
+    },
+  }),
+}))
+
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, title, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a title={title} {...props}>{children}</a>
+  ),
+  useMatchRoute: () => matchRouteMock,
+  useSearch: () => searchMock,
+}))
+
+vi.mock("@lingui/react/macro", () => ({
+  Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+vi.mock("@/hooks/use-book-run", () => ({
+  useBookRun: () => ({ stageState: stageStateMock }),
+}))
+
+vi.mock("@/hooks/use-debug", () => ({
+  useAccessibilityAssessment: () => ({
+    data: {
+      assessment: {
+        generatedAt: "2026-03-16T10:00:00.000Z",
+        tool: "axe-core",
+        runOnlyTags: ["wcag2a"],
+        disabledRules: [],
+        summary: { pageCount: 1, pagesWithViolations: 1, pagesWithErrors: 0, violationCount: 1, incompleteCount: 0 },
+        pages: [],
+      },
+    },
+  }),
+}))
+
+vi.mock("@/hooks/use-book-tasks", () => ({
+  useBookTasks: () => ({ runningTasks: [], runningCount: 0 }),
+}))
+
+vi.mock("@/hooks/use-pages", () => ({
+  usePages: () => ({ data: [] }),
+  usePageImage: () => ({ data: null }),
+}))
+
+vi.mock("@/routes/__root", () => ({
+  useSettingsDialog: () => ({ openSettings: vi.fn() }),
+}))
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+
+describe("StageSidebar", () => {
+  it("shows Validation before Preview and exposes Validation settings tabs", async () => {
+    const { StageSidebar } = await import("./components/StageSidebar")
+    const { container } = render(
+      <StageSidebar
+        bookLabel="demo-book"
+        activeStep="validation"
+      />,
+    )
+
+    const validationLink = screen.getByTitle("Validation")
+    const previewLink = screen.getByTitle("Preview")
+    expect(validationLink.compareDocumentPosition(previewLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    expect(screen.getByTitle("Validation Settings")).toBeTruthy()
+    expect(screen.getByText("Accessibility")).toBeTruthy()
+    expect(screen.getByText("Reviewer Checklist")).toBeTruthy()
+    expect(container.textContent).toContain("Validation")
+    expect(container.textContent).toContain("Preview")
+  })
+})

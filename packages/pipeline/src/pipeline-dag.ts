@@ -55,6 +55,7 @@ import {
   type ProviderRouting,
 } from "./speech.js"
 import { packageAdtWeb } from "./package-web.js"
+import { runAccessibilityAssessment } from "./accessibility-assessment.js"
 import { loadBookConfig } from "./config.js"
 import { nullProgress, type Progress } from "./progress.js"
 import { processWithConcurrency } from "./concurrency.js"
@@ -883,6 +884,15 @@ export async function runFullPipeline(
         webAssetsDir: options.webAssetsDir,
         applyBodyBackground: config.apply_body_background,
       }, progressOnly(p))
+    })
+
+    executors.set("accessibility-assessment", async (p) => {
+      if (!options.webAssetsDir) return
+      const output = await runAccessibilityAssessment({
+        bookDir: path.join(path.resolve(booksRoot), label),
+        config: config.accessibility_assessment,
+      }, progressOnly(p))
+      storage.putNodeData("accessibility-assessment", "book", output)
     })
 
     return await runPipelineDAG(executors, progress)

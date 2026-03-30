@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 import {
   STAGES,
+  STAGE_DESCRIPTIONS,
+  getBookOverviewStages,
   getPipelineStages,
+  isBookOverviewStage,
   isPipelineStage,
   isStageCompleted,
   toCamelLabel,
@@ -20,6 +23,37 @@ describe("stage-config", () => {
       "text-and-speech",
       "preview",
     ])
+  })
+
+  it("returns book overview stages including validation before preview and export", () => {
+    const overviewSlugs = getBookOverviewStages().map((stage) => stage.slug)
+    expect(overviewSlugs).toEqual([
+      "extract",
+      "storyboard",
+      "quizzes",
+      "captions",
+      "glossary",
+      "toc",
+      "text-and-speech",
+      "validation",
+      "preview",
+      "export",
+    ])
+  })
+
+  it("includes validation as a non-pipeline stage", () => {
+    expect(STAGES.map((stage) => stage.slug)).toContain("validation")
+    expect(STAGES.filter(isBookOverviewStage).map((stage) => stage.slug)).toContain("validation")
+  })
+
+  it("provides a description for every non-book stage", () => {
+    for (const stage of STAGES.filter(isBookOverviewStage)) {
+      expect(STAGE_DESCRIPTIONS[stage.slug]).toBeTruthy()
+    }
+
+    for (const stage of STAGES.filter(isPipelineStage)) {
+      expect(STAGE_DESCRIPTIONS[stage.slug]).toBeTruthy()
+    }
   })
 
   it("converts labels to upper camel case", () => {

@@ -1,13 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { X, GripHorizontal, ExternalLink } from "lucide-react"
-import { Trans } from "@lingui/react/macro"
-import { useLingui } from "@lingui/react/macro"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { StatsTab } from "./StatsTab"
 import { LlmLogsTab } from "./LlmLogsTab"
 import { ConfigTab } from "./ConfigTab"
 import { VersionsTab } from "./VersionsTab"
+import { DebugTabsNav } from "./DebugTabsNav"
+import type { DebugTabValue } from "./debug-panel-state"
 
 const MIN_HEIGHT = 200
 const MAX_HEIGHT_VH = 0.8
@@ -16,14 +16,20 @@ const DEFAULT_HEIGHT_VH = 0.4
 interface DebugPanelProps {
   label: string
   isRunning: boolean
+  defaultTab?: DebugTabValue
   onClose: () => void
 }
 
-export function DebugPanel({ label, isRunning, onClose }: DebugPanelProps) {
-  const { t } = useLingui()
+export function DebugPanel({
+  label,
+  isRunning,
+  defaultTab = "stats",
+  onClose,
+}: DebugPanelProps) {
   const [height, setHeight] = useState(
-    () => Math.floor(window.innerHeight * DEFAULT_HEIGHT_VH)
+    () => Math.floor(window.innerHeight * DEFAULT_HEIGHT_VH),
   )
+  const [tab, setTab] = useState<DebugTabValue>(defaultTab)
   const dragging = useRef(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -53,57 +59,46 @@ export function DebugPanel({ label, isRunning, onClose }: DebugPanelProps) {
   }, [height])
 
   useEffect(() => {
+    setTab(defaultTab)
+  }, [defaultTab])
+
+  useEffect(() => {
     return () => {
       dragging.current = false
     }
   }, [])
 
+  const debugUrl = new URL(`${window.location.origin}/books/${label}/debug`)
+  debugUrl.searchParams.set("tab", tab)
+
   return (
     <div
       ref={panelRef}
-      className="border-t border-border bg-background flex flex-col"
+      className="flex flex-col border-t border-border bg-background"
       style={{ height }}
     >
       <div
-        className="flex items-center justify-center h-2 cursor-row-resize hover:bg-muted/50 shrink-0"
+        className="flex h-2 shrink-0 cursor-row-resize items-center justify-center hover:bg-muted/50"
         onMouseDown={onDragStart}
       >
         <GripHorizontal className="h-3 w-3 text-muted-foreground" />
       </div>
 
-      <Tabs defaultValue="stats" className="flex flex-col flex-1 min-h-0">
-        <div className="flex items-center gap-2 px-3 py-1 border-b border-border shrink-0">
-          <TabsList className="h-8">
-            <TabsTrigger value="stats" className="text-xs px-2 py-1">
-              <Trans>Stats</Trans>
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="text-xs px-2 py-1">
-              <Trans>Logs</Trans>
-              {isRunning && (
-                <span className="ml-1 inline-flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="config" className="text-xs px-2 py-1">
-              <Trans>Config</Trans>
-            </TabsTrigger>
-            <TabsTrigger value="versions" className="text-xs px-2 py-1">
-              <Trans>Versions</Trans>
-            </TabsTrigger>
-          </TabsList>
+      <Tabs value={tab} onValueChange={(value) => setTab(value as DebugTabValue)} className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-start gap-2 border-b border-border px-3 py-1 shrink-0">
+          <DebugTabsNav isRunning={isRunning} />
 
           <div className="flex-1" />
-          <span className="text-xs text-muted-foreground">
-            <Trans>Debug Panel</Trans>
-          </span>
+          <span className="text-xs text-muted-foreground">Debug Panel</span>
 
           <Button
             variant="ghost"
             size="icon"
             className="h-6 w-6"
-            title={t`Pop out to new window`}
+            title="Pop out to new window"
             onClick={() => {
               window.open(
-                `/books/${label}/debug`,
+                debugUrl.toString(),
                 `debug-${label}`,
                 "width=900,height=700",
               )

@@ -15,9 +15,11 @@
     "@adt/pdf": "workspace:*",
     "@adt/storage": "workspace:*",
     "@adt/types": "workspace:*",
+    "axe-core": "^4.11.0",
     "cli-progress": "^3.12.0",
     "htmlparser2": "^10.1.0",
     "jpeg-js": "^0.4.4",
+    "jsdom": "^27.0.0",
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.0.0",
     "playwright": "^1.50.0",
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",
+    "@types/jsdom": "^27.0.0",
     "@types/pngjs": "^6.0.5",
     "esbuild": "^0.25.12",
     "pngjs": "^7.0.0"

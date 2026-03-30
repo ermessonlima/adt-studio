@@ -3,7 +3,9 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { Hono } from "hono"
+import type { ExtractedPage } from "@adt/pdf"
 import { createBookStorage } from "@adt/storage"
+import { AccessibilityAssessmentOutput } from "@adt/types"
 import { errorHandler } from "../middleware/error-handler.js"
 import { createPackageRoutes } from "./package.js"
 
@@ -31,6 +33,61 @@ describe("Package routes", () => {
     storage.close()
   }
 
+  function createRenderedBook(label: string): void {
+    const storage = createBookStorage(label, tmpDir)
+    const page: ExtractedPage = {
+      pageId: "pg001",
+      pageNumber: 1,
+      text: "Page one",
+      pageImage: {
+        imageId: "pg001_page",
+        pageId: "pg001",
+        buffer: Buffer.from("fake-png-800x1200"),
+        format: "png",
+        width: 800,
+        height: 1200,
+        hash: "page-hash",
+      },
+      images: [],
+    }
+
+    storage.putExtractedPage(page)
+    storage.putNodeData("page-sectioning", "pg001", {
+      reasoning: "ok",
+      sections: [
+        {
+          sectionId: "pg001_sec001",
+          sectionType: "content",
+          parts: [],
+          backgroundColor: "#ffffff",
+          textColor: "#000000",
+          pageNumber: 1,
+          isPruned: false,
+        },
+      ],
+    })
+    storage.putNodeData("web-rendering", "pg001", {
+      sections: [
+        {
+          sectionIndex: 0,
+          sectionType: "content",
+          reasoning: "ok",
+          html: '<main><img src="cover.png"></main>',
+        },
+      ],
+    })
+    storage.close()
+  }
+
+  function createWebAssets(): void {
+    fs.writeFileSync(path.join(webAssetsDir, "base.js"), 'window.__ADT_BUNDLE_TEST__ = "ok";\n')
+    fs.writeFileSync(path.join(webAssetsDir, "fonts.css"), "body { font-family: serif; }")
+    fs.writeFileSync(
+      path.join(webAssetsDir, "tailwind_css.css"),
+      "@tailwind base;\n@tailwind components;\n@tailwind utilities;\n",
+    )
+  }
+
   describe("POST /api/books/:label/package-adt", () => {
     it("returns 404 for missing book", async () => {
       const res = await app.request("/api/books/missing/package-adt", {
@@ -49,6 +106,26 @@ describe("Package routes", () => {
       expect(res.status).toBe(409)
       const body = await res.json()
       expect(body.error).toContain("web rendering")
+    })
+
+    it("stores accessibility assessment output after packaging", async () => {
+      createRenderedBook("book-a11y")
+      createWebAssets()
+
+      const res = await app.request("/api/books/book-a11y/package-adt", {
+        method: "POST",
+      })
+
+      expect(res.status).toBe(200)
+
+      const storage = createBookStorage("book-a11y", tmpDir)
+      const row = storage.getLatestNodeData("accessibility-assessment", "book")
+      storage.close()
+
+      expect(row?.version).toBe(1)
+      const parsed = AccessibilityAssessmentOutput.safeParse(row?.data)
+      expect(parsed.success).toBe(true)
+      expect(parsed.success && parsed.data.summary.pageCount).toBe(1)
     })
   })
 

@@ -21,8 +21,10 @@
     "pipeline": "tsx packages/pipeline/src/cli.ts"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20",
+    "jsdom": "^27.4.0",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.0.18"

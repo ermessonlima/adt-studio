@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { ImageFilters } from "./image-filtering.js"
 import { SpeechConfig } from "./speech.js"
+import { ReviewerValidationConfig } from "./reviewer-validation-config.js"
 
 export const DEFAULT_LLM_MAX_RETRIES = 5
 
@@ -87,6 +88,12 @@ export const RenderStrategyConfig = z
   })
 export type RenderStrategyConfig = z.infer<typeof RenderStrategyConfig>
 
+export const AccessibilityAssessmentConfig = z.object({
+  run_only_tags: z.array(z.string().min(1)).min(1).optional(),
+  disabled_rules: z.array(z.string().min(1)).optional(),
+})
+export type AccessibilityAssessmentConfig = z.infer<typeof AccessibilityAssessmentConfig>
+
 export const AppConfig = z
   .object({
     text_types: z.record(z.string(), z.string()),
@@ -125,6 +132,8 @@ export const AppConfig = z
     end_page: z.number().int().min(1).optional(),
     speech: SpeechConfig.optional(),
     styleguide: z.string().regex(/^[a-zA-Z0-9_-]+$/).optional(),
+    accessibility_assessment: AccessibilityAssessmentConfig.optional(),
+    reviewer_validation: ReviewerValidationConfig.optional(),
   })
   .superRefine((value, ctx) => {
     if (

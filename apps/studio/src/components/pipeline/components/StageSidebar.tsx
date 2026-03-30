@@ -14,6 +14,7 @@ import { msg } from "@lingui/core/macro"
 import type { MessageDescriptor } from "@lingui/core"
 import { Button } from "@/components/ui/button"
 import { useBookRun } from "@/hooks/use-book-run"
+import { useAccessibilityAssessment } from "@/hooks/use-debug"
 import { useBookTasks } from "@/hooks/use-book-tasks"
 import { StepProgressRing } from "./StepProgressRing"
 import { usePages, usePageImage } from "@/hooks/use-pages"
@@ -102,6 +103,10 @@ function getSettingsTabs(
       { key: "speech-prompts", label: i18n._(SETTINGS_TAB_MESSAGE["speech-prompts"]) },
       { key: "voices", label: i18n._(SETTINGS_TAB_MESSAGE.voices) },
     ],
+    validation: [
+      { key: "general", label: i18n._(msg`Accessibility`) },
+      { key: "reviewer-checklist", label: i18n._(msg`Reviewer Checklist`) },
+    ],
   }
   return tabs[slug]
 }
@@ -125,6 +130,7 @@ export function StageSidebar({
   const matchRoute = useMatchRoute()
   const search = useSearch({ strict: false }) as { tab?: string }
   const { stageState } = useBookRun()
+  const { data: accessibilityAssessment } = useAccessibilityAssessment(bookLabel)
   const { openSettings } = useSettingsDialog()
 
   const effectivePagesOpen =
@@ -151,22 +157,23 @@ export function StageSidebar({
   }
 
   const storyboardDone = stageState("storyboard") === "done"
+  const validationCompleted = Boolean(accessibilityAssessment?.assessment)
 
   const stageItems = STAGES.map((step, index) => {
     const isActive = step.slug === activeStep
     const Icon = step.icon
     const settingsTabs = getSettingsTabs(step.slug, i18n)
     const showSubTabs = isActive && isSettings && !!settingsTabs
-    const state = stageState(step.slug)
+    const state = step.slug === "validation" && validationCompleted ? "done" : stageState(step.slug)
     const stageCompleted = state === "done"
     const ringState = state
 
-    // "book" is always filled; "preview" and "export" fill once storyboard is done;
+    // "book" is always filled; "validation", "preview" and "export" fill once storyboard is done;
     // pipeline stages fill when their own stage is completed.
     const iconFilled =
       step.slug === "book"
         ? true
-        : step.slug === "preview" || step.slug === "export"
+        : step.slug === "validation" || step.slug === "preview" || step.slug === "export"
           ? storyboardDone
           : stageCompleted
 

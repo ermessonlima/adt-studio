@@ -11,6 +11,7 @@ import {
   TocView,
   TranslationsView,
   PreviewView,
+  ValidationView,
   ExportView,
 } from "../stages"
 import { cn } from "@/lib/utils"
@@ -53,8 +54,9 @@ const VIEW_MAP: Record<string, ViewEntry> = {
   glossary: { component: GlossaryView },
   toc: { component: TocView },
   "text-and-speech": { component: TranslationsView },
+  validation: { component: ValidationView, fullHeight: true },
   preview: { component: PreviewView, fullHeight: true },
-  export: { component: ExportView },
+  export: { component: ExportView, fullHeight: true },
 }
 
 export function StepViewRouter({ step, bookLabel, selectedPageId, onSelectPage }: { step: string; bookLabel: string; selectedPageId?: string; onSelectPage?: (pageId: string | null) => void }) {

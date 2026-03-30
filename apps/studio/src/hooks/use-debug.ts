@@ -21,6 +21,14 @@ export function usePipelineStats(
   })
 }
 
+export function useAccessibilityAssessment(label: string) {
+  return useQuery({
+    queryKey: ["debug", "accessibility", label],
+    queryFn: () => api.getAccessibilityAssessment(label),
+    enabled: !!label,
+  })
+}
+
 export function useActiveConfig(label: string) {
   return useQuery({
     queryKey: ["debug", "config", label],
@@ -33,11 +41,12 @@ export function useVersionHistory(
   label: string,
   node: string,
   itemId: string,
-  includeData?: boolean
+  includeData?: boolean,
+  options?: { enabled?: boolean }
 ) {
   return useQuery({
     queryKey: ["debug", "versions", label, node, itemId, includeData],
     queryFn: () => api.getVersionHistory(label, node, itemId, includeData),
-    enabled: !!label && !!node && !!itemId,
+    enabled: (options?.enabled ?? true) && !!label && !!node && !!itemId,
   })
 }

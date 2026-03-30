@@ -1,0 +1,277 @@
+identification_fields:
+- id: reviewer-name
+  label: Reviewer name
+  type: text
+  required: true
+- id: institution
+  label: Institution
+  type: text
+  required: false
+- id: start-page
+  label: Validation start page
+  description: Specify the first digital textbook page included in this review.
+  type: number
+  required: false
+- id: end-page
+  label: Validation end page
+  description: Specify the last digital textbook page included in this review.
+  type: number
+  required: false
+- id: start-date
+  label: Validation start date
+  description: Date on which the reviewer begins the validation.
+  type: date
+  required: false
+- id: end-date
+  label: Validation end date
+  description: Date on which the reviewer completes the validation.
+  type: date
+  required: false
+- id: comments
+  label: Comments
+  description: Add any relevant additional comments for the overall review session.
+  type: textarea
+  required: false
+instructions:
+- id: objective
+  title: Validation objective
+  body: Assess the content quality and accessibility of the ADT, identify issues or improvement opportunities, and confirm that the packaged textbook accurately matches the original source, meets accessibility expectations, aligns with Universal Design for Learning principles, and supports relevant accessibility standards.
+  bullets:
+  - Accurately matches the original book content.
+  - Meets minimum accessibility requirements.
+  - Aligns with Universal Design for Learning principles.
+  - Supports relevant international accessibility standards.
+- id: workflow
+  title: Recommended workflow
+  body: Complete reviewer identification first, read the review guidance before starting, and then work through page-level validation while recording clear comments and suggested modifications for any findings that need changes.
+  bullets:
+  - Complete the reviewer identification details before validating.
+  - Read the guidance for the review areas before starting.
+  - Record the ADT page link and digital page number for page-specific findings.
+  - Describe the issue clearly and add a suggested modification whenever possible.
+sections:
+- id: text-extracted-accuracy
+  label: Text extracted accuracy
+  criteria:
+  - id: text-matches-original-reading-order
+    label: Extracted text matches the original text and preserves the original reading order.
+    guidance: Extracted text should fully match the original content without omissions, additions, or alterations, and it should follow a logical and meaningful sequence.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: text-does-not-break-illogically
+    label: The extracted text does not break into random smaller or illogical fragments.
+    guidance: Text should appear in coherent units such as sentences and paragraphs rather than isolated characters, words, or random segments.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: visual-media-image-description
+  label: Visual media & image description
+  criteria:
+  - id: images-match-original-framing
+    label: Extracted images match the original book and preserve framing and proportions.
+    guidance: Extracted images must exactly match the original PDF images, preserving the original frame, resolution, aspect ratio, color fidelity, and visual integrity without distortion, cropping, or content alteration.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: text-not-in-image-format
+    label: Text content is not in image format.
+    guidance: Verify that no meaningful text has been saved as an image. All text associated with pictures should be separated and presented as selectable, readable text rather than embedded within an image.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: illustrations-remain-consistent
+    label: Consistent illustrations are used to describe objects, places and others.
+    guidance: When the same character, object, or location appears multiple times, the same illustration style should be used to maintain coherence and avoid confusion.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: meaningful-graphics-have-descriptions
+    label: Image description and video descriptions are accompanying all meaningful graphic content.
+    guidance: All meaningful visual elements must include accurate descriptions that function correctly across different media types such as images, diagrams, and videos.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: decorative-images-do-not-use-description
+    label: Image description is not used in decorative images.
+    guidance: Decorative or non-essential images should be hidden from image description and screen readers.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: image-description-reflects-purpose-context
+    label: Image description accurately reflect the image’s purpose and context (concise and clear).
+    guidance: Descriptions must be concise, clear, and focused on the relevant information that helps students understand the instructional purpose of the image.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: image-description-style-consistent
+    label: Image description style is consistent throughout images.
+    guidance: The format, tone, and level of detail used in descriptions should follow a consistent style across the entire ADT.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+- id: audio-voice-over
+  label: Audio and voice-over
+  criteria:
+  - id: audio-available-for-relevant-content
+    label: Audio is available for all relevant content.
+    guidance: Audio must be provided for all meaningful elements, including headings, titles, page numbers, main content, references, navigation buttons, and other instructional components.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: audio-synchronized-with-highlighted-text
+    label: Audio text is synchronized with the highlighted text.
+    guidance: Audio should begin and progress in alignment with the highlighted text, ensuring accurate correspondence between spoken and written content.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: easy-read
+  label: Easy-read
+  criteria:
+  - id: easy-read-preserves-key-information
+    label: Easy-read content simplifies language while preserving key information and pedagogical value.
+    guidance: The simplified version must use clear, concise language without altering the meaning or omitting essential instructional content. Learning objectives, instructions, and essential concepts should remain intact and support the same learning outcomes as the original text.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: easy-read-uses-present-active-voice
+    label: Easy-read text is written in present and active voice.
+    guidance: Sentences should use active voice to improve clarity and directness, supporting easier comprehension.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: numbers-preserved-as-numerals
+    label: Numbers in the texts are preserved as numerals.
+    guidance: Numerical values should remain in digit form, for example “5” instead of “five”.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+- id: glossary
+  label: Glossary
+  criteria:
+  - id: glossary-includes-relevant-key-terms
+    label: Glossary includes key words, new terminology, and concepts. Words that are not relevant should not be included.
+    guidance: The glossary must be provided for key and unfamiliar words, concepts, or terminology used in the ADT.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: glossary-links-open-without-issues
+    label: Key words, new terminology, new concepts and icons are linked to the glossary and open without issues.
+    guidance: Accessing glossary entries should be seamless. The pop-up or panel must appear immediately, be fully visible, not obscure essential content, and glossary-linked words should be clearly marked.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: interactivity
+  label: Interactivity
+  criteria:
+  - id: all-exercises-are-interactive
+    label: All exercises are interactive.
+    guidance: Exercises must allow user input and response, with clear instructions and functional interaction.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: exercise-instructions-clear-on-page
+    label: All exercises have clear instructions on what to do in the same page.
+    guidance: Exercises should continue to display clear, complete instructions within the same screen so learners understand the task without navigating elsewhere.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: exercises-provide-feedback
+    label: Exercises provide feedback after completion.
+    guidance: Feedback should be provided after responses are submitted, including clear messages for incorrect answers, and it should be available for all exercises.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: blank-spaces-not-misidentified-as-text
+    label: Blank spaces for exercises are not misidentified as text.
+    guidance: Non-text elements such as blank fields or decorative spacing should not be interpreted as readable text.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: exercise-design-consistent
+    label: Exercises design is consistent throughout the ADT.
+    guidance: Exercises of the same type should follow a consistent visual and structural format, including alignment, spacing, and the way questions and response options are presented.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: exercise-answers-not-revealed
+    label: Answers for exercises are not given in the text or any accessibility content.
+    guidance: Image descriptions, easy-read text, glossary content, and text-to-speech should not reveal solutions or inferred answers.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: typography-layout-visual-readability
+  label: Typography, layout and visual readability
+  criteria:
+  - id: design-maintains-learning-flow
+    label: Design and layout maintain the intended learning flow from the original book.
+    guidance: The ADT layout should accurately reflect the structure of the original book, with no missing elements and a logical sequence that preserves learning flow.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: font-supports-readability-organization
+    label: Font type and size support readability and content organization.
+    guidance: Typography should enhance readability, avoid visual clutter, and help structure content clearly so text is balanced, easy to scan, and comfortable to read.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: instructional-content-design
+  label: Instructional content design
+  criteria:
+  - id: inclusive-language-used
+    label: Inclusive language is used throughout all content.
+    guidance: Language should avoid unnecessary technical terms, communicate ideas directly, remain engaging, and be inclusive for all learners. This also applies to sign-language videos.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: content-free-of-typos
+    label: Content is free of typos, spelling, grammar, and orthographic mistakes.
+    guidance: Check that there are no errors in spelling, grammar, punctuation, or orthography.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: key-points-summarized
+    label: Key points are summarized at the end of each chapter.
+    guidance: Each chapter should end with a clear summary of the main ideas to reinforce essential information and support retention.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: language-appropriate-for-audience
+    label: Language is appropriate for age, educational level, and context.
+    guidance: Wording should match learners’ developmental stage, prior knowledge, and cultural context so the content remains accessible and relatable.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: terminology-used-consistently
+    label: Terminology and terms are used consistently throughout the textbook.
+    guidance: Terms referring to the same concept should remain consistent across the ADT. Avoid synonyms that may introduce confusion.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+- id: translation
+  label: Translation
+  criteria:
+  - id: translation-accurate-fluent-preserves-meaning
+    label: Translation is accurate, fluent and preserves meaning and complexity.
+    guidance: The translation should read smoothly, avoid awkward literal phrasing, and preserve both the meaning and difficulty level of the original text.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: all-text-translated
+    label: All text is translated.
+    guidance: All words, sentences, and embedded text such as captions, labels, and alt text should be translated.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: translation-preserves-layout-structure
+    label: Layout and structure are preserved.
+    guidance: Headings, paragraphs, and overall formatting should remain intact in the translated experience.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: translation-works-across-devices
+    label: Translation works across devices and browsers.
+    guidance: The translation should work properly across different devices and browsers.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+  - id: translation-loads-correctly
+    label: Translation loads correctly and in a reasonable time.
+    guidance: The translation should load quickly without long delays or frozen screens so navigation and learning flow remain smooth.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: false
+- id: sign-language
+  label: Sign language
+  criteria:
+  - id: signing-movements-visible
+    label: All types of signing movements and facial expressions are fully visible.
+    guidance: Movements upward, downward, and to the sides should remain within the camera frame, and facial expressions should be unobstructed and clearly captured.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: background-attire-not-distracting
+    label: Background and attire do not distract from signing.
+    guidance: Clothing should avoid distracting patterns, and the background should contrast with the signer’s skin tone to maximize clarity.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: local-sign-language-used
+    label: Local sign language is used.
+    guidance: Videos should use the national or regional sign language appropriate to the context and target users.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: narrator-visible-with-contrast-lighting
+    label: Narrator is clearly visible with appropriate contrast and lighting.
+    guidance: Lighting should ensure the signer’s face, hands, and movements are easy to perceive, with no shadows or glare that reduce visibility.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true
+  - id: subtitles-reflect-sign-language-meaning
+    label: Subtitles reflect sign‑language interpretation, not verbatim text.
+    guidance: Subtitles should represent the meaning conveyed in sign language rather than a direct transcription of the written text.
+    requires_comment_on_failure: true
+    requires_suggested_modification_on_failure: true

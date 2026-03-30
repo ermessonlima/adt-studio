@@ -53,6 +53,7 @@ export {
   RenderType,
   VisualRefinementStrategyConfig,
   RenderStrategyConfig,
+  AccessibilityAssessmentConfig,
   AppConfig,
   type TypeDef,
 } from "./config.js"
@@ -149,3 +150,29 @@ export {
   TocGenerationOutput,
   tocLLMSchema,
 } from "./toc.js"
+
+export {
+  AccessibilityNodeResult,
+  AccessibilityFinding,
+  AccessibilityPageResult,
+  AccessibilityAssessmentSummary,
+  AccessibilityAssessmentOutput,
+} from "./accessibility.js"
+
+export {
+  ReviewerValidationConfig,
+  type ReviewerValidationCatalog,
+} from "./reviewer-validation-config.js"
+
+export {
+  ReviewerValidationStatus,
+  ReviewerValidationFieldType,
+  ReviewerValidationIdentificationField,
+  ReviewerValidationInstruction,
+  ReviewerValidationCriterion,
+  ReviewerValidationSection,
+  ReviewerValidationCatalogSnapshot,
+  ReviewerValidationSession,
+  ReviewerPageValidationResult,
+  ReviewerPageValidationRecord,
+} from "./reviewer-validation.js"

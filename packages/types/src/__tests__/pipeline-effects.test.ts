@@ -15,6 +15,7 @@ describe("pipeline effects", () => {
       "tts",
       "text-catalog-translation",
       "package-web",
+      "accessibility-assessment",
     ])
   })
 
@@ -24,6 +25,7 @@ describe("pipeline effects", () => {
       "text-catalog",
       "tts",
       "step-status",
+      "debug",
     ])
   })
 

@@ -1,5 +1,3 @@
-import { Trans } from "@lingui/react/macro"
-import { useLingui } from "@lingui/react/macro"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { Badge } from "@/components/ui/badge"
 
@@ -23,21 +21,16 @@ function ConfigSection({ title, data }: { title: string; data: unknown }) {
 }
 
 export function ConfigTab({ label }: ConfigTabProps) {
-  const { t } = useLingui()
   const { data, isLoading, error } = useActiveConfig(label)
 
   if (isLoading) {
-    return (
-      <div className="p-6 text-sm text-muted-foreground">
-        <Trans>Loading config...</Trans>
-      </div>
-    )
+    return <div className="p-6 text-sm text-muted-foreground">Loading config...</div>
   }
 
   if (error) {
     return (
       <div className="p-6 text-sm text-destructive">
-        <Trans>Failed to load config:</Trans> {error.message}
+        Failed to load config: {error.message}
       </div>
     )
   }
@@ -48,16 +41,17 @@ export function ConfigTab({ label }: ConfigTabProps) {
   const config = merged as Record<string, unknown>
 
   const sections = [
-    { key: "text_types", title: t`Text Types` },
-    { key: "group_types", title: t`Group Types` },
-    { key: "section_types", title: t`Section Types` },
-    { key: "metadata_extraction", title: t`Metadata Extraction` },
-    { key: "text_classification", title: t`Text Classification` },
-    { key: "image_filters", title: t`Image Filtering` },
-    { key: "page_sectioning", title: t`Page Sectioning` },
-    { key: "default_render_strategy", title: t`Default Render Strategy` },
-    { key: "render_strategies", title: t`Render Strategies` },
-    { key: "section_render_strategies", title: t`Section Render Strategies` },
+    { key: "text_types", title: "Text Types" },
+    { key: "group_types", title: "Group Types" },
+    { key: "section_types", title: "Section Types" },
+    { key: "metadata_extraction", title: "Metadata Extraction" },
+    { key: "text_classification", title: "Text Classification" },
+    { key: "image_filters", title: "Image Filtering" },
+    { key: "page_sectioning", title: "Page Sectioning" },
+    { key: "default_render_strategy", title: "Default Render Strategy" },
+    { key: "render_strategies", title: "Render Strategies" },
+    { key: "section_render_strategies", title: "Section Render Strategies" },
+    { key: "accessibility_assessment", title: "Accessibility Assessment" },
   ]
 
   const knownKeys = new Set(sections.map((s) => s.key))
@@ -66,17 +60,11 @@ export function ConfigTab({ label }: ConfigTabProps) {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">
-          <Trans>Active Configuration</Trans>
-        </span>
+        <span className="text-sm font-medium">Active Configuration</span>
         {hasBookOverride ? (
-          <Badge variant="default" className="text-xs">
-            <Trans>Book Override</Trans>
-          </Badge>
+          <Badge variant="default" className="text-xs">Book Override</Badge>
         ) : (
-          <Badge variant="secondary" className="text-xs">
-            <Trans>Global Only</Trans>
-          </Badge>
+          <Badge variant="secondary" className="text-xs">Global Only</Badge>
         )}
       </div>
 
