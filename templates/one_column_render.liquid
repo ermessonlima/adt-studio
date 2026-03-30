@@ -1,0 +1,74 @@
+<div id="content" class="container mx-auto w-full max-w-3xl px-8 py-10" style="background-color: {{ background_color | default: '#ffffff' | escape }}; color: {{ text_color | default: '#1a1a1a' | escape }};">
+    <section role="article" data-section-type="{{ section_type | escape }}" data-section-id="{{ section_id | escape }}" class="w-full space-y-6">
+        {% for part in parts %}
+            {% if part.type == "image" %}
+                <figure class="my-8">
+                    <img data-id="{{ part.image_id | escape }}" src="{{ part.image_url | escape }}" class="mx-auto max-w-full h-auto">
+                </figure>
+            {% elsif part.type == "group" %}
+                {% if part.group_type == "heading" %}
+                    {% for text in part.texts %}
+                        {% if text.text_type == "book_title" or text.text_type == "chapter_title" %}
+                    <h1 class="text-2xl font-bold leading-tight mt-10 mb-4" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</h1>
+                        {% elsif text.text_type == "section_heading" %}
+                    <h2 class="text-xl font-semibold leading-tight mt-8 mb-3" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</h2>
+                        {% elsif text.text_type == "book_subtitle" %}
+                    <h3 class="text-lg font-medium leading-snug mt-6 mb-2" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</h3>
+                        {% else %}
+                    <p class="text-base leading-relaxed" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</p>
+                        {% endif %}
+                    {% endfor %}
+                {% elsif part.group_type == "list" %}
+                    <ul class="list-disc list-inside space-y-1 pl-4">
+                        {% for text in part.texts %}
+                        <li class="text-base leading-relaxed" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</li>
+                        {% endfor %}
+                    </ul>
+                {% elsif part.group_type == "table" %}
+                    {% assign cell_count = part.texts.size %}
+                    {% if cell_count <= 4 %}
+                        {% assign cols = 2 %}
+                    {% elsif cell_count <= 9 %}
+                        {% assign cols = 3 %}
+                    {% else %}
+                        {% assign cols = 4 %}
+                    {% endif %}
+                    <div class="overflow-x-auto my-4">
+                        <table class="w-full border-collapse text-sm">
+                            <tbody>
+                                {% assign col_idx = 0 %}
+                                {% for text in part.texts %}
+                                    {% if col_idx == 0 %}<tr class="border-b border-gray-200">{% endif %}
+                                    <td class="px-3 py-2 text-base" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</td>
+                                    {% assign col_idx = col_idx | plus: 1 %}
+                                    {% if col_idx >= cols %}
+                                        </tr>
+                                        {% assign col_idx = 0 %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if col_idx > 0 %}</tr>{% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% elsif part.group_type == "stanza" %}
+                    <blockquote class="border-l-2 border-gray-300 pl-6 my-6 space-y-1">
+                        {% for text in part.texts %}
+                        <span class="text-base leading-relaxed italic block" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</span>
+                        {% endfor %}
+                    </blockquote>
+                {% else %}
+                    <p class="text-base leading-relaxed">
+                        {% for text in part.texts %}
+                            {% if text.text_type == "math" %}
+                        <span class="font-mono" data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</span>
+                            {% else %}
+                        <span data-id="{{ text.text_id | escape }}">{{ text.text | escape }}</span>
+                            {% endif %}
+                            {% unless forloop.last %} {% endunless %}
+                        {% endfor %}
+                    </p>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    </section>
+</div>

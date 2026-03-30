@@ -294,6 +294,9 @@ importers:
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.19(tsx@4.21.0)
+      temml:
+        specifier: ^0.13.2
+        version: 0.13.2
       zod:
         specifier: ^3.24.0
         version: 3.25.76
@@ -3676,6 +3679,10 @@ packages:
   tar@7.5.7:
     resolution: {integrity: sha512-fov56fJiRuThVFXD6o6/Q354S7pnWMJIVlDBYijsTNx6jKSE4pvrDTs6lUnmGvNyfJwFQQwWy3owKz1ucIhveQ==}
     engines: {node: '>=18'}
+
+  temml@0.13.2:
+    resolution: {integrity: sha512-n8fDRSsLscq9nh9j6z+FgkCvFMT0IJm6GCgwfzh+7AHT3Sfb4jFTQlsA6hVcF2dYYr3b66oDBVES95RfoukyrA==}
+    engines: {node: '>=18.13.0'}
 
   text-decoder@1.2.4:
     resolution: {integrity: sha512-mzlffA3tBNhziEHPK5L5InZg1d/ElNIpJhnhbDRNUtem/edZcJ5zg5FgwKKKOyklxk+6Jt+TrSu83musmvrDlg==}
@@ -7217,6 +7224,8 @@ snapshots:
       minipass: 7.1.2
       minizlib: 3.1.0
       yallist: 5.0.0
+
+  temml@0.13.2: {}
 
   text-decoder@1.2.4:
     dependencies:

@@ -2,7 +2,7 @@
 # Template-driven rendering, spread pages, no activities, no quizzes
 # Based on adt-press "novel_with_images" preset
 
-default_render_strategy: two_column
+default_render_strategy: one_column
 
 spread_mode: false
 
@@ -10,6 +10,10 @@ page_sectioning:
   mode: page
 
 render_strategies:
+  one_column:
+    render_type: template
+    config:
+      template: one_column_render
   two_column:
     render_type: template
     config:

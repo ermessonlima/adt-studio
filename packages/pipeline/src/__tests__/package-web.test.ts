@@ -3,7 +3,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Storage, PageData } from "@adt/storage"
-import { packageAdtWeb, packageWebpub, renderPageHtml, rewriteImageUrls } from "../package-web.js"
+import { packageAdtWeb, packageWebpub, renderPageHtml, rewriteImageUrls, convertLatexToMathml, convertLatexString } from "../package-web.js"
 
 function createMockStorage(
   pages: PageData[],
@@ -475,6 +475,65 @@ describe("packageAdtWeb", () => {
     expect(configJson.features.activities).toBe(true)
   })
 
+  it("converts LaTeX math to MathML in output HTML and does not include MathJax script", async () => {
+    const bookDir = path.join(tmpDir, "book")
+    const webAssetsDir = path.join(tmpDir, "assets-web")
+    fs.mkdirSync(bookDir, { recursive: true })
+    createWebAssets(webAssetsDir)
+
+    const pages: PageData[] = [
+      { pageId: "pg001", pageNumber: 1, text: "Page one" },
+    ]
+
+    const storage = createMockStorage(pages, {
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "content",
+              reasoning: "ok",
+              html: '<div>The area is $\\pi r^2$ and the fraction is $$\\frac{1}{2}$$</div>',
+            },
+          ],
+        },
+      },
+      "page-sectioning": {
+        pg001: {
+          reasoning: "ok",
+          sections: [
+            {
+              sectionId: "pg001_sec001",
+              sectionType: "content",
+              parts: [],
+              backgroundColor: "#fff",
+              textColor: "#000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+      },
+    })
+
+    await packageAdtWeb(storage, {
+      bookDir,
+      label: "book",
+      language: "en",
+      outputLanguages: ["en"],
+      title: "Math Book",
+      webAssetsDir,
+    })
+
+    const pageHtml = fs.readFileSync(path.join(bookDir, "adt", "index.html"), "utf-8")
+    // LaTeX should be replaced with MathML
+    expect(pageHtml).toContain("<math")
+    expect(pageHtml).not.toContain("$\\pi r^2$")
+    expect(pageHtml).not.toContain("$$\\frac{1}{2}$$")
+    // MathJax script should not be included (we use static MathML now)
+    expect(pageHtml).not.toContain("mathjax")
+  })
+
   it("orders rendered sections by sectionIndex before writing pages.json", async () => {
     const bookDir = path.join(tmpDir, "book")
     const webAssetsDir = path.join(tmpDir, "assets-web")
@@ -707,6 +766,122 @@ describe("rewriteImageUrls", () => {
     const imageMap = new Map<string, string>()
     const { html: out } = rewriteImageUrls(html, "mybook", imageMap)
     expect(out).toContain('src="https://example.com/photo.jpg"')
+  })
+})
+
+describe("convertLatexToMathml", () => {
+  it("converts inline $...$ LaTeX to MathML", () => {
+    const result = convertLatexToMathml("<p>The equation $x^2$ is simple.</p>")
+    expect(result).toContain("<math")
+    expect(result).toContain("</math>")
+    expect(result).not.toContain("$x^2$")
+  })
+
+  it("converts display $$...$$ LaTeX to MathML with display=block", () => {
+    const result = convertLatexToMathml('<p>$$\\frac{1}{2}$$</p>')
+    expect(result).toContain('display="block"')
+    expect(result).toContain("<mfrac>")
+  })
+
+  it("converts \\(...\\) inline delimiters", () => {
+    const result = convertLatexToMathml("<p>Inline \\(a + b\\) math</p>")
+    expect(result).toContain("<math")
+    expect(result).not.toContain("\\(a + b\\)")
+  })
+
+  it("converts \\[...\\] display delimiters", () => {
+    const result = convertLatexToMathml("<p>\\[a + b = c\\]</p>")
+    expect(result).toContain('display="block"')
+  })
+
+  it("leaves non-math content unchanged", () => {
+    const html = "<p>No math here</p>"
+    expect(convertLatexToMathml(html)).toBe(html)
+  })
+
+  it("leaves invalid LaTeX as-is on parse error", () => {
+    const html = "<p>$\\invalid{$</p>"
+    const result = convertLatexToMathml(html)
+    // Should either convert or leave as-is, not throw
+    expect(result).toContain("<p>")
+  })
+
+  it("handles multiple math expressions in one string", () => {
+    const result = convertLatexToMathml("<p>$a$ and $b$</p>")
+    const mathCount = (result.match(/<math/g) ?? []).length
+    expect(mathCount).toBe(2)
+  })
+
+  it("converts undelimited LaTeX with \\text{} in text nodes", () => {
+    const html = '<p data-id="tx001">V_{\\text{empilhamento I}} = 6\\ \\text{cubos}</p>'
+    const result = convertLatexToMathml(html)
+    expect(result).toContain("<math")
+    expect(result).not.toContain("\\text{")
+  })
+
+  it("converts undelimited LaTeX with \\hat{} and ^\\circ", () => {
+    const html = '<p data-id="tx001">m(A\\hat{O}B) + m(B\\hat{O}C) = 37^\\circ + 53^\\circ = 90^\\circ</p>'
+    const result = convertLatexToMathml(html)
+    expect(result).toContain("<math")
+    expect(result).not.toContain("\\hat{")
+  })
+
+  it("does not modify text nodes without LaTeX", () => {
+    const html = "<p>Just plain text here</p>"
+    expect(convertLatexToMathml(html)).toBe(html)
+  })
+})
+
+describe("convertLatexString", () => {
+  it("converts undelimited LaTeX in plain text (text catalog entry)", () => {
+    const text = "\\left(2\\frac{3}{4}x + 9\\right) + \\left(2\\frac{3}{4}x + 9\\right)"
+    const result = convertLatexString(text)
+    expect(result).toContain("<math")
+    expect(result).not.toContain("\\frac")
+    expect(result).not.toContain("\\left")
+  })
+
+  it("converts delimited LaTeX in plain text", () => {
+    const result = convertLatexString("The area is $\\pi r^2$")
+    expect(result).toContain("<math")
+    expect(result).not.toContain("$\\pi")
+  })
+
+  it("leaves plain text without LaTeX unchanged", () => {
+    const text = "Just a normal sentence."
+    expect(convertLatexString(text)).toBe(text)
+  })
+
+  it("converts LaTeX with \\hat and ^\\circ", () => {
+    const text = "m(A\\hat{O}B) = 37^\\circ"
+    const result = convertLatexString(text)
+    expect(result).toContain("<math")
+    expect(result).not.toContain("\\hat{")
+  })
+
+  it("does not convert mixed prose with embedded math as a single expression", () => {
+    const text = "the molecular structure space M = (X, V), where X ∈ ℝ^{N×3} denotes atomic coordinates"
+    const result = convertLatexString(text)
+    // Should NOT be wrapped in a single <math> tag — it's prose, not a formula
+    expect(result).not.toMatch(/^<math/)
+    // The original text should be largely preserved
+    expect(result).toContain("molecular structure space")
+  })
+})
+
+describe("convertLatexToMathml (HTML)", () => {
+  it("does not convert mixed prose text nodes as math", () => {
+    const html = '<p data-id="tx001">the retrieval-augmented diffusion process where X ∈ ℝ^{N×3} denotes atomic coordinates</p>'
+    const result = convertLatexToMathml(html)
+    // Should preserve the prose — not wrap in <math>
+    expect(result).toContain("retrieval-augmented diffusion")
+    expect(result).not.toMatch(/>.*<math.*retrieval/)
+  })
+
+  it("still converts pure math text nodes", () => {
+    const html = '<p data-id="tx001">V_{\\text{empilhamento I}} = 6\\ \\text{cubos}</p>'
+    const result = convertLatexToMathml(html)
+    expect(result).toContain("<math")
   })
 })
 

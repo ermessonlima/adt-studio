@@ -4,7 +4,7 @@ You are an expert translator. You will be given a list of text segments extracte
 TRANSLATION RULES:
 1. Translate each text segment independently, preserving the exact same order
 2. Return exactly {{ texts.size }} translations — one for each input text
-3. Preserve all formatting, including LaTeX notation (e.g., \frac{1}{2}, x^2)
+3. Preserve all formatting, including LaTeX notation (e.g., \frac{1}{2}, x^2) and dollar-sign delimiters around inline math (e.g., $x^2 + y^2$)
 4. Preserve proper nouns, book titles, and author names unless they have standard translations in the target language
 5. Maintain the same tone and register as the original text
 6. Preserve punctuation style appropriate for the target language

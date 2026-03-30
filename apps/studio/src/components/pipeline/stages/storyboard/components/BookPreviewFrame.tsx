@@ -16,6 +16,27 @@ function previewAssetsUrl(bookLabel: string): string {
  *  The iframe is scaled down via CSS transform to fit the actual panel width. */
 const RENDER_WIDTH = 1280
 
+/**
+ * Apply a text edit to the original (LaTeX) HTML by replacing the textContent
+ * of the element matching the given data-id. Returns the reconstructed wrapper
+ * HTML, or null if the element was not found.
+ */
+function reconstructHtmlWithEdit(originalHtml: string, dataId: string, newText: string): string | null {
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(`<div id="__root">${originalHtml}</div>`, "text/html")
+    const el = doc.querySelector(`[data-id="${CSS.escape(dataId)}"]`)
+    if (!el) return null
+    el.textContent = newText
+    const wrapper = doc.getElementById("content") ?? doc.getElementById("__root")
+    if (!wrapper) return null
+    const cls = wrapper.getAttribute("class")?.trim()
+    return cls ? wrapper.outerHTML : wrapper.innerHTML
+  } catch {
+    return null
+  }
+}
+
 export interface BookPreviewFrameHandle {
   /** Get the iframe element's bounding rect in the viewport */
   getIframeRect: () => DOMRect | null
@@ -102,10 +123,46 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
   const [contentHeight, setContentHeight] = useState(800)
   const readyRef = useRef(false)
   const latestHtmlRef = useRef("")
+  const sanitizedHtmlRef = useRef("")
+  const originalTextsRef = useRef<Record<string, string>>({})
   const measureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const sanitizedHtml = useMemo(() => DOMPurify.sanitize(html), [html])
-  latestHtmlRef.current = sanitizedHtml
+  // Convert LaTeX to MathML for display via the API — the underlying data stays as LaTeX.
+  // Start with sanitized HTML immediately, then update when the API responds.
+  const [displayHtml, setDisplayHtml] = useState(sanitizedHtml)
+  useEffect(() => {
+    setDisplayHtml(sanitizedHtml)
+    let cancelled = false
+    fetch(`${assetsPrefix}/convert-math`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ html: sanitizedHtml }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { html: string } | null) => {
+        if (!cancelled && data?.html && data.html !== sanitizedHtml) {
+          setDisplayHtml(data.html)
+        }
+      })
+      .catch(() => {}) // fallback: display without math conversion
+    return () => { cancelled = true }
+  }, [sanitizedHtml, assetsPrefix])
+  latestHtmlRef.current = displayHtml
+  sanitizedHtmlRef.current = sanitizedHtml
+
+  // Build a map of data-id → original LaTeX innerHTML so the iframe can swap
+  // MathML back to LaTeX when the user clicks to edit an element.
+  useMemo(() => {
+    const map: Record<string, string> = {}
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(`<div>${sanitizedHtml}</div>`, "text/html")
+    doc.querySelectorAll("[data-id]").forEach((el) => {
+      const id = el.getAttribute("data-id")
+      if (id) map[id] = el.innerHTML
+    })
+    originalTextsRef.current = map
+  }, [sanitizedHtml])
 
   // Interactive script — always present in the iframe, gated by data-editable on <body>.
   // This avoids srcdoc changes (and thus iframe reloads) when the editable prop toggles.
@@ -113,6 +170,8 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
 (function() {
   var selected = null;
   var editing = null;
+  var savedDisplayHtml = null;
+  var savedOriginalText = null;
 
   function isEditable() { return document.body.dataset.editable === 'true'; }
 
@@ -145,20 +204,42 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
   function startEditing(el) {
     if (el.tagName === 'IMG') return;
     editing = el;
+    // Save the current MathML display before swapping to LaTeX
+    savedDisplayHtml = el.innerHTML;
+    var dataId = el.getAttribute('data-id');
+    if (window.__origTexts && window.__origTexts[dataId] != null) {
+      el.innerHTML = window.__origTexts[dataId];
+    }
+    // Capture original text AFTER the LaTeX swap so the comparison
+    // in finishEditing compares LaTeX-to-LaTeX, not MathML-to-LaTeX
+    savedOriginalText = el.textContent || '';
     el.contentEditable = 'true';
     el.style.outline = '2px solid rgba(59,130,246,1)';
     el.style.outlineOffset = '2px';
     el.focus();
-    parent.postMessage({ type: 'editing', dataId: el.getAttribute('data-id') }, '*');
+    parent.postMessage({ type: 'editing', dataId: dataId }, '*');
   }
 
   function finishEditing() {
     if (!editing) return;
     var el = editing;
+    var restoreHtml = savedDisplayHtml;
+    var origText = savedOriginalText;
     editing = null;
+    savedDisplayHtml = null;
+    savedOriginalText = null;
     el.contentEditable = 'false';
     el.style.outline = '';
     el.style.outlineOffset = '';
+    // Capture the edited text before restoring MathML display
+    var newText = el.textContent || '';
+    var dataId = el.getAttribute('data-id');
+    // Restore MathML display immediately so the preview looks correct
+    if (restoreHtml != null) {
+      el.innerHTML = restoreHtml;
+    }
+    // Only notify parent if text actually changed
+    if (newText === origText) return;
     var wrapper = document.getElementById('content');
     var fullHtml;
     if (wrapper) {
@@ -169,8 +250,8 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
     }
     parent.postMessage({
       type: 'text-changed',
-      dataId: el.getAttribute('data-id'),
-      newText: el.textContent || '',
+      dataId: dataId,
+      newText: newText,
       fullHtml: fullHtml
     }, '*');
   }
@@ -203,6 +284,11 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
       }
       if (e.key === 'Escape') {
         e.preventDefault();
+        // Restore MathML display on cancel
+        if (savedDisplayHtml != null) {
+          editing.innerHTML = savedDisplayHtml;
+          savedDisplayHtml = null;
+        }
         editing.contentEditable = 'false';
         editing.style.outline = '';
         editing.style.outlineOffset = '';
@@ -258,7 +344,10 @@ ${interactiveScript}
     if (type === "select" || type === "select-image") {
       callbacksRef.current.onSelectElement?.(dataId, rect)
     } else if (type === "text-changed") {
-      callbacksRef.current.onTextChanged?.(dataId, newText, fullHtml)
+      // Reconstruct fullHtml from original LaTeX HTML to prevent MathML
+      // from leaking into the data model when saving edits
+      const reconstructed = reconstructHtmlWithEdit(sanitizedHtmlRef.current, dataId, newText)
+      callbacksRef.current.onTextChanged?.(dataId, newText, reconstructed ?? fullHtml)
     } else if (type === "deselect") {
       callbacksRef.current.onSelectElement?.("", {} as DOMRect)
     }
@@ -292,6 +381,12 @@ ${interactiveScript}
     if (scriptEl) {
       doc.body.appendChild(scriptEl)
     }
+
+    // Inject original LaTeX texts so startEditing can swap MathML → LaTeX
+    const textsEl = doc.createElement("script")
+    textsEl.id = "adt-original-texts"
+    textsEl.textContent = `window.__origTexts=${JSON.stringify(originalTextsRef.current)};`
+    doc.body.appendChild(textsEl)
 
     // Apply data-background-color from content to iframe body
     if (applyBodyBackground !== false) {
@@ -327,8 +422,8 @@ ${interactiveScript}
   // When html prop changes, reset height and update the body directly (no iframe reload)
   useEffect(() => {
     setContentHeight(800)
-    if (readyRef.current) injectContent(sanitizedHtml)
-  }, [sanitizedHtml, applyBodyBackground])
+    if (readyRef.current) injectContent(displayHtml)
+  }, [displayHtml, applyBodyBackground])
 
   // Toggle editability dynamically via data attribute (no iframe reload needed)
   useEffect(() => {
