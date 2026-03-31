@@ -26,6 +26,8 @@ import {
   buildTextCatalog,
   pad3,
   loadBookConfig,
+  buildPreferredImageAltMap,
+  rewriteImageUrls,
   convertLatexToMathml,
 } from "@adt/pipeline"
 
@@ -699,14 +701,27 @@ export function createAdtPreviewRoutes(
       const manifest = buildPagesManifest(storage)
       const manifestIndex = manifest.findIndex((e) => e.section_id === pageId)
 
+      const sectionMeta = sectioningParsed?.success
+        ? sectioningParsed.data.sections[targetSectionIndex]
+        : undefined
+      const preferredImageAltMap = buildPreferredImageAltMap(storage, ownerPageId, sectionMeta)
+      const { html: previewSectionHtml } = rewriteImageUrls(
+        renderedSection.html,
+        label,
+        new Map<string, string>(),
+        preferredImageAltMap,
+      )
+
+      const previewHasMath = /(?:\\\(|\\\)|\\\[|\\\]|\$[^$]+\$|\\frac|\\sqrt|\\sum|\\int|\\text\{|\\hat\{|\\circ)/.test(previewSectionHtml)
+
       const html = renderPageHtml({
-        content: convertLatexToMathml(renderedSection.html),
+        content: convertLatexToMathml(previewSectionHtml),
         language,
         sectionId: pageId,
         pageTitle: title,
         pageIndex: manifestIndex >= 0 ? manifestIndex + 1 : 1,
         activityAnswers: renderedSection.activityAnswers,
-        hasMath: false,
+        hasMath: previewHasMath,
         bundleVersion: "1",
         applyBodyBackground,
         embed,

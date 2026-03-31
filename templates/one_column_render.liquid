@@ -1,5 +1,5 @@
 <div id="content" class="container mx-auto w-full max-w-3xl px-8 py-10" style="background-color: {{ background_color | default: '#ffffff' | escape }}; color: {{ text_color | default: '#1a1a1a' | escape }};">
-    <section role="article" data-section-type="{{ section_type | escape }}" data-section-id="{{ section_id | escape }}" class="w-full space-y-6">
+    <section data-section-type="{{ section_type | escape }}" data-section-id="{{ section_id | escape }}" class="w-full space-y-6">
         {% for part in parts %}
             {% if part.type == "image" %}
                 <figure class="my-8">

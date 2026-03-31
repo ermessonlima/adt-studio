@@ -1,4 +1,5 @@
 import { parseDocument, DomUtils } from "htmlparser2"
+import { normalizeSectionSemantics } from "./html-semantics.js"
 
 /** Minimum similarity (0–1) for auto-fixing text vs treating as a validation error */
 const TEXT_SIMILARITY_THRESHOLD = 0.7
@@ -123,6 +124,8 @@ function validateRequiredSectionAttributes(
   options: HtmlValidationOptions | undefined,
   errors: string[]
 ): void {
+  normalizeSectionSemantics(section)
+
   if (!options) return
 
   const actualSectionType = section.attribs?.["data-section-type"]
@@ -162,6 +165,7 @@ function walkNode(
   if (node.type === "text") {
     if (node.data.trim().length > 0) {
       if (isInsideExemptTag(node)) return
+      if (hasGeneratedA11yLabelAncestor(node)) return
       // Allow single-digit numbers as bare text (used as option markers in activities)
       if (/^\d$/.test(node.data.trim())) return
       if (!hasAncestorWithDataId(node)) {
@@ -251,6 +255,17 @@ function walkNode(
 
 /** Collect all data-id attribute values from a DOM tree. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasGeneratedA11yLabelAncestor(node: any): boolean {
+  let current = node.parent
+  while (current) {
+    if (current.attribs?.["data-generated-a11y-label"] === "true") {
+      return true
+    }
+    current = current.parent
+  }
+  return false
+}
+
 function collectDataIds(node: any, ids: Set<string>): void {
   if (node.type === "tag" && node.attribs?.["data-id"]) {
     ids.add(node.attribs["data-id"])

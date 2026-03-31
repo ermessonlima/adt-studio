@@ -13,7 +13,7 @@ You are an expert frontend engineer creating beautiful, kid-friendly HTML pages 
 
 ### CRITICAL Requirements
 1. Layout Shell - Start with page wrapper `<div class="flex justify-center items-start min-h-[calc(100dvh-100px)]">`
-2. ONE `<section>` tag with `role="activity"`, `data-section-type` equal to the provided section type, and `data-section-id` equal to the provided section ID
+2. ONE top-level `<section>` tag with `data-section-type` equal to the provided section type and `data-section-id` equal to the provided section ID. Do NOT add `role="activity"`
 3. Use ONLY provided text IDs and image IDs for `data-id` values (never invent IDs)
 4. ALL text elements MUST have `data-id` matching a provided text ID
 5. ALL images MUST have `data-id` matching a provided image ID
@@ -49,12 +49,13 @@ IMPORTANT: Your reasoning MUST be written in English, regardless of the activity
 
 **Required attributes:**
 - Each question needs one statement identifier (e.g., `item-1`) and BOTH radio inputs for that question must share that same `data-activity-item`
-- Only render "Yes"/"No" text if matching provided text IDs exist; otherwise use non-text markers/icons and keep labels in `aria-label`
+- Only render "Yes"/"No" text if matching provided text IDs exist; otherwise use non-text markers/icons plus an in-label `<span class="sr-only">…</span>` for the accessible label
+- Do not use `aria-label` on the radio inputs; the wrapping label must provide the accessible name
 - Proper `name` attributes to group radio buttons per question
 
 Example true/false activity:
 ```html
-<section class="space-y-4 lg:w-3/4 mx-auto" data-section-type="activity_true_false" data-section-id="SECTION_ID_FROM_INPUT" role="activity">
+<section class="space-y-4 lg:w-3/4 mx-auto" data-section-type="activity_true_false" data-section-id="SECTION_ID_FROM_INPUT">
   <!-- Title and image -->
   <h1 class="font-bold text-4xl text-center mb-4" data-id="text-19-0">Activity Title</h1>
   <img class="h-auto max-w-64 mx-auto block mb-4 rounded-lg" style="width:75%" data-id="img-19-0" src="images/image.jpg" alt="Description">
@@ -91,6 +92,13 @@ Example true/false activity:
             <span data-id="text-19-26">No</span>
             <span class="validation-mark absolute right-0 top-0 transform translate-x-1/2 -translate-y-1/2 hidden"></span>
           </div>
+        </label>
+        <!-- If no Yes/No text IDs are available, keep the visual badge decorative and add a hidden label: -->
+        <label for="question1-yes-icon" class="relative flex items-center cursor-pointer group">
+          <input id="question1-yes-icon" name="question1" tabindex="0" type="radio" value="true"
+                 data-activity-item="item-1" class="sr-only peer">
+          <div aria-hidden="true" class="px-4 py-2 rounded-full bg-gray-200 peer-checked:bg-blue-500 peer-checked:text-white peer-focus:ring-2 peer-focus:ring-blue-400 peer-focus:ring-offset-2 transition-colors min-w-[60px] text-center relative font-semibold after:content-['T']"></div>
+          <span class="sr-only">True</span>
         </label>
       </div>
     </fieldset>

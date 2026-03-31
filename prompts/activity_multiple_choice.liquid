@@ -25,9 +25,9 @@ Use this exact outer shell:
 ## Critical Validation Rules (MUST PASS)
 1. Include exactly ONE `<section>` inside `#content`.
 2. The section must have ALL of these attributes exactly:
-   - `role="activity"`
    - `data-section-type` equal to the provided section type
    - `data-section-id` equal to the provided section ID
+   - no `role="activity"` attribute
 3. Use ONLY the provided `data-id` values (text IDs and image IDs). Never invent IDs.
 4. Every provided text ID must appear exactly once in one element's `data-id`.
 5. Every image ID used in HTML must be from the provided image list.
@@ -51,7 +51,7 @@ Use this exact outer shell:
 
 ## Example Pattern (ID placeholders only - replace with provided IDs)
 ```html
-<section class="section mb-8" role="activity" data-section-type="SECTION_TYPE_FROM_INPUT" data-section-id="SECTION_ID_FROM_INPUT">
+<section class="section mb-8" data-section-type="SECTION_TYPE_FROM_INPUT" data-section-id="SECTION_ID_FROM_INPUT">
   <div class="questions grow space-y-4" role="group">
     <div class="mb-4 bg-green-100 rounded-lg p-4">
       <p data-id="TEXT_ID_FROM_INPUT">EXACT_TEXT_FROM_INPUT</p>
@@ -82,7 +82,7 @@ Use this exact outer shell:
 
 ## Example Pattern: Image-Based Choices (allowed)
 ```html
-<section class="section mb-8" role="activity" data-section-type="SECTION_TYPE_FROM_INPUT" data-section-id="SECTION_ID_FROM_INPUT">
+<section class="section mb-8" data-section-type="SECTION_TYPE_FROM_INPUT" data-section-id="SECTION_ID_FROM_INPUT">
   <div class="questions grow space-y-4" role="group">
     <p data-id="TEXT_ID_FROM_INPUT">EXACT_TEXT_FROM_INPUT</p>
 

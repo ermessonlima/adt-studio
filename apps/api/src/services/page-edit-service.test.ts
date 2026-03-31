@@ -155,7 +155,7 @@ describe("page-edit-service", () => {
         return {
           object: {
             reasoning: "rerendered",
-            content: `<div id="content" class="container"><section role="article" data-section-type="${sectionType}" data-section-id="${sectionId}"><img data-id="${imageId}" src="/api/books/${label}/images/${imageId}" alt="img" /></section></div>`,
+            content: `<div id="content" class="container"><section data-section-type="${sectionType}" data-section-id="${sectionId}"><img data-id="${imageId}" src="/api/books/${label}/images/${imageId}" alt="img" /></section></div>`,
           },
         } as never
       })

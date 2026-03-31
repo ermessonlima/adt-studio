@@ -18,7 +18,11 @@
     "dev:desktop": "pnpm --filter @adt/desktop dev",
     "build:desktop": "pnpm build && pnpm --filter @adt/desktop build",
     "pdf-extract": "tsx packages/pdf/src/cli.ts",
-    "pipeline": "tsx packages/pipeline/src/cli.ts"
+    "pipeline": "tsx packages/pipeline/src/cli.ts",
+    "a11y:regression": "tsx scripts/run-curated-a11y-regression.ts --build",
+    "a11y:regression:json": "tsx scripts/run-curated-a11y-regression.ts --build --format json",
+    "a11y:browser-recheck": "tsx scripts/run-browser-a11y-recheck.ts --build",
+    "a11y:browser-recheck:json": "tsx scripts/run-browser-a11y-recheck.ts --build --format json"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",

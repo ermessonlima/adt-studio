@@ -25,7 +25,7 @@ Generate a complete styleguide Markdown document following this exact structure.
 <div class="container content mx-auto flex min-h-screen w-full items-center justify-center px-6 py-12"
     data-background-color="BACKGROUND_COLOR" id="content">
   <section class="w-full" data-section-id="SECTION_ID" data-section-type="SECTION_TYPE" data-text-color="TEXT_COLOR"
-      id="simple-main" role="article">
+      id="simple-main">
     <!-- Content goes here -->
   </section>
 </div>
@@ -59,7 +59,7 @@ You may adjust alignment classes (items-center vs items-start), padding, and max
 - Elements with content MUST use `data-id="ID"` placeholders
 - Images MUST use `data-id="ID"` and `src="images/ID.jpg"`
 - The outer container MUST use `data-background-color` for page backgrounds
-- The section element MUST have `role="article"`, `data-section-id`, and `data-section-type` attributes
+- The section element MUST have `data-section-id` and `data-section-type` attributes, and MUST NOT add `role="article"`
 - Color values should be specific hex codes extracted from the images, not generic Tailwind color names
 - Text sizes should be appropriate for the target audience (larger for children, standard for adults)
 

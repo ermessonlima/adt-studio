@@ -23,6 +23,33 @@ if (document.getElementsByTagName("h1").length < 0) {
     localStorage.setItem("namePage", document.querySelector("h1")?.innerText ?? "unknown_page");
 }
 
+const getOptionText = (radio) => {
+    const explicitLabel = radio.getAttribute('aria-label')?.trim();
+    if (explicitLabel) {
+        return explicitLabel;
+    }
+
+    const label = radio.closest('label');
+    const srOnly = label?.querySelector('.sr-only:not(input)');
+    const srOnlyText = srOnly?.textContent?.trim();
+    if (srOnlyText) {
+        return srOnlyText;
+    }
+
+    const visibleText = Array.from(label?.querySelectorAll('span, div') ?? [])
+        .map((node) => node.textContent?.trim() || '')
+        .find((value) => value.length > 0);
+    if (visibleText) {
+        return visibleText;
+    }
+
+    if (radio.value === 'true') return 'True';
+    if (radio.value === 'false') return 'False';
+    if (radio.value === 'yes') return 'Yes';
+    if (radio.value === 'no') return 'No';
+    return radio.value;
+};
+
 // Inside the enhanceKeyboardAccessibility function
 const enhanceKeyboardAccessibility = (section) => {
     // Ensure each fieldset has the proper keyboard navigation
@@ -87,7 +114,7 @@ const enhanceKeyboardAccessibility = (section) => {
                 // Also enhance the onFocus event to announce the full context
                 newRadio.addEventListener('focus', () => {
                     // When a radio button gets focus, announce the question and current state
-                    const optionText = newRadio.value === 'yes' ? 'Sí' : 'No';
+                    const optionText = getOptionText(newRadio);
                     const isChecked = newRadio.checked ? 'seleccionado' : 'no seleccionado';
 
                     // Find or create an announcement element
@@ -101,7 +128,7 @@ const enhanceKeyboardAccessibility = (section) => {
 
 // Helper function to announce selection with question context
 const announceSelectionWithContext = (radio, questionText) => {
-    const optionText = radio.value === 'yes' ? 'Sí' : 'No';
+    const optionText = getOptionText(radio);
 
     // Find or create the announcement element
     const announcement = document.getElementById('keyboard-action-announcement') || createKeyboardActionAnnouncement();

@@ -206,19 +206,25 @@ function FrequentFindingCard({
     <div className="rounded-lg border px-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            className={cn(
-              "cursor-pointer text-[11px]",
-              finding.impact === "critical" ? "bg-red-500 text-white hover:bg-red-600"
-                : finding.impact === "serious" ? "bg-orange-500 text-white hover:bg-orange-600"
-                : finding.impact === "moderate" ? "bg-yellow-400 text-yellow-950 hover:bg-yellow-500"
-                : finding.impact === "minor" ? "bg-blue-400 text-white hover:bg-blue-500"
-                : "bg-gray-400 text-white hover:bg-gray-500",
-            )}
-            onClick={() => onFilterSeverity(finding.impact)}
-          >
-            <SeverityLabel severity={finding.impact} />
-          </Badge>
+          {finding.reviewOnly ? (
+            <Badge className="bg-sky-100 text-[11px] text-sky-900 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-200">
+              <Trans>Manual review</Trans>
+            </Badge>
+          ) : (
+            <Badge
+              className={cn(
+                "cursor-pointer text-[11px]",
+                finding.impact === "critical" ? "bg-red-500 text-white hover:bg-red-600"
+                  : finding.impact === "serious" ? "bg-orange-500 text-white hover:bg-orange-600"
+                  : finding.impact === "moderate" ? "bg-yellow-400 text-yellow-950 hover:bg-yellow-500"
+                  : finding.impact === "minor" ? "bg-blue-400 text-white hover:bg-blue-500"
+                  : "bg-gray-400 text-white hover:bg-gray-500",
+              )}
+              onClick={() => onFilterSeverity(finding.impact)}
+            >
+              <SeverityLabel severity={finding.impact} />
+            </Badge>
+          )}
           <Badge
             variant="outline"
             className="cursor-pointer text-[11px] hover:bg-muted"
@@ -227,7 +233,7 @@ function FrequentFindingCard({
             {getAccessibilityCategoryLabel(i18n, finding.categoryKey)}
           </Badge>
         </div>
-        <div className="text-sm font-semibold tabular-nums">{t`${finding.count} observations`}</div>
+        <div className="text-sm font-semibold tabular-nums">{finding.reviewOnly ? t`${finding.count} ${finding.count === 1 ? "manual review item" : "manual review items"}` : t`${finding.count} ${finding.count === 1 ? "issue" : "issues"}`}</div>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="font-medium">{finding.help}</span>
@@ -302,25 +308,30 @@ export function AccessibilityOverviewTab({ label }: AccessibilityTabProps) {
     totalObservations += finding.count
   }
 
-  // Severity counts filtered by active category filter
+  const issueFindings = allFindings.filter((finding) => !finding.reviewOnly)
+
+  // Severity counts filtered by active category filter; manual-review items are excluded.
   const severityCounts: Record<AccessibilitySeverity, number> = { critical: 0, serious: 0, moderate: 0, minor: 0, unknown: 0 }
-  const severityFiltered = categoryFilter ? allFindings.filter((f) => f.categoryKey === categoryFilter) : allFindings
+  const severityFiltered = categoryFilter ? issueFindings.filter((finding) => finding.categoryKey === categoryFilter) : issueFindings
   for (const finding of severityFiltered) {
     severityCounts[finding.impact] += finding.count
   }
 
-  // Category counts filtered by active severity filter
+  // Category counts filtered by active severity filter.
   const categoryCounts = new Map<AccessibilityCategoryKey, number>()
-  const categoryFiltered = severityFilter ? allFindings.filter((f) => f.impact === severityFilter) : allFindings
+  const categoryFiltered = severityFilter ? issueFindings.filter((finding) => finding.impact === severityFilter) : allFindings
   for (const finding of categoryFiltered) {
     categoryCounts.set(finding.categoryKey, (categoryCounts.get(finding.categoryKey) ?? 0) + finding.count)
   }
 
   const visibleFindings = allFindings.filter((finding) => {
-    if (severityFilter && finding.impact !== severityFilter) return false
+    if (severityFilter) {
+      if (finding.reviewOnly || finding.impact !== severityFilter) return false
+    }
     if (categoryFilter && finding.categoryKey !== categoryFilter) return false
     return true
   })
+  const visibleFindingsUniverse = severityFilter ? issueFindings : allFindings
 
   const hasActiveFilter = severityFilter !== null || categoryFilter !== null
 
@@ -341,6 +352,16 @@ export function AccessibilityOverviewTab({ label }: AccessibilityTabProps) {
     <div className="p-6">
       <div className="rounded-t-xl border border-b-0 bg-card p-4 space-y-4">
         <div className="flex flex-wrap gap-3">
+          <SummaryCard
+            label={t`Issues`}
+            value={assessment.summary.violationCount}
+            tone={assessment.summary.violationCount > 0 ? "warning" : "default"}
+          />
+          <SummaryCard
+            label={t`Manual review`}
+            value={assessment.summary.incompleteCount}
+            tone={assessment.summary.incompleteCount > 0 ? "info" : "default"}
+          />
           <SummaryCard
             label={t`All Severities`}
             value={severityFiltered.reduce((sum, f) => sum + f.count, 0)}
@@ -437,13 +458,13 @@ export function AccessibilityOverviewTab({ label }: AccessibilityTabProps) {
               </Button>
             </>
           ) : (
-            <span><Trans>All findings</Trans></span>
+            <span><Trans>All issues and manual review items</Trans></span>
           )}
         </div>
         <p className="text-[11px] text-muted-foreground tabular-nums">
-          {visibleFindings.length === allFindings.length
-            ? t`${allFindings.length} findings`
-            : t`${visibleFindings.length} of ${allFindings.length} findings`}
+          {visibleFindings.length === visibleFindingsUniverse.length
+            ? t`${visibleFindingsUniverse.length} items`
+            : t`${visibleFindings.length} of ${visibleFindingsUniverse.length} items`}
         </p>
       </div>
 
@@ -461,7 +482,7 @@ export function AccessibilityOverviewTab({ label }: AccessibilityTabProps) {
           ))
         ) : (
           <div className="rounded-lg border border-dashed px-4 py-4 text-sm text-muted-foreground">
-            {hasActiveFilter ? t`No findings match the current filters.` : t`No findings were reported.`}
+            {hasActiveFilter ? t`No issues or manual review items match the current filters.` : t`No issues or manual review items were reported.`}
           </div>
         )}
       </div>

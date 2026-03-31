@@ -258,6 +258,18 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
       }
     },
 
+    getNodeVersionFingerprint(excludeNodes: string[] = []): Array<{ node: string; itemId: string; version: number }> {
+      let sql = "SELECT node, item_id, MAX(version) as version FROM node_data"
+      const params: string[] = []
+      if (excludeNodes.length > 0) {
+        sql += ` WHERE node NOT IN (${excludeNodes.map(() => "?").join(", ")})`
+        params.push(...excludeNodes)
+      }
+      sql += " GROUP BY node, item_id ORDER BY node, item_id"
+      const rows = db.all(sql, params) as Array<{ node: string; item_id: string; version: number }>
+      return rows.map((r) => ({ node: r.node, itemId: r.item_id, version: r.version }))
+    },
+
     appendLlmLog(entry: LlmLogEntry): void {
       db.run(
         "INSERT INTO llm_log (request_id, timestamp, step, item_id, success, error_count, data) VALUES (?, ?, ?, ?, ?, ?, ?)",

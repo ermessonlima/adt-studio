@@ -6,7 +6,7 @@ import { executeMail } from './send-email.js';
 import { updateResetButtonVisibility } from '../../activity.js';
 import { highlightElement, unhighlightElement, updatePlayPauseIcon } from '../ui_utils.js';
 
-const QUIZ_SECTION_SELECTOR = 'section[role="activity"][data-section-type="activity_quiz"]';
+const QUIZ_SECTION_SELECTOR = 'section[data-section-type="activity_quiz"]';
 const CORRECT_ANSWERS_SCRIPT_ID = 'quiz-correct-answers';
 const EXPLANATIONS_SCRIPT_ID = 'quiz-explanations';
 const QUIZ_SHORTCUT_KEYS = ['1', '2', '3'];

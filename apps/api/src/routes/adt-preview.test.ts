@@ -53,12 +53,35 @@ describe("ADT preview routes", () => {
           {
             sectionId: `${label}_p1_sec002`,
             sectionType: "content",
-            parts: [],
+            parts: [
+              {
+                type: "image",
+                imageId: "hero-image",
+                pageImageId: "hero-image",
+                areaId: "hero-image",
+                order: 0,
+                isPruned: false,
+              },
+              {
+                type: "image",
+                imageId: "hero-image-duplicate",
+                pageImageId: "hero-image-duplicate",
+                areaId: "hero-image-duplicate",
+                order: 1,
+                isPruned: false,
+              },
+            ],
             backgroundColor: "#fff",
             textColor: "#000",
             pageNumber: 1,
             isPruned: false,
           },
+        ],
+      })
+      storage.putNodeData("image-captioning", `${label}_p1`, {
+        captions: [
+          { imageId: "hero-image", caption: "Preview hero image" },
+          { imageId: "hero-image-duplicate", caption: "Preview hero image" },
         ],
       })
       storage.putNodeData("web-rendering", `${label}_p1`, {
@@ -73,7 +96,7 @@ describe("ADT preview routes", () => {
             sectionIndex: 1,
             sectionType: "content",
             reasoning: "ok",
-            html: `<section data-section-id="${label}_p1_sec002"><p>Second section body</p></section>`,
+            html: `<section role="article" data-section-id="${label}_p1_sec002"><img data-id="hero-image" src="/api/books/${label}/images/hero-image"><img data-id="hero-image-duplicate" src="/api/books/${label}/images/hero-image-duplicate"><p>Second section body</p></section>`,
           },
         ],
       })
@@ -115,6 +138,51 @@ describe("ADT preview routes", () => {
     const res = await app.request(`/books/${label}/adt-preview/${label}_p1_sec999.html`)
 
     expect(res.status).toBe(404)
+  })
+
+
+  it("applies shared section-role cleanup and image alt fallbacks in preview output", async () => {
+    const app = createAdtPreviewRoutes(tmpDir, webAssetsDir, path.resolve(process.cwd(), "config.yaml"))
+    const res = await app.request(`/books/${label}/adt-preview/${label}_p1_sec002.html`)
+
+    expect(res.status).toBe(200)
+    const html = await res.text()
+    expect(html).not.toContain('role="article"')
+    expect(html).toContain('data-id="hero-image" src="/api/books/preview-book/images/hero-image" alt="Preview hero image"')
+    expect(html).toContain('data-id="hero-image-duplicate" src="/api/books/preview-book/images/hero-image-duplicate" alt=""')
+  })
+
+  it("preserves preview image-alt cleanup while converting latex to mathml", async () => {
+    const storage = createBookStorage(label, tmpDir)
+    try {
+      storage.putNodeData("web-rendering", `${label}_p1`, {
+        sections: [
+          {
+            sectionIndex: 0,
+            sectionType: "content",
+            reasoning: "ok",
+            html: `<section data-section-id="${label}_p1_sec001"><p>First section body</p></section>`,
+          },
+          {
+            sectionIndex: 1,
+            sectionType: "content",
+            reasoning: "ok",
+            html: `<section role="article" data-section-id="${label}_p1_sec002"><img data-id="hero-image" src="/api/books/${label}/images/hero-image"><p>The area is $\pi r^2$</p></section>`,
+          },
+        ],
+      })
+    } finally {
+      storage.close()
+    }
+
+    const app = createAdtPreviewRoutes(tmpDir, webAssetsDir, path.resolve(process.cwd(), "config.yaml"))
+    const res = await app.request(`/books/${label}/adt-preview/${label}_p1_sec002.html`)
+
+    expect(res.status).toBe(200)
+    const html = await res.text()
+    expect(html).not.toContain('role="article"')
+    expect(html).toContain('alt="Preview hero image"')
+    expect(html).toContain('<math')
   })
 
   it("includes quiz pages anchored to pages without rendered sections in pages.json", async () => {
@@ -174,7 +242,7 @@ describe("ADT preview routes", () => {
             sectionIndex: 1,
             sectionType: "content",
             reasoning: "ok",
-            html: `<section data-section-id="${label}_p1_sec002"><p>Second section body</p></section>`,
+            html: `<section role="article" data-section-id="${label}_p1_sec002"><img data-id="hero-image" src="/api/books/${label}/images/hero-image"><img data-id="hero-image-duplicate" src="/api/books/${label}/images/hero-image-duplicate"><p>Second section body</p></section>`,
           },
           {
             sectionIndex: 0,

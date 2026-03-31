@@ -758,7 +758,7 @@ async function initializeUIComponents() {
 
     // Activities should be initialized after UI components
     if (isFeatureEnabled('activities', true)) {
-      const activitySections = document.querySelectorAll('section[role="activity"]');
+      const activitySections = document.querySelectorAll('section[data-section-type^="activity_"]');
       if (activitySections.length > 0) {
         initializeQuizActivity();
         prepareActivity();

@@ -3,7 +3,15 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Storage, PageData } from "@adt/storage"
-import { packageAdtWeb, packageWebpub, renderPageHtml, rewriteImageUrls, convertLatexToMathml, convertLatexString } from "../package-web.js"
+import {
+  packageAdtWeb,
+  packageWebpub,
+  renderPageHtml,
+  renderQuizHtml,
+  rewriteImageUrls,
+  convertLatexToMathml,
+  convertLatexString,
+} from "../package-web.js"
 
 function createMockStorage(
   pages: PageData[],
@@ -82,6 +90,9 @@ describe("renderPageHtml", () => {
       bundleVersion: "1",
     })
 
+    expect((html.match(/<main\b/g) ?? [])).toHaveLength(1)
+    expect(html).toContain('<main class="w-full">')
+    expect(html).toContain('<div id="content" class="opacity-0">')
     expect(html).toContain(
       '<link rel="preload" href="./assets/fonts/Merriweather-VariableFont.woff2" as="font" type="font/woff2" crossorigin>',
     )
@@ -89,7 +100,6 @@ describe("renderPageHtml", () => {
       '<link rel="preload" href="./assets/fonts/Merriweather-Italic-VariableFont.woff2" as="font" type="font/woff2" crossorigin>',
     )
 
-    // Preloads should appear before the fonts.css stylesheet
     const preloadPos = html.indexOf('rel="preload"')
     const stylesheetPos = html.indexOf('href="./assets/fonts.css"')
     expect(preloadPos).toBeLessThan(stylesheetPos)
@@ -142,6 +152,79 @@ describe("renderPageHtml", () => {
     })
 
     expect(html).toContain('as="font" type="font/woff2" crossorigin>')
+  })
+
+  it("injects an sr-only h1 fallback when content has no headings", () => {
+    const html = renderPageHtml({
+      content: "<p>Hello</p>",
+      language: "en",
+      sectionId: "pg001",
+      pageTitle: "Book Title",
+      pageHeading: "Lesson heading",
+      pageIndex: 1,
+      hasMath: false,
+      bundleVersion: "1",
+    })
+
+    expect(html).toContain('<h1 class="sr-only" id="page-heading">Lesson heading</h1>')
+  })
+
+
+  it("promotes the first content heading to h1 before using the shell fallback", () => {
+    const html = renderPageHtml({
+      content: '<div id="content"><section><h2 data-id="tx001">Lesson heading</h2><p>Hello</p></section></div>',
+      language: "en",
+      sectionId: "pg001",
+      pageTitle: "Book Title",
+      pageHeading: "Lesson heading",
+      pageIndex: 1,
+      hasMath: false,
+      bundleVersion: "1",
+    })
+
+    expect(html).toContain('<h1 data-id="tx001">Lesson heading</h1>')
+    expect(html).not.toContain('id="page-heading"')
+    expect(html).not.toContain('<h2 data-id="tx001">Lesson heading</h2>')
+  })
+
+  it("does not inject a fallback h1 when content already has one", () => {
+    const html = renderPageHtml({
+      content: '<div id="content"><section><h1>Visible heading</h1><p>Hello</p></section></div>',
+      language: "en",
+      sectionId: "pg001",
+      pageTitle: "Book Title",
+      pageHeading: "Lesson heading",
+      pageIndex: 1,
+      hasMath: false,
+      bundleVersion: "1",
+    })
+
+    expect((html.match(/<h1\b/g) ?? [])).toHaveLength(1)
+    expect(html).not.toContain('id="page-heading"')
+  })
+})
+
+describe("renderQuizHtml", () => {
+  it("does not emit the invalid activity role", () => {
+    const html = renderQuizHtml(
+      {
+        quizIndex: 0,
+        afterPageId: "pg001",
+        pageIds: ["pg001"],
+        question: "What is 2+2?",
+        options: [
+          { text: "3", explanation: "Nope" },
+          { text: "4", explanation: "Yes" },
+        ],
+        answerIndex: 1,
+        reasoning: "...",
+      },
+      "qz001",
+      undefined,
+    )
+
+    expect(html).toContain('<section')
+    expect(html).not.toContain('role="activity"')
   })
 })
 
@@ -254,6 +337,7 @@ describe("packageAdtWeb", () => {
     expect(configJson.languages.default).toBe("fr")
 
     const pageHtml = fs.readFileSync(path.join(bookDir, "adt", "index.html"), "utf-8")
+    expect((pageHtml.match(/<main\b/g) ?? [])).toHaveLength(1)
     expect(pageHtml).toContain("window.correctAnswers = JSON.parse(")
     expect(pageHtml).not.toContain("</script><script>alert('x')</script>")
     expect(pageHtml).toContain("\\u003c/script\\u003e\\u003cscript\\u003e")
@@ -372,6 +456,10 @@ describe("packageAdtWeb", () => {
     ])
     expect(fs.existsSync(path.join(bookDir, "adt", "index.html"))).toBe(true)
 
+    const quizHtml = fs.readFileSync(path.join(bookDir, "adt", "index.html"), "utf-8")
+    expect((quizHtml.match(/<main\b/g) ?? [])).toHaveLength(1)
+    expect(quizHtml).not.toContain('role="activity"')
+
     // SCORM adapter should include the quiz activity ID
     const scorm = fs.readFileSync(path.join(bookDir, "adt", "assets", "scorm.js"), "utf-8")
     expect(scorm).toContain('"qz001"')
@@ -432,6 +520,81 @@ describe("packageAdtWeb", () => {
       fs.readFileSync(path.join(bookDir, "adt", "assets", "config.json"), "utf-8"),
     ) as { features: { activities: boolean } }
     expect(configJson.features.activities).toBe(true)
+
+    const activityHtml = fs.readFileSync(path.join(bookDir, "adt", "index.html"), "utf-8")
+    expect(activityHtml).not.toContain('role="activity"')
+  })
+
+  it("uses image_associated_text as a fallback alt source for single-image sections", async () => {
+    const bookDir = path.join(tmpDir, "book")
+    const webAssetsDir = path.join(tmpDir, "assets-web")
+    const imagesDir = path.join(bookDir, "images")
+    fs.mkdirSync(bookDir, { recursive: true })
+    fs.mkdirSync(imagesDir, { recursive: true })
+    createWebAssets(webAssetsDir)
+    fs.writeFileSync(path.join(imagesDir, "pg001_im001.png"), "pngdata")
+
+    const pages: PageData[] = [
+      { pageId: "pg001", pageNumber: 1, text: "Page one" },
+    ]
+
+    const storage = createMockStorage(pages, {
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "content",
+              reasoning: "ok",
+              html: '<section data-section-type="content" data-section-id="pg001_sec001"><img data-id="pg001_im001" src="/api/books/book/images/pg001_im001"></section>',
+            },
+          ],
+        },
+      },
+      "page-sectioning": {
+        pg001: {
+          reasoning: "ok",
+          sections: [
+            {
+              sectionId: "pg001_sec001",
+              sectionType: "content",
+              parts: [
+                {
+                  type: "image",
+                  imageId: "pg001_im001",
+                  isPruned: false,
+                },
+                {
+                  type: "text_group",
+                  groupId: "pg001_gp001",
+                  groupType: "paragraph",
+                  texts: [
+                    { textId: "tx001", textType: "image_associated_text", text: "A lifecycle diagram with six stages", isPruned: false },
+                  ],
+                  isPruned: false,
+                },
+              ],
+              backgroundColor: "#fff",
+              textColor: "#000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+      },
+    })
+
+    await packageAdtWeb(storage, {
+      bookDir,
+      label: "book",
+      language: "en",
+      outputLanguages: ["en"],
+      title: "Book Title",
+      webAssetsDir,
+    })
+
+    const pageHtml = fs.readFileSync(path.join(bookDir, "adt", "index.html"), "utf-8")
+    expect(pageHtml).toContain('alt="A lifecycle diagram with six stages"')
   })
 
   it("sets activities true from rendered section type even without section metadata", async () => {
@@ -752,6 +915,79 @@ describe("rewriteImageUrls", () => {
     const { html: out } = rewriteImageUrls(html, "mybook", imageMap)
     const matches = (out.match(/max-width/g) ?? []).length
     expect(matches).toBe(1)
+  })
+
+  it("strips legacy section role attributes while rewriting HTML", () => {
+    const html = `<div id="content"><section role="article" data-section-type="content"><img src="/api/books/mybook/images/abc123"></section></div>`
+    const imageMap = new Map([["abc123", "photo.jpg"]])
+    const { html: out } = rewriteImageUrls(html, "mybook", imageMap)
+    expect(out).not.toContain('role="article"')
+    expect(out).toContain('<section data-section-type="content">')
+  })
+
+
+  it("normalizes shared activity_matching semantics while rewriting HTML", () => {
+    const html = `<section data-section-type="activity_matching"><div class="activity-item" tabindex="0" data-activity-item="item-1">Word</div><div class="dropzone" tabindex="0" aria-label="Drop here" id="target1"><div id="dropzone-1" role="region" aria-live="polite"></div></div></section>`
+    const { html: out } = rewriteImageUrls(html, "mybook", new Map())
+    expect(out).toContain('class="activity-item" tabindex="0" data-activity-item="item-1" role="button"')
+    expect(out).toContain('class="dropzone" tabindex="0" aria-label="Drop here" id="target1" role="button"')
+    expect(out).toContain('id="dropzone-1" aria-live="polite" class="dropzone-slot"')
+    expect(out).not.toContain('role="region"')
+  })
+
+  it("normalizes shared activity_true_false semantics while rewriting HTML", () => {
+    const html = `<section data-section-type="activity_true_false"><label><input type="radio" value="true" aria-label="True" class="sr-only peer"><div class="choice-chip"></div></label><label><input type="radio" value="false" aria-label="False" class="sr-only peer"><div class="choice-chip"></div></label></section>`
+    const { html: out } = rewriteImageUrls(html, "mybook", new Map())
+    expect(out).not.toContain('aria-label="True"')
+    expect(out).not.toContain('aria-label="False"')
+    expect(out).toContain('<span class="sr-only" data-generated-a11y-label="true">True</span>')
+    expect(out).toContain('<span class="sr-only" data-generated-a11y-label="true">False</span>')
+  })
+
+  it("normalizes shared activity_fill_in_a_table semantics while rewriting HTML", () => {
+    const html = `<section data-section-type="activity_fill_in_a_table"><table><thead><tr><th data-id="a"></th><th data-id="b">Found it!</th><th data-id="c">Expression</th></tr></thead><tbody><tr><td data-id="d">0</td><td data-id="e"></td><td data-id="f"></td></tr></tbody></table><input type="text" id="field-1" data-activity-item="item-1"></section>`
+    const { html: out } = rewriteImageUrls(html, "mybook", new Map())
+    expect(out).toContain('<td data-id="a"></td>')
+    expect(out).toContain('<th data-id="b" scope="col">Found it!</th>')
+    expect(out).toContain('<th data-id="c" scope="col">Expression</th>')
+    expect(out).toContain('<th data-id="d" scope="row">0</th>')
+    expect(out).toContain('data-activity-item="item-1" aria-label="Answer"')
+  })
+
+  it("adds alt text from caption data when missing", () => {
+    const html = `<img data-id="abc123" src="/api/books/mybook/images/abc123">`
+    const imageMap = new Map([["abc123", "photo.jpg"]])
+    const altMap = new Map([["abc123", "A labeled diagram"]])
+    const { html: out } = rewriteImageUrls(html, "mybook", imageMap, altMap)
+    expect(out).toContain('alt="A labeled diagram"')
+  })
+
+  it("preserves existing alt text when caption data is also available", () => {
+    const html = `<img data-id="abc123" src="/api/books/mybook/images/abc123" alt="Existing alt">`
+    const imageMap = new Map([["abc123", "photo.jpg"]])
+    const altMap = new Map([["abc123", "Caption alt"]])
+    const { html: out } = rewriteImageUrls(html, "mybook", imageMap, altMap)
+    expect(out).toContain('alt="Existing alt"')
+    expect(out).not.toContain('alt="Caption alt"')
+  })
+
+
+  it("writes empty alt text when the shared policy marks an inferred duplicate image as decorative", () => {
+    const html = [
+      `<img data-id="logo1" src="/api/books/mybook/images/logo1">`,
+      `<img data-id="logo2" src="/api/books/mybook/images/logo2">`,
+    ].join("")
+    const imageMap = new Map([
+      ["logo1", "logo1.png"],
+      ["logo2", "logo2.png"],
+    ])
+    const altMap = new Map([
+      ["logo1", "UNICEF logo with the words for every child."],
+      ["logo2", ""],
+    ])
+    const { html: out } = rewriteImageUrls(html, "mybook", imageMap, altMap)
+    expect(out).toContain('data-id="logo1" src="images/logo1.png" style="max-width: 100%; height: auto;" alt="UNICEF logo with the words for every child."')
+    expect(out).toContain('data-id="logo2" src="images/logo2.png" style="max-width: 100%; height: auto;" alt=""')
   })
 
   it("does not include unreferenced images in referencedImages", () => {

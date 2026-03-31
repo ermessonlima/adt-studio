@@ -155,8 +155,11 @@ export {
   AccessibilityNodeResult,
   AccessibilityFinding,
   AccessibilityPageResult,
+  BrowserAccessibilityPageResult,
   AccessibilityAssessmentSummary,
+  BrowserAccessibilityAssessmentSummary,
   AccessibilityAssessmentOutput,
+  BrowserAccessibilityAssessmentOutput,
 } from "./accessibility.js"
 
 export {

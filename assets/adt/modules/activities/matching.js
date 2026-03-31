@@ -17,6 +17,17 @@ const applyCardStyling = (card, isInDropzone = false) => {
     }
 };
 
+const getDropzoneTarget = (dropzone) => {
+    const target = dropzone?.querySelector('.dropzone-slot, div[role="region"], div[id^="dropzone-"]');
+    if (target) {
+        target.classList.add('dropzone-slot');
+        if (target.getAttribute('role') === 'region') {
+            target.removeAttribute('role');
+        }
+    }
+    return target;
+};
+
 export const prepareMatching = (section) => {
     setupWordButtons(section);
     setupDropzones(section);
@@ -30,6 +41,7 @@ const setupWordButtons = (section) => {
         button.addEventListener("dragstart", (event) => drag(event));
         button.addEventListener("keydown", (event) => handleWordButtonKeydown(event, button));
         button.setAttribute("tabindex", "0");
+        button.setAttribute("role", "button");
         button.style.cursor = "pointer";
 
         // Apply card styling (which now includes scale effect)
@@ -45,6 +57,8 @@ const setupDropzones = (section) => {
         dropzone.addEventListener("dragover", (event) => allowDrop(event));
         dropzone.addEventListener("keydown", (event) => handleDropzoneKeydown(event, dropzone));
         dropzone.setAttribute("tabindex", "0");
+        dropzone.setAttribute("role", "button");
+        getDropzoneTarget(dropzone);
         dropzone.style.cursor = "pointer";
     });
 };
@@ -111,7 +125,7 @@ export const selectWord = (button) => {
 export const dropWord = (dropzoneId) => {
     if (!state.selectedWord) return;
 
-    const target = document.getElementById(dropzoneId).querySelector("div[role='region']");
+    const target = getDropzoneTarget(document.getElementById(dropzoneId));
     const existingWord = target.querySelector(".activity-item");
 
     if (existingWord) {
@@ -167,7 +181,7 @@ export const drag = (event) => {
 export const drop = (event) => {
     event.preventDefault();
     const data = event.dataTransfer.getData("text");
-    const target = event.currentTarget.querySelector("div[role='region']");
+    const target = getDropzoneTarget(event.currentTarget);
     let wordElement = document.querySelector(`.activity-item[data-activity-item='${data}']`);
     const existingWord = target.querySelector(".activity-item");
 
@@ -279,7 +293,7 @@ export const loadDropzoneState = () => {
             return;
         }
 
-        const target = dropzone.querySelector("div[role='region']");
+        const target = getDropzoneTarget(dropzone);
 
         words.forEach(wordId => {
             let wordElement = document.querySelector(`.activity-item[data-activity-item='${wordId}'], .activity-item[data-id='${wordId}']`);
@@ -327,7 +341,7 @@ const handleDropExchange = (existingWord, newWordElement, target) => {
 
     if (isNewWordInDropzone) {
         // Get the parent containers for both cards
-        const newWordRegion = newWordDropzone.querySelector("div[role='region']");
+        const newWordRegion = getDropzoneTarget(newWordDropzone);
 
         // Perform the exchange directly
 
@@ -489,7 +503,7 @@ const removeValidationIcons = () => {
 const handleDropzoneValidation = (parentDropzone, item, correctAnswer, onCorrect) => {
     if (parentDropzone) {
         const wordElement = parentDropzone.querySelector(`.activity-item[data-activity-item='${item}']`);
-        const isCorrect = parentDropzone.querySelector("div[role='region']").id === correctAnswer;
+        const isCorrect = getDropzoneTarget(parentDropzone).id === correctAnswer;
 
         if (wordElement) {
             // Remove any existing validation icons

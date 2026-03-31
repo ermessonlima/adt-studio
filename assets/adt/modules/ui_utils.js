@@ -19,6 +19,8 @@ import { translateText } from './translations.js';
 import { trackToggleEvent, trackEvent } from './analytics.js';
 import { isFeatureEnabled } from '../base.js';
 
+const getMainContentElement = () => document.getElementById('content') || document.querySelector('main') || document.querySelector('body > .container');
+
 document.addEventListener('click', (event) => {
     // Check for clicks on any element with glossary-term class or data-glossary-term attribute
     const glossaryTerm = event.target.closest('.glossary-term, [data-glossary-term="true"]');
@@ -1411,7 +1413,7 @@ export const displayReturnButton = () => {
         cacheInterfaceElements();
 
         // Add fade-out animation
-        const mainContent = document.querySelector('body > .container');
+        const mainContent = getMainContentElement();
         if (mainContent) {
             mainContent.classList.add("opacity-0");
         }

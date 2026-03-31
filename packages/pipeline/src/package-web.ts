@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import fs from "node:fs"
 import path from "node:path"
 import { parseDocument, DomUtils } from "htmlparser2"
@@ -5,6 +6,7 @@ import temml from "temml"
 import type { Storage } from "@adt/storage"
 import type {
   PageSectioningOutput,
+  PageSection,
   TextCatalogOutput,
   GlossaryOutput,
   QuizGenerationOutput,
@@ -13,12 +15,14 @@ import type {
   TTSOutput,
   TocGenerationOutput,
   Quiz,
+  ImageCaptioningOutput,
 } from "@adt/types"
 import { WebRenderingOutput as WebRenderingOutputSchema } from "@adt/types"
 import type { Progress } from "./progress.js"
 import { nullProgress } from "./progress.js"
 import { getBaseLanguage, normalizeLocale } from "./language-context.js"
 import { buildTextCatalog } from "./text-catalog.js"
+import { normalizeHtmlSectionSemantics } from "./html-semantics.js"
 
 export interface PackageAdtWebOptions {
   bookDir: string
@@ -35,6 +39,70 @@ interface PageEntry {
   section_id: string
   href: string
   page_number?: number
+}
+
+// ---------------------------------------------------------------------------
+// Build-cache helpers
+// ---------------------------------------------------------------------------
+
+function collectDirectoryFingerprint(dirPath: string, prefix = ""): Array<[string, number]> {
+  if (!fs.existsSync(dirPath)) return []
+  const entries: Array<[string, number]> = []
+  for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) {
+      entries.push(...collectDirectoryFingerprint(path.join(dirPath, entry.name), rel))
+    } else {
+      const stat = fs.statSync(path.join(dirPath, entry.name))
+      entries.push([rel, stat.size])
+    }
+  }
+  return entries
+}
+
+export interface ComputePackagingInputHashOptions {
+  storage: Storage
+  bookDir: string
+  label: string
+  language: string
+  outputLanguages: string[]
+  title: string
+  webAssetsDir: string
+  bundleVersion?: string
+  applyBodyBackground?: boolean
+  config: Record<string, unknown>
+}
+
+export function computePackagingInputHash(options: ComputePackagingInputHashOptions): string {
+  const hash = createHash("sha256")
+
+  // 1. Storage entity versions (exclude outputs like accessibility-assessment)
+  const fingerprint = options.storage.getNodeVersionFingerprint(["accessibility-assessment"])
+  hash.update(JSON.stringify(fingerprint))
+
+  // 2. Packaging options that affect output
+  hash.update(JSON.stringify({
+    label: options.label,
+    language: options.language,
+    outputLanguages: options.outputLanguages,
+    title: options.title,
+    bundleVersion: options.bundleVersion ?? "1",
+    applyBodyBackground: options.applyBodyBackground ?? false,
+  }))
+
+  // 3. Book config (affects rendering, accessibility, etc.)
+  hash.update(JSON.stringify(options.config))
+
+  // 4. Web assets directory fingerprint (file names + sizes)
+  const assetEntries = collectDirectoryFingerprint(options.webAssetsDir).sort((a, b) => a[0].localeCompare(b[0]))
+  hash.update(JSON.stringify(assetEntries))
+
+  // 5. Images directory fingerprint
+  const imagesDir = path.join(options.bookDir, "images")
+  const imageEntries = collectDirectoryFingerprint(imagesDir).sort((a, b) => a[0].localeCompare(b[0]))
+  hash.update(JSON.stringify(imageEntries))
+
+  return hash.digest("hex")
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +202,7 @@ export async function packageAdtWeb(
 
     const sectioningRow = storage.getLatestNodeData("page-sectioning", page.pageId)
     const sectioning = sectioningRow?.data as PageSectioningOutput | undefined
+    const imageCaptionMap = loadImageCaptionMap(storage, page.pageId)
 
     const renderRow = storage.getLatestNodeData("web-rendering", page.pageId)
     if (renderRow) {
@@ -153,10 +222,12 @@ export async function packageAdtWeb(
           }
 
           // Rewrite image URLs and copy referenced images
+          const preferredImageAltMap = buildPreferredImageAltMap(storage, page.pageId, sectionMeta)
           let { html: rewrittenHtml, referencedImages } = rewriteImageUrls(
             rs.html,
             label,
             imageMap,
+            preferredImageAltMap,
           )
 
           for (const imageId of referencedImages) {
@@ -182,11 +253,14 @@ export async function packageAdtWeb(
           const isFirstPage = pageList.length === 0
           const filename = isFirstPage ? "index.html" : `${sectionId}.html`
 
+          const headingText = sectionMeta ? findHeadingText(sectionMeta) : null
+
           const pageHtml = renderPageHtml({
             content: rewrittenHtml,
             language,
             sectionId,
             pageTitle: title,
+            pageHeading: headingText?.text ?? title,
             pageIndex: pageList.length + 1,
             activityAnswers: rs.activityAnswers,
             hasMath: sectionHasMath,
@@ -205,16 +279,13 @@ export async function packageAdtWeb(
           pageList.push(entry)
 
           // Build TOC entry from first heading text in this section
-          if (sectionMeta) {
-            const headingText = findHeadingText(sectionMeta)
-            if (headingText) {
-              tocEntries.push({
-                section_id: sectionId,
-                href: filename,
-                title: headingText.text,
-                chapter_id: headingText.textId,
-              })
-            }
+          if (headingText) {
+            tocEntries.push({
+              section_id: sectionId,
+              href: filename,
+              title: headingText.text,
+              chapter_id: headingText.textId,
+            })
           }
         }
       }
@@ -234,6 +305,7 @@ export async function packageAdtWeb(
         language,
         sectionId: quizId,
         pageTitle: title,
+        pageHeading: quiz.question,
         pageIndex: pageList.length + 1,
         activityAnswers: buildQuizAnswers(quiz, quizId),
         hasMath: false,
@@ -710,8 +782,10 @@ export interface RenderPageOptions {
   activityAnswers?: Record<string, string | boolean | number>
   hasMath: boolean
   bundleVersion: string
-  /** When true, content is placed directly in <body> without a <div id="content"> wrapper.
-   *  Used for quiz pages whose template provides its own #content element. */
+  pageHeading?: string
+  /** When true, content is placed directly inside the page-level <main> without adding a
+   *  generated <div id="content"> wrapper. Used for quiz pages whose template provides
+   *  its own #content element. */
   skipContentWrapper?: boolean
   applyBodyBackground?: boolean
   /** When true, renders a minimal page without navigation/sidebar chrome.
@@ -738,6 +812,11 @@ function injectOpacityClass(html: string): string {
   )
 }
 
+export function promoteFirstHeadingToH1(html: string): string {
+  if (/<h1\b/i.test(html)) return html
+  return html.replace(/<h([2-6])(\b[^>]*)>([\s\S]*?)<\/h\1>/i, '<h1$2>$3</h1>')
+}
+
 export function renderPageHtml(opts: RenderPageOptions): string {
   // LaTeX is converted to static MathML at build time by Temml,
   // so no client-side math library is needed.
@@ -748,23 +827,34 @@ export function renderPageHtml(opts: RenderPageOptions): string {
       ? `\n    <script type="text/javascript">\n        window.correctAnswers = JSON.parse('${escapeInlineScriptJson(JSON.stringify(opts.activityAnswers))}');\n    </script>`
       : ""
 
+  const normalizedContent = promoteFirstHeadingToH1(opts.content)
+
   // When content already has <div id="content"> (LLM-generated), use it directly to avoid
-  // a duplicate #content element that breaks `body > .container` queries in the ADT JS
-  // (used for audio/TTS init, fade animation, and layout adjustments).
+  // a duplicate #content element.
   // Inject opacity-0 into the existing wrapper for the fade-in animation (skip in embed mode).
-  const contentAlreadyWrapped = /^\s*<div\b[^>]*\bid="content"/.test(opts.content)
+  const contentAlreadyWrapped = /^\s*<div\b[^>]*\bid="content"/.test(normalizedContent)
   const contentBlock = opts.skipContentWrapper
-    ? `    ${opts.content}`
+    ? `      ${normalizedContent}`
     : contentAlreadyWrapped
-      ? `    ${!opts.embed ? injectOpacityClass(opts.content) : opts.content}`
-      : `    <div id="content"${opts.embed ? "" : ` class="opacity-0"`}>
-    ${opts.content}
-    </div>`
+      ? `      ${!opts.embed ? injectOpacityClass(normalizedContent) : normalizedContent}`
+      : `      <div id="content"${opts.embed ? "" : ` class="opacity-0"`}>
+        ${normalizedContent}
+      </div>`
+
+  const fallbackPageHeading = (opts.pageHeading ?? opts.pageTitle).trim()
+  const fallbackHeadingHtml = /<h1\b/i.test(normalizedContent) || fallbackPageHeading.length === 0
+    ? ""
+    : `      <h1 class="sr-only" id="page-heading">${escapeHtml(fallbackPageHeading)}</h1>
+`
+
+  const mainBlock = `    <main class="w-full">
+${fallbackHeadingHtml}${contentBlock}
+    </main>`
 
   // Extract data-background-color from content to apply on <body>
   let bodyStyle = ""
   if (opts.applyBodyBackground !== false) {
-    const bgMatch = opts.content.match(/data-background-color="([^"]*)"/)
+    const bgMatch = normalizedContent.match(/data-background-color="([^"]*)"/)
     bodyStyle = bgMatch?.[1]
       ? ` style="background-color: ${escapeAttr(bgMatch[1])};"`
       : ""
@@ -801,7 +891,7 @@ export function renderPageHtml(opts: RenderPageOptions): string {
 ${mathScript}${embedStyles}</head>
 
 <body class="min-h-screen flex items-center justify-center"${bodyStyle}>
-${contentBlock}
+${mainBlock}
 ${answersScript}
     <div class="relative z-50" id="interface-container"></div>
     <div class="relative z-50" id="nav-container"${opts.embed ? ' style="display:none"' : ""}></div>
@@ -908,7 +998,6 @@ export function renderQuizHtml(
 <div id="content" class="container content mx-auto w-full min-h-screen px-8 py-8 flex items-center justify-center opacity-0">
     <section
         id="simple-main"
-        role="activity"
         data-section-type="activity_quiz"
         data-id="${escapeAttr(quizId)}"
         data-area-id="${escapeAttr(quizId)}"
@@ -979,15 +1068,102 @@ export function buildImageMap(imagesDir: string): Map<string, string> {
   return map
 }
 
+
+function loadImageCaptionMap(storage: Storage, pageId: string): Map<string, string> {
+  const row = storage.getLatestNodeData("image-captioning", pageId)
+  if (!row) return new Map<string, string>()
+
+  const data = row.data as ImageCaptioningOutput
+  const map = new Map<string, string>()
+  for (const caption of data.captions ?? []) {
+    if (caption.caption?.trim()) {
+      map.set(caption.imageId, caption.caption.trim())
+    }
+  }
+  return map
+}
+
+function buildSectionImageAltMap(section: PageSection): Map<string, string> {
+  const imageParts = section.parts.filter(
+    (part): part is Extract<PageSection["parts"][number], { type: "image" }> =>
+      part.type === "image" && !part.isPruned,
+  )
+  if (imageParts.length !== 1) {
+    return new Map<string, string>()
+  }
+
+  const textParts = section.parts.filter(
+    (part): part is Extract<PageSection["parts"][number], { type: "text_group" }> =>
+      part.type === "text_group" && !part.isPruned,
+  )
+
+  const associatedTexts = textParts
+    .flatMap((part) => part.texts)
+    .filter((text) => !text.isPruned && text.textType === "image_associated_text")
+    .map((text) => text.text.replace(/\s+/g, " ").trim())
+    .filter((text) => text.length > 0)
+
+  if (associatedTexts.length === 0) {
+    return new Map<string, string>()
+  }
+
+  return new Map([[imageParts[0].imageId, associatedTexts.join(" ")]])
+}
+
+function applyDuplicateImageAltPolicy(
+  section: PageSection,
+  altTextByImageId: Map<string, string>,
+): Map<string, string> {
+  const normalizedAltToFirstImageId = new Map<string, string>()
+  const normalizedAltMap = new Map(altTextByImageId)
+
+  for (const part of section.parts) {
+    if (part.type !== "image" || part.isPruned) continue
+    const altText = normalizedAltMap.get(part.imageId)?.trim()
+    if (!altText) continue
+
+    const dedupeKey = altText.replace(/\s+/g, " ").trim().toLowerCase()
+    if (!dedupeKey) continue
+
+    if (normalizedAltToFirstImageId.has(dedupeKey)) {
+      normalizedAltMap.set(part.imageId, "")
+      continue
+    }
+
+    normalizedAltToFirstImageId.set(dedupeKey, part.imageId)
+  }
+
+  return normalizedAltMap
+}
+
+export function buildPreferredImageAltMap(
+  storage: Storage,
+  pageId: string,
+  section?: PageSection,
+): Map<string, string> {
+  const imageCaptionMap = loadImageCaptionMap(storage, pageId)
+  const sectionImageAltMap = section ? buildSectionImageAltMap(section) : new Map<string, string>()
+  const preferredImageAltMap = new Map(sectionImageAltMap)
+  for (const [imageId, altText] of imageCaptionMap) {
+    preferredImageAltMap.set(imageId, altText)
+  }
+  return section ? applyDuplicateImageAltPolicy(section, preferredImageAltMap) : preferredImageAltMap
+}
+
+export function normalizeSectionRoles(html: string): string {
+  return normalizeHtmlSectionSemantics(html)
+}
+
 /** Rewrite image URLs from /api/books/{label}/images/{id} to images/{filename} */
 export function rewriteImageUrls(
   html: string,
   label: string,
   imageMap: Map<string, string>,
+  altTextByImageId?: Map<string, string>,
 ): { html: string; referencedImages: string[] } {
   const prefix = `/api/books/${label}/images/`
   const referencedImages: string[] = []
-  const doc = parseDocument(html)
+  const doc = parseDocument(normalizeSectionRoles(html))
 
   const imgs = DomUtils.findAll(
     (el) => el.type === "tag" && el.name === "img",
@@ -995,11 +1171,13 @@ export function rewriteImageUrls(
   )
 
   for (const img of imgs) {
+    let resolvedImageId: string | undefined
     const src = img.attribs.src ?? ""
     if (src.startsWith(prefix)) {
       const imageId = src.slice(prefix.length)
       const filename = imageMap.get(imageId)
       if (filename) {
+        resolvedImageId = imageId
         img.attribs.src = `images/${filename}`
         referencedImages.push(imageId)
         delete img.attribs.width
@@ -1017,6 +1195,7 @@ export function rewriteImageUrls(
     const dataId = img.attribs["data-id"]
     if (dataId && imageMap.has(dataId) && !img.attribs.src?.startsWith("images/")) {
       const filename = imageMap.get(dataId)!
+      resolvedImageId = dataId
       img.attribs.src = `images/${filename}`
       if (!referencedImages.includes(dataId)) {
         referencedImages.push(dataId)
@@ -1031,9 +1210,17 @@ export function rewriteImageUrls(
           : sizeStyle
       }
     }
+
+    const imageIdForAlt = resolvedImageId ?? dataId
+    const hasPreferredAlt = imageIdForAlt ? altTextByImageId?.has(imageIdForAlt) ?? false : false
+    const altText = imageIdForAlt ? altTextByImageId?.get(imageIdForAlt)?.trim() ?? "" : ""
+    if (hasPreferredAlt && (img.attribs.alt === undefined || img.attribs.alt.trim() === "")) {
+      img.attribs.alt = altText
+    }
   }
 
-  return { html: DomUtils.getOuterHTML(doc), referencedImages }
+  const normalizedHtml = DomUtils.getOuterHTML(doc).replace(/(<img\b[^>]*?)\salt(?=[\s>])/g, "$1 alt=\"\"")
+  return { html: normalizedHtml, referencedImages }
 }
 
 /**

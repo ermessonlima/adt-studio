@@ -33,6 +33,8 @@ let interfaceCache = {
 };
 let lastSidebarTrigger = null;
 
+const getMainContentElement = () => document.getElementById('content') || document.querySelector('main') || document.querySelector('body > .container');
+
 // Constants for sidebar focus management
 const SIDEBAR_TRANSITION_MS = 300;
 const SIDEBAR_FOCUS_DELAY_MS = SIDEBAR_TRANSITION_MS + 50;
@@ -280,7 +282,7 @@ export const toggleSidebar = () => {
 export const adjustLayout = () => {
   const submitButtonContainer = document.querySelector(".fixed.bottom-0 .container .absolute");
   const navButtons = document.getElementById("back-forward-buttons");
-  const mainContent = document.querySelector("body > .container");
+  const mainContent = getMainContentElement();
   const submitButton = document.getElementById("submit-button");
 
   const isSignLanguageActive = state.signLanguageMode;

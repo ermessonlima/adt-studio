@@ -54,15 +54,19 @@ msgstr "(template)"
 msgid "{0} — type country or Enter for base"
 msgstr "{0} — digite o país ou pressione Enter para o padrão"
 
+#. placeholder {0}: finding.count
+#. placeholder {1}: finding.count === 1 ? "issue" : "issues"
+#. placeholder {1}: finding.count === 1 ? "manual review item" : "manual review items"
+msgid "{0} {1}"
+msgstr "{0} {1}"
+
 #. placeholder {0}: activeMetrics.pagesReviewed
 #. placeholder {1}: activeMetrics.pagesReviewed === 1 ? "page" : "pages"
 msgid "{0} {1} reviewed so far"
 msgstr "{0} {1} reviewed so far"
 
-#. placeholder {0}: currentPage.totalCount
-#. placeholder {1}: currentPage.totalCount === 1 ? "finding" : "findings"
-msgid "{0} {1} this page"
-msgstr "{0} {1} this page"
+#~ msgid "{0} {1} this page"
+#~ msgstr "{0} {1} this page"
 
 #. placeholder {0}: String(totalAudioFiles)
 msgid "{0} audio"
@@ -76,9 +80,8 @@ msgstr "{0} checks per page"
 msgid "{0} entries"
 msgstr "{0} entradas"
 
-#. placeholder {0}: allFindings.length
-msgid "{0} findings"
-msgstr "{0} findings"
+#~ msgid "{0} findings"
+#~ msgstr "{0} findings"
 
 #. placeholder {0}: activeMetrics.flagged.length
 msgid "{0} flagged findings in this review"
@@ -92,6 +95,10 @@ msgstr "{0} imagens"
 msgid "{0} images selected"
 msgstr "{0} imagens selecionadas"
 
+#. placeholder {0}: visibleFindingsUniverse.length
+msgid "{0} items"
+msgstr "{0} itens"
+
 #. placeholder {0}: counts.needsChanges
 msgid "{0} items need changes on this page"
 msgstr "{0} items need changes on this page"
@@ -100,9 +107,8 @@ msgstr "{0} items need changes on this page"
 msgid "{0} languages"
 msgstr "{0} idiomas"
 
-#. placeholder {0}: finding.count
-msgid "{0} observations"
-msgstr "{0} observations"
+#~ msgid "{0} observations"
+#~ msgstr "{0} observations"
 
 #. placeholder {0}: activeMetrics.pagesReviewed
 #. placeholder {1}: activeProgress.assignedPageCount
@@ -114,10 +120,13 @@ msgstr "{0} of {1} assigned pages reviewed"
 msgid "{0} of {1} book pages reviewed"
 msgstr "{0} of {1} book pages reviewed"
 
+#~ msgid "{0} of {1} findings"
+#~ msgstr "{0} of {1} findings"
+
 #. placeholder {0}: visibleFindings.length
-#. placeholder {1}: allFindings.length
-msgid "{0} of {1} findings"
-msgstr "{0} of {1} findings"
+#. placeholder {1}: visibleFindingsUniverse.length
+msgid "{0} of {1} items"
+msgstr "{0} de {1} itens"
 
 #. placeholder {0}: String(displayPages.length)
 msgid "{0} pages"
@@ -134,6 +143,15 @@ msgstr "{0} termos"
 #. placeholder {0}: String(displayEntries.length)
 msgid "{0} texts"
 msgstr "{0} textos"
+
+#~ msgid "{0}. Confirmed issues and manual-review items are listed separately below."
+#~ msgstr "{0}. Problemas confirmados e itens de revisão manual estão listados separadamente abaixo."
+
+#~ msgid "{0}. Confirmed issues are listed below."
+#~ msgstr "{0}. Problemas confirmados estão listados abaixo."
+
+#~ msgid "{0}. These checks need manual review."
+#~ msgstr "{0}. Essas verificações precisam de revisão manual."
 
 #. placeholder {0}: String(generatedAudioCount)
 #. placeholder {1}: String(displayEntries.length)
@@ -165,14 +183,28 @@ msgstr "Há {0}min"
 msgid "{0}s ago"
 msgstr "Há {0}s"
 
+msgid "{countSummary} this page"
+msgstr "{countSummary} nesta página"
+
 msgid "{elapsed}s"
 msgstr "{elapsed}s"
+
+#. placeholder {0}: issueCount === 1 ? "issue" : "issues"
+msgid "{issueCount} {0}"
+msgstr "{issueCount} {0}"
+
+msgid "{issuesLabel}, {reviewLabel}"
+msgstr "{issuesLabel}, {reviewLabel}"
 
 msgid "{missingAudioCount} missing"
 msgstr "{missingAudioCount} faltando"
 
 msgid "{regionCount} {regionCount, plural, one {region} other {regions}} detected"
 msgstr "{regionCount} {regionCount, plural, one {region} other {regions}} detected"
+
+#. placeholder {0}: reviewCount === 1 ? "manual review item" : "manual review items"
+msgid "{reviewCount} {0}"
+msgstr "{reviewCount} {0}"
 
 #. placeholder {0}: section.criteria.length
 msgid "{reviewed}/{0} checked"
@@ -415,8 +447,11 @@ msgstr "AIza..."
 msgid "All Categories"
 msgstr "All Categories"
 
-msgid "All findings"
-msgstr "All findings"
+#~ msgid "All findings"
+#~ msgstr "All findings"
+
+msgid "All issues and manual review items"
+msgstr "Todos os problemas e itens de revisão manual"
 
 msgid "All sections have been deleted"
 msgstr "Todas as seções foram excluídas"
@@ -495,6 +530,9 @@ msgstr "Automático"
 
 msgid "Avg Duration"
 msgstr "Duração média"
+
+msgid "Axe could not fully evaluate these checks in preview. Verify them in-browser or by inspection."
+msgstr "Axe não pôde avaliar completamente essas verificações na pré-visualização. Verifique-as no navegador ou por inspeção."
 
 msgid "Azure"
 msgstr "Azure"
@@ -1416,6 +1454,9 @@ msgstr "Institution"
 msgid "Instruction Text"
 msgstr "Texto de instrução"
 
+msgid "Issues"
+msgstr "Problemas"
+
 msgid "Item"
 msgstr "Item"
 
@@ -1583,6 +1624,9 @@ msgstr "Carregando..."
 msgid "Lower values produce more consistent styling across pages."
 msgstr "Valores mais baixos produzem estilização mais consistente entre as páginas."
 
+msgid "Manual review"
+msgstr "Revisão manual"
+
 msgid "Map"
 msgstr "Mapa"
 
@@ -1718,11 +1762,17 @@ msgstr "Nenhum texto extraído ainda. Execute o pipeline primeiro."
 msgid "No finding categories reported."
 msgstr "No finding categories reported."
 
-msgid "No findings match the current filters."
-msgstr "No findings match the current filters."
+msgid "No findings"
+msgstr "Sem descobertas"
 
-msgid "No findings were reported."
-msgstr "No findings were reported."
+#~ msgid "No findings match the current filters."
+#~ msgstr "No findings match the current filters."
+
+msgid "No findings this page"
+msgstr "Sem descobertas nesta página"
+
+#~ msgid "No findings were reported."
+#~ msgstr "No findings were reported."
 
 msgid "No flagged findings in reviewed pages"
 msgstr "No flagged findings in reviewed pages"
@@ -1744,6 +1794,18 @@ msgstr "Nenhuma imagem corresponde ao filtro"
 
 msgid "No images on this page"
 msgstr "Nenhuma imagem nesta página"
+
+msgid "No issues or manual review items match the current filters."
+msgstr "Nenhum problema ou item de revisão manual corresponde aos filtros atuais."
+
+msgid "No issues or manual review items were reported."
+msgstr "Nenhum problema ou item de revisão manual foi relatado."
+
+#~ msgid "No issues were reported for this page."
+#~ msgstr "Nenhum problema foi relatado para esta página."
+
+#~ msgid "No issues were reported for this preview."
+#~ msgstr "Nenhum problema foi relatado para esta pré-visualização."
 
 msgid "No items are currently flagged as needing changes in this reviewer session."
 msgstr "No items are currently flagged as needing changes in this reviewer session."
@@ -2724,6 +2786,9 @@ msgstr "A estratégia de renderização usada para seções sem um mapeamento ex
 msgid "The table of contents."
 msgstr "O índice."
 
+#~ msgid "These are confirmed by automated checks."
+#~ msgstr "Estes são confirmados por verificações automáticas."
+
 msgid "These values reflect either the saved book override or the latest packaged defaults."
 msgstr "These values reflect either the saved book override or the latest packaged defaults."
 
@@ -2934,8 +2999,10 @@ msgid ""
 "wcag2a\n"
 "wcag2aa\n"
 "best-practice"
-msgstr """wcag2a\n""wcag2aa\n""best-practice"
-"wcag2a\n"
+msgstr ""
+"\"\"wcag2a\n"
+"\"\"wcag2aa\n"
+"\"\"best-practicewcag2a\n"
 "wcag2aa\n"
 "best-practice"
 

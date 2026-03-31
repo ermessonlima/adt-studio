@@ -182,13 +182,16 @@ export {
 export {
   packageAdtWeb,
   packageWebpub,
+  computePackagingInputHash,
   type PackageAdtWebOptions,
+  type ComputePackagingInputHashOptions,
   renderPageHtml,
   NAV_HTML,
   type RenderPageOptions,
   buildPreviewTailwindCss,
   buildGlossaryJson,
   buildImageMap,
+  buildPreferredImageAltMap,
   rewriteImageUrls,
   htmlToXhtml,
   renderQuizHtml,
@@ -200,3 +203,11 @@ export {
   runAccessibilityAssessment,
   type RunAccessibilityAssessmentOptions,
 } from "./accessibility-assessment.js"
+export {
+  runBrowserAccessibilityAssessment,
+  buildBrowserAccessibilityRecheckPlan,
+  type RunBrowserAccessibilityAssessmentOptions,
+  type BrowserAccessibilityRecheckTarget,
+  type BuildBrowserAccessibilityRecheckPlanOptions,
+} from "./browser-accessibility-assessment.js"
+export { mergeAccessibilityResults } from "./accessibility-assessment-shared.js"

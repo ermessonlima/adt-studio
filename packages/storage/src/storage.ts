@@ -71,6 +71,9 @@ export interface Storage {
   /** Clear step run records for specific steps (used when clearing downstream data). */
   clearStepRuns(steps: string[]): void
 
+  /** Get a compact fingerprint of all entity versions for cache invalidation. */
+  getNodeVersionFingerprint(excludeNodes?: string[]): Array<{ node: string; itemId: string; version: number }>
+
   appendLlmLog(entry: LlmLogEntry): void
 
   /** Store a debug image (e.g. screenshot) by hash as a file under the book directory. */

@@ -7,7 +7,7 @@
  */
 import fs from "node:fs"
 import path from "node:path"
-import { buildPreviewTailwindCss } from "./package-web.js"
+import { buildPreviewTailwindCss, normalizeSectionRoles, promoteFirstHeadingToH1 } from "./package-web.js"
 
 export interface BuildScreenshotHtmlOptions {
   /** The section HTML fragment (content inside <body>). */
@@ -38,7 +38,7 @@ export async function buildScreenshotHtml(
   } = options
 
   // Rewrite image src attributes to inline base64 data URIs
-  const htmlWithInlineImages = rewriteImageSrcs(sectionHtml, label, images)
+  const htmlWithInlineImages = normalizeSectionRoles(rewriteImageSrcs(sectionHtml, label, images))
 
   // Build Tailwind CSS from the section content
   const tailwindCss = await buildPreviewTailwindCss(
@@ -49,6 +49,14 @@ export async function buildScreenshotHtml(
   // Build inline font-face CSS with base64-encoded font files
   const fontCss = buildInlineFontCss(webAssetsDir)
 
+  const normalizedHtml = promoteFirstHeadingToH1(htmlWithInlineImages)
+
+  const contentBlock = /^\s*<div\b[^>]*\bid="content"/.test(normalizedHtml)
+    ? normalizedHtml
+    : `<div id="content">
+  ${normalizedHtml}
+  </div>`
+
   return `<!DOCTYPE html>
 <html lang="${escapeAttr(language)}">
 <head>
@@ -58,7 +66,9 @@ export async function buildScreenshotHtml(
   <style>${fontCss}</style>
 </head>
 <body class="min-h-screen flex items-center justify-center">
-  ${/^\s*<div\b[^>]*\bid="content"/.test(htmlWithInlineImages) ? htmlWithInlineImages : `<div id="content">\n  ${htmlWithInlineImages}\n  </div>`}
+  <main class="w-full">
+    ${contentBlock}
+  </main>
 </body>
 </html>`
 }

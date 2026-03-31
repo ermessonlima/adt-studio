@@ -27,11 +27,13 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { previewHref?: string }
   const { stageState } = useBookRun()
-  const { isTaskRunning, tasks } = useBookTasks(bookLabel)
+  const { isTaskRunning, getTask } = useBookTasks(bookLabel)
   const storyboardDone = stageState("storyboard") === "done"
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const ranRef = useRef(false)
   const { panelOpen } = useDebugPanelState()
+  const [isSubmittingPackage, setIsSubmittingPackage] = useState(false)
+  const [pendingTaskId, setPendingTaskId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [version, setVersion] = useState(0)
@@ -117,38 +119,58 @@ export function PreviewView({ bookLabel }: { bookLabel: string }) {
     }
   }, [])
 
-  const packaging = isTaskRunning("package-adt")
+  const packaging = isSubmittingPackage || isTaskRunning("package-adt")
 
-  const prevPackagingRef = useRef(false)
   useEffect(() => {
-    if (prevPackagingRef.current && !packaging) {
-      const packagingTask = tasks.find((task) => task.kind === "package-adt")
-      if (packagingTask?.status === "failed") {
-        setError(packagingTask.error ?? "Packaging failed")
-      } else {
-        void Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] }),
-          queryClient.invalidateQueries({ queryKey: ["debug", "accessibility", bookLabel] }),
-          queryClient.invalidateQueries({ queryKey: ["debug", "versions", bookLabel, "accessibility-assessment", "book"] }),
-        ]).then(() => {
-          setVersion((value) => Math.max(value + 1, Date.now()))
-          setReady(true)
-        })
-      }
+    if (!pendingTaskId) return
+    const task = getTask(pendingTaskId)
+    if (!task) return
+    if (task.status === "completed") {
+      setPendingTaskId(null)
+      setIsSubmittingPackage(false)
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] }),
+        queryClient.invalidateQueries({ queryKey: ["debug", "accessibility", bookLabel] }),
+        queryClient.invalidateQueries({ queryKey: ["debug", "versions", bookLabel, "accessibility-assessment", "book"] }),
+      ]).then(() => {
+        setVersion((value) => Math.max(value + 1, Date.now()))
+        setReady(true)
+      })
+    } else if (task.status === "failed") {
+      setPendingTaskId(null)
+      setIsSubmittingPackage(false)
+      setError(task.error ?? "Packaging failed")
     }
-    prevPackagingRef.current = packaging
-  }, [bookLabel, packaging, queryClient, tasks])
+  }, [pendingTaskId, getTask, bookLabel, queryClient])
 
   const runPackage = useCallback(async () => {
+    setIsSubmittingPackage(true)
+    setPendingTaskId(null)
     setError(null)
     setReady(false)
     setCurrentPreviewPage({ sectionId: null, href: null, title: null, hasImages: false, hasActivity: false, signLanguageEnabled: false })
+    let taskId: string | undefined
     try {
-      await api.packageAdt(bookLabel)
+      const result = await api.packageAdt(bookLabel)
+      taskId = result.taskId
+      if (taskId) {
+        setPendingTaskId(taskId)
+      } else {
+        // Synchronous completion (cache hit) — no task to wait for
+        setIsSubmittingPackage(false)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "step-status"] }),
+          queryClient.invalidateQueries({ queryKey: ["debug", "accessibility", bookLabel] }),
+          queryClient.invalidateQueries({ queryKey: ["debug", "versions", bookLabel, "accessibility-assessment", "book"] }),
+        ])
+        setVersion((value) => Math.max(value + 1, Date.now()))
+        setReady(true)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Packaging failed")
+      setIsSubmittingPackage(false)
     }
-  }, [bookLabel])
+  }, [bookLabel, queryClient])
 
   // Only trigger packaging when storyboard is done
   useEffect(() => {

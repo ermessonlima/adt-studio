@@ -290,4 +290,81 @@ describe("two_column_render.liquid", () => {
     expect(result.html).toContain("&lt;img src=x onerror=alert(&quot;xss&quot;)&gt;")
     expect(result.html).not.toContain('<img src=x onerror=alert("xss")>')
   })
+
+  it("uses section_heading as h1 when no primary title is present", async () => {
+    const engine = createTemplateEngine(templatesDir)
+    const input = makeInput({
+      parts: [
+        {
+          type: "group",
+          groupId: "pg001_gp001",
+          groupType: "heading",
+          texts: [
+            { textId: "pg001_gp001_tx001", textType: "section_heading", text: "Lesson heading" },
+          ],
+        },
+      ],
+    })
+    const config = { ...templateConfig, templateName: "two_column_render" }
+    const result = await renderSectionTemplate(input, config, engine)
+
+    expect(result.html).toContain("<section")
+    expect(result.html).not.toContain('role="article"')
+    expect(result.html).toContain('<h1 class="mb-6 w-full max-w-2xl font-bold text-left text-2xl" data-id="pg001_gp001_tx001">Lesson heading</h1>')
+  })
+
+  it("keeps section_heading at h2 when a primary title is present", async () => {
+    const engine = createTemplateEngine(templatesDir)
+    const input = makeInput({
+      parts: [
+        {
+          type: "group",
+          groupId: "pg001_gp001",
+          groupType: "heading",
+          texts: [
+            { textId: "pg001_gp001_tx001", textType: "book_title", text: "Book title" },
+          ],
+        },
+        {
+          type: "group",
+          groupId: "pg001_gp002",
+          groupType: "heading",
+          texts: [
+            { textId: "pg001_gp002_tx001", textType: "section_heading", text: "Lesson heading" },
+          ],
+        },
+      ],
+    })
+    const config = { ...templateConfig, templateName: "two_column_render" }
+    const result = await renderSectionTemplate(input, config, engine)
+
+    expect(result.html).toContain('<h1 class="mb-6 w-full max-w-2xl font-bold text-left text-4xl" data-id="pg001_gp001_tx001">Book title</h1>')
+    expect(result.html).toContain('<h2 class="mb-6 w-full max-w-2xl font-bold text-left text-2xl" data-id="pg001_gp002_tx001">Lesson heading</h2>')
+  })
+})
+
+describe("two_column_story.liquid", () => {
+  const templatesDir = path.resolve(__dirname, "../../../../templates")
+
+  it("uses section_heading as h1 when no primary title is present", async () => {
+    const engine = createTemplateEngine(templatesDir)
+    const input = makeInput({
+      parts: [
+        {
+          type: "group",
+          groupId: "pg001_gp001",
+          groupType: "heading",
+          texts: [
+            { textId: "pg001_gp001_tx001", textType: "section_heading", text: "Story heading" },
+          ],
+        },
+      ],
+    })
+    const config = { ...templateConfig, templateName: "two_column_story" }
+    const result = await renderSectionTemplate(input, config, engine)
+
+    expect(result.html).toContain("<section")
+    expect(result.html).not.toContain('role="article"')
+    expect(result.html).toContain('<h1 class="font-bold text-3xl" data-id="pg001_gp001_tx001">Story heading</h1>')
+  })
 })

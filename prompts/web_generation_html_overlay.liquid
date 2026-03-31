@@ -17,7 +17,7 @@ Recreate the original textbook page as closely as possible by using the page ima
 4. ALL elements with content must have `data-id` attribute matching the provided ID
 5. Elements with data-id must have string children only (no nested HTML)
 6. Only include images that have been provided with IDs
-7. There MUST be exactly one `<section>` element with `role="article"`, a `data-section-type` attribute set to the provided section type, and a `data-section-id` attribute set to the provided section ID
+7. There MUST be exactly one `<section>` element with a `data-section-type` attribute set to the provided section type and a `data-section-id` attribute set to the provided section ID. Do NOT add `role="article"` to the section
 8. The section MUST be wrapped in a container div with `id="content"` and class `container`
 9. Image tags MUST have a `data-id` attribute matching the provided image ID
 10. Do NOT use any `data-id` values other than the ones provided
@@ -42,7 +42,7 @@ Use a normal-flow layout. Do NOT create any `<img>` tags. Text groups flow verti
 
 ```html
 <div class="container content mx-auto max-w-4xl p-6 bg-white" id="content">
-    <section role="article" data-section-type="..." data-section-id="..." class="space-y-6">
+    <section data-section-type="..." data-section-id="..." class="space-y-6">
         <!-- Each text group as a normal-flow block -->
         <div class="space-y-2">
             <h1 class="text-2xl font-bold text-gray-900" data-id="[HEADING_ID]">Heading</h1>
@@ -62,7 +62,7 @@ Use a normal-flow layout. Do NOT create any `<img>` tags. Text groups flow verti
 
 ```html
 <div class="container content mx-auto max-w-6xl p-0 bg-white" id="content">
-    <section role="article" data-section-type="..." data-section-id="..." class="flex items-center justify-center">
+    <section data-section-type="..." data-section-id="..." class="flex items-center justify-center">
         <div class="relative w-full flex items-center justify-center">
             <!-- Background image — constrained to viewport height -->
             <img data-id="[IMAGE_ID]" alt="Page background"

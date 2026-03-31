@@ -253,6 +253,9 @@ export function useBookRunStatus(label: string): BookRunContextValue {
           const completedTask = idx !== -1 ? tasks[idx] : undefined
           if (completedTask?.kind === "package-adt") {
             queryClient.invalidateQueries({ queryKey: ["books", label, "step-status"] })
+            queryClient.invalidateQueries({ queryKey: ["debug", "accessibility", label] })
+            queryClient.invalidateQueries({ queryKey: ["debug", "versions", label, "accessibility-assessment", "book"] })
+            queryClient.invalidateQueries({ queryKey: ["book-config", label] })
           }
           if ((completedTask?.kind === "image-generate" || completedTask?.kind === "re-render" || completedTask?.kind === "ai-edit") && completedTask.pageId) {
             queryClient.invalidateQueries({ queryKey: ["books", label, "pages", completedTask.pageId] })

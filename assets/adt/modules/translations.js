@@ -11,6 +11,8 @@ import { highlightGlossaryTerms, removeGlossaryHighlights, loadGlossaryTerms } f
 import { loadCurrentSLVideo } from './video.js';
 import { announceToScreenReader } from './ui_utils.js';
 
+const getMainContentElement = () => document.getElementById('content') || document.querySelector('main') || document.querySelector('body > .container');
+
 /**
  * Set up translations and audio files for the application.
  * Ensures a language is set, fetches translations, and shows main content.
@@ -322,7 +324,7 @@ export const updateLanguageDropdownFromAppConfig = async () => {
  * @private
  */
 const showMainContent = () => {
-    const mainContent = document.querySelector('body > .container');
+    const mainContent = getMainContentElement();
     if (mainContent) {
         mainContent.classList.remove('opacity-0', 'invisible');
         mainContent.classList.add('opacity-100', 'visible', 'transition-opacity', 'duration-300', 'ease-in-out');

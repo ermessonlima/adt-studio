@@ -167,7 +167,7 @@ describe("AccessibilityOverviewTab", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Critical/i }))
 
-    expect(screen.getByText("1 of 4 findings")).toBeTruthy()
+    expect(screen.getByText("1 of 3 items")).toBeTruthy()
     expect(screen.getByText("Add alt text")).toBeTruthy()
     expect(screen.queryByText("Fix heading order")).toBeNull()
 
@@ -179,13 +179,22 @@ describe("AccessibilityOverviewTab", () => {
     })
   })
 
+  it("shows issue and manual-review summary cards", async () => {
+    const { AccessibilityOverviewTab } = await import("./AccessibilityValidationTabs")
+    render(<AccessibilityOverviewTab label="demo-book" />)
+
+    expect(screen.getByText("Issues")).toBeTruthy()
+    expect(screen.getAllByText("Manual review").length).toBeGreaterThan(0)
+    expect(screen.getByText("1 manual review item")).toBeTruthy()
+  })
+
   it("filters findings by category", async () => {
     const { AccessibilityOverviewTab } = await import("./AccessibilityValidationTabs")
     render(<AccessibilityOverviewTab label="demo-book" />)
 
     fireEvent.click(screen.getByRole("button", { name: /Structure & semantics/i }))
 
-    expect(screen.getByText("2 of 4 findings")).toBeTruthy()
+    expect(screen.getByText("2 of 4 items")).toBeTruthy()
     expect(screen.getByText("Ensure page content is contained by landmarks")).toBeTruthy()
     expect(screen.getByText("Fix heading order")).toBeTruthy()
     expect(screen.queryByText("Add alt text")).toBeNull()

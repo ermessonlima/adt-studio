@@ -27,6 +27,7 @@ const CLASS_NAMES = {
 };
 
 const SELECTORS = {
+    ACTIVITY: 'section[data-section-type^="activity_"]',
     FILL_IN_THE_BLANK: 'section[data-section-type="activity_fill_in_the_blank"]',
     FILL_IN_A_TABLE: 'section[data-section-type="activity_fill_in_a_table"]',
     MULTIPLE_CHOICE: 'section[data-section-type="activity_multiple_choice"]',
@@ -34,6 +35,9 @@ const SELECTORS = {
     TRUE_FALSE: 'section[data-section-type="activity_true_false"]',
     OPEN_ENDED: 'section[data-section-type="activity_open_ended_answer"]'
 };
+
+const getActivitySection = () => document.querySelector(SELECTORS.ACTIVITY);
+const getActivitySections = () => document.querySelectorAll(SELECTORS.ACTIVITY);
 
 // Helper function to get activity ID from path
 const getActivityIdFromPath = () => {
@@ -94,7 +98,7 @@ const activityHasUserData = (activityType) => {
 
 // Simplified function to check for user data
 export const checkForUserData = () => {
-    const activitySection = document.querySelector('section[role="activity"]');
+    const activitySection = getActivitySection();
     if (!activitySection) return false;
 
     const activityType = activitySection.dataset.sectionType;
@@ -106,7 +110,7 @@ export const updateResetButtonVisibility = () => {
     const resetButton = document.getElementById("reset-button");
     if (!resetButton) return;
     
-    const activitySection = document.querySelector('section[role="activity"]');
+    const activitySection = getActivitySection();
     const activityType = activitySection?.dataset.sectionType;
     const resetSupportedTypes = new Set([
         ActivityTypes.OPEN_ENDED_ANSWER,
@@ -479,7 +483,7 @@ const handleResetActivity = () => {
     const activityId = getActivityIdFromPath();
     clearActivityLocalStorage(activityId);
 
-    const activitySection = document.querySelector('section[role="activity"]');
+    const activitySection = getActivitySection();
     if (activitySection) {
         const activityType = activitySection.dataset.sectionType;
         const resetHandler = activityResetHandlers[activityType];
@@ -531,7 +535,7 @@ export const prepareActivity = () => {
     activityHandlers = handlers.activityHandlers;
 
     initializeActivityAudioElements();
-    const activitySections = document.querySelectorAll('section[role="activity"]');
+    const activitySections = getActivitySections();
     const submitButton = document.getElementById("submit-button");
     const resetButton = document.getElementById("reset-button");
 

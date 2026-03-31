@@ -12,6 +12,11 @@ function previewAssetsUrl(bookLabel: string): string {
   return `${BASE_URL}/books/${bookLabel}/adt-preview`
 }
 
+function promoteFirstHeadingToH1(html: string): string {
+  if (/<h1\b/i.test(html)) return html
+  return html.replace(/<h([2-6])(\b[^>]*)>([\s\S]*?)<\/h\1>/i, '<h1$2>$3</h1>')
+}
+
 /** Fixed viewport width the iframe renders at — matches a typical desktop preview.
  *  The iframe is scaled down via CSS transform to fit the actual panel width. */
 const RENDER_WIDTH = 1280
@@ -326,7 +331,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
     ${interactiveStyles}
   </style>
 </head>
-<body>
+<body class="min-h-screen flex items-center justify-center">
 ${interactiveScript}
 </body>
 </html>`,
@@ -374,10 +379,13 @@ ${interactiveScript}
 
     // Preserve the interactive script if present
     const scriptEl = doc.body.querySelector("script")
-    // If HTML already has <div id="content">, inject directly to avoid a duplicate
-    // wrapper. Otherwise add the plain wrapper to match renderPageHtml's structure.
-    const hasOwnWrapper = /^\s*<div\b[^>]*\bid="content"/.test(newHtml)
-    doc.body.innerHTML = hasOwnWrapper ? newHtml : `<div id="content">${newHtml}</div>`
+    const normalizedHtml = promoteFirstHeadingToH1(newHtml)
+    // Mirror the packaged page shell closely: a page-level <main> containing
+    // either the existing #content wrapper or a generated one.
+    const hasOwnMain = /^\s*<main\b/.test(normalizedHtml)
+    const hasOwnWrapper = /^\s*<div\b[^>]*\bid="content"/.test(normalizedHtml)
+    const contentHtml = hasOwnWrapper ? normalizedHtml : `<div id="content">${normalizedHtml}</div>`
+    doc.body.innerHTML = hasOwnMain ? normalizedHtml : `<main class="w-full">${contentHtml}</main>`
     if (scriptEl) {
       doc.body.appendChild(scriptEl)
     }

@@ -34,6 +34,11 @@ export const AccessibilityPageResult = z.object({
 })
 export type AccessibilityPageResult = z.infer<typeof AccessibilityPageResult>
 
+export const BrowserAccessibilityPageResult = AccessibilityPageResult.extend({
+  recheckedRuleIds: z.array(z.string()),
+})
+export type BrowserAccessibilityPageResult = z.infer<typeof BrowserAccessibilityPageResult>
+
 export const AccessibilityAssessmentSummary = z.object({
   pageCount: z.number().int(),
   pagesWithViolations: z.number().int(),
@@ -42,6 +47,11 @@ export const AccessibilityAssessmentSummary = z.object({
   incompleteCount: z.number().int(),
 })
 export type AccessibilityAssessmentSummary = z.infer<typeof AccessibilityAssessmentSummary>
+
+export const BrowserAccessibilityAssessmentSummary = AccessibilityAssessmentSummary.extend({
+  recheckedPageCount: z.number().int(),
+})
+export type BrowserAccessibilityAssessmentSummary = z.infer<typeof BrowserAccessibilityAssessmentSummary>
 
 export const AccessibilityAssessmentOutput = z.object({
   generatedAt: z.string(),
@@ -52,3 +62,13 @@ export const AccessibilityAssessmentOutput = z.object({
   summary: AccessibilityAssessmentSummary,
 })
 export type AccessibilityAssessmentOutput = z.infer<typeof AccessibilityAssessmentOutput>
+
+export const BrowserAccessibilityAssessmentOutput = z.object({
+  generatedAt: z.string(),
+  tool: z.literal("axe-core-playwright"),
+  baseGeneratedAt: z.string().nullable(),
+  ruleIds: z.array(z.string()),
+  pages: z.array(BrowserAccessibilityPageResult),
+  summary: BrowserAccessibilityAssessmentSummary,
+})
+export type BrowserAccessibilityAssessmentOutput = z.infer<typeof BrowserAccessibilityAssessmentOutput>

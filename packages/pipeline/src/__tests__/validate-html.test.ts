@@ -9,7 +9,7 @@ describe("validateSectionHtml", () => {
   it("passes valid HTML with correct data-ids", () => {
     const html = `
       <div id="content" class="container">
-        <section role="article" data-section-type="text_only">
+        <section data-section-type="text_only">
           <p data-id="pg001_gp001">Hello world</p>
         </section>
       </div>
@@ -200,7 +200,7 @@ describe("validateSectionHtml", () => {
   it("returns sectionHtml with outer section tag when no content container", () => {
     const html = `
       <html><body>
-        <section role="article">
+        <section>
           <p data-id="pg001_gp001">Hello</p>
         </section>
       </body></html>
@@ -209,6 +209,7 @@ describe("validateSectionHtml", () => {
     expect(result.valid).toBe(true)
     expect(result.sectionHtml).toContain("<section")
     expect(result.sectionHtml).toContain("pg001_gp001")
+    expect(result.sectionHtml).not.toContain('role="article"')
     expect(result.sectionHtml).not.toContain("<html>")
     expect(result.sectionHtml).not.toContain("<body>")
   })
@@ -217,7 +218,7 @@ describe("validateSectionHtml", () => {
     const html = `
       <html><body>
         <div id="content" class="container" style="background-color: #FFFAF5;">
-          <section role="article">
+          <section>
             <p data-id="pg001_gp001">Hello</p>
           </section>
         </div>
@@ -465,7 +466,7 @@ describe("validateSectionHtml", () => {
   it("validates required section attributes when expected values are provided", () => {
     const html = `
       <div id="content" class="container">
-        <section role="article" data-section-type="text_only" data-section-id="pg001_sec001">
+        <section data-section-type="text_only" data-section-id="pg001_sec001">
           <p data-id="pg001_gp001_tx001">Hello</p>
         </section>
       </div>
@@ -485,7 +486,7 @@ describe("validateSectionHtml", () => {
 
   it("rejects missing section attributes when expected values are provided", () => {
     const html = `
-      <section role="article" data-section-type="text_only">
+      <section data-section-type="text_only">
         <p data-id="pg001_gp001_tx001">Hello</p>
       </section>
     `
@@ -793,6 +794,77 @@ describe("validateSectionHtml", () => {
     expect(result.valid).toBe(true)
     expect(result.sectionHtml).toContain('<img data-id="im001"')
     expect(result.sectionHtml).not.toContain("SHOULD_NOT_APPEAR")
+  })
+
+
+  it("normalizes shared activity_matching semantics during validation", () => {
+    const html = `
+      <section data-section-type="activity_matching">
+        <div class="activity-item" tabindex="0" data-id="tx001" data-activity-item="item-1">Word</div>
+        <div class="dropzone" tabindex="0" aria-label="Drop here" id="target1">
+          <div id="dropzone-1" role="region" aria-live="polite"></div>
+        </div>
+      </section>
+    `
+    const result = validateSectionHtml(html, ["tx001"], [])
+    expect(result.valid).toBe(true)
+    expect(result.sectionHtml).toContain('class="activity-item" tabindex="0" data-id="tx001" data-activity-item="item-1" role="button"')
+    expect(result.sectionHtml).toContain('class="dropzone" tabindex="0" aria-label="Drop here" id="target1" role="button"')
+    expect(result.sectionHtml).toContain('id="dropzone-1" aria-live="polite" class="dropzone-slot"')
+    expect(result.sectionHtml).not.toContain('role="region"')
+  })
+
+
+  it("normalizes shared activity_true_false semantics during validation", () => {
+    const html = `
+      <section data-section-type="activity_true_false">
+        <label>
+          <input type="radio" value="true" aria-label="True" class="sr-only peer" />
+          <div class="choice-chip"></div>
+        </label>
+        <label>
+          <input type="radio" value="false" aria-label="False" class="sr-only peer" />
+          <div class="choice-chip"></div>
+        </label>
+      </section>
+    `
+    const result = validateSectionHtml(html, [], [])
+    expect(result.valid).toBe(true)
+    expect(result.sectionHtml).not.toContain('aria-label="True"')
+    expect(result.sectionHtml).not.toContain('aria-label="False"')
+    expect(result.sectionHtml).toContain('<span class="sr-only" data-generated-a11y-label="true">True</span>')
+    expect(result.sectionHtml).toContain('<span class="sr-only" data-generated-a11y-label="true">False</span>')
+  })
+
+
+  it("normalizes shared activity_fill_in_a_table semantics during validation", () => {
+    const html = `
+      <section data-section-type="activity_fill_in_a_table">
+        <table>
+          <thead>
+            <tr>
+              <th data-id="tx001"></th>
+              <th data-id="tx002">Found it!</th>
+              <th data-id="tx003">Expression</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-id="tx004">0</td>
+              <td data-id="tx005"></td>
+              <td data-id="tx006"></td>
+            </tr>
+          </tbody>
+        </table>
+        <input type="text" id="field-1" data-activity-item="item-1" />
+      </section>
+    `
+    const result = validateSectionHtml(html, ["tx001","tx002","tx003","tx004","tx005","tx006"], [])
+    expect(result.valid).toBe(true)
+    expect(result.sectionHtml).toContain('<td data-id="tx001"></td>')
+    expect(result.sectionHtml).toContain('<th data-id="tx002" scope="col">Found it!</th>')
+    expect(result.sectionHtml).toContain('<th data-id="tx004" scope="row">0</th>')
+    expect(result.sectionHtml).toContain('data-activity-item="item-1" aria-label="Answer"')
   })
 })
 

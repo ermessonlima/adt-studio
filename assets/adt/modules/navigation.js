@@ -14,6 +14,8 @@ const NAV_TAB_COOKIE = "navActiveTab";
 const NAV_TABS = ["toc", "pages"];
 const DEFAULT_NAV_TAB = "toc";
 
+const getMainContentElement = () => document.getElementById('content') || document.querySelector('main') || document.querySelector('body > .container');
+
 let navigationData = { pages: [], toc: [] };
 const getInitialNavTab = () => {
   const savedTab = getCookie(NAV_TAB_COOKIE);
@@ -522,7 +524,7 @@ export const handleNavigation = (event) => {
     // Save current page state
     savePageState();
 
-    const mainContent = document.querySelector('body > .container');
+    const mainContent = getMainContentElement();
     if (mainContent) {
       mainContent.classList.add("opacity-0");
     }
@@ -725,7 +727,7 @@ export const nextPage = () => {
     cacheInterfaceElements();
 
     // Fade out content
-    const mainContent = document.querySelector('body > .container');
+    const mainContent = getMainContentElement();
     if (mainContent) {
       mainContent.classList.add("opacity-0");
     }
@@ -762,7 +764,7 @@ export const previousPage = () => {
     setCookie("navScrollPosition", scrollPosition, 7, basePath);
     cacheInterfaceElements();
 
-    const mainContent = document.querySelector('body > .container');
+    const mainContent = getMainContentElement();
     if (mainContent) {
       mainContent.classList.add("opacity-0");
     }
@@ -902,7 +904,7 @@ export const setupClickOutsideHandler = () => {
     const sidebar = document.getElementById('sidebar');
     const navToggle = document.querySelector('.nav__toggle');
     const sidebarToggle = document.getElementById('open-sidebar');
-    const content = document.querySelector('body > .container');
+    const content = getMainContentElement();
 
     // Check if nav menu is open using aria-expanded attribute
     const isNavOpen = navPopup && navPopup.getAttribute("aria-expanded") === "true";

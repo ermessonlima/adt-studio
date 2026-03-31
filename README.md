@@ -201,6 +201,10 @@ pnpm test             # Run tests
 pnpm test:coverage    # Run tests with coverage
 pnpm typecheck        # TypeScript strict mode check
 pnpm lint             # Lint all packages
+pnpm a11y:regression  # Run curated packaged-output accessibility regression (markdown)
+pnpm a11y:regression:json  # Same regression with JSON output to stdout
+pnpm a11y:browser-recheck  # Recheck manual-review items + contrast in Playwright
+pnpm a11y:browser-recheck:json  # Same browser recheck with JSON output to stdout
 
 # i18n
 pnpm --filter @adt/studio lint     # Lint Studio only (includes lingui/no-unlocalized-strings)
@@ -217,6 +221,96 @@ OPENAI_API_KEY=<key> TRANSLATE_MODEL=openai:gpt-4o-mini pnpm --filter @adt/studi
 4. **Maximum Transparency** — All LLM calls, prompts, and responses are user-inspectable
 5. **Minimize Dependencies** — Flat files over databases when sufficient
 6. **Pure JS/TS Over Native** — WASM over C/C++ bindings for cross-platform portability
+
+## Accessibility Regression Tooling
+
+ADT Studio now includes a curated packaged-output accessibility regression runner for checking **systematic** accessibility regressions in representative local books.
+
+### Default usage
+
+```bash
+pnpm a11y:regression
+```
+
+This command:
+
+- runs `pnpm build` first
+- reads the curated allowlist from `scripts/curated-a11y-books.txt`
+- packages temp copies of those local books
+- runs the accessibility assessment before and after packaging
+- prints a markdown summary to stdout
+
+### JSON output
+
+```bash
+pnpm a11y:regression:json
+```
+
+Use this when you want machine-readable output for local analysis or lightweight trend tracking.
+
+### Direct script usage
+
+You can also run the underlying script directly for custom inputs:
+
+```bash
+pnpm exec tsx scripts/run-curated-a11y-regression.ts --format markdown
+pnpm exec tsx scripts/run-curated-a11y-regression.ts --format json --out .context/curated-a11y-regression.json
+pnpm exec tsx scripts/run-curated-a11y-regression.ts --book lp-18-this-is-how-my-face-glows --book unicef-ai-strategy---main-paper-and-annexures_final
+pnpm exec tsx scripts/run-curated-a11y-regression.ts --book-list scripts/curated-a11y-books.txt
+```
+
+Supported options:
+
+- `--build` — run `pnpm build` before the regression
+- `--quiet-build` — suppress build output when used with `--build`
+- `--format markdown|json` — choose report format
+- `--out <path>` — write the report to a file instead of stdout
+- `--book <label>` — run only specific local books
+- `--book-list <path>` — use a different curated allowlist file
+- `--books-root <path>` — override the local books directory
+- `--web-assets-dir <path>` — override the packaged web assets directory
+
+### Browser recheck for manual-review items
+
+Use the Playwright-backed recheck when you want a second pass for JSDOM `incomplete` findings and a real-browser `color-contrast` audit:
+
+```bash
+pnpm a11y:browser-recheck
+pnpm a11y:browser-recheck:json
+pnpm exec tsx scripts/run-browser-a11y-recheck.ts --book lp-18-this-is-how-my-face-glows
+pnpm exec tsx scripts/run-browser-a11y-recheck.ts --out .context/browser-a11y-recheck.md
+```
+
+This tool:
+
+- packages temp copies of curated local books
+- runs the existing JSDOM accessibility assessment first
+- rechecks only baseline `incomplete` page/rule pairs in Playwright
+- also runs full-page browser checks for `color-contrast` by default
+- reports how much of the manual-review queue becomes confirmed issues, resolved checks, or a smaller residual manual-review queue
+
+Supported options:
+
+- `--build` — run `pnpm build` before the recheck
+- `--quiet-build` — suppress build output when used with `--build`
+- `--format markdown|json` — choose report format
+- `--out <path>` — write the report to a file instead of stdout
+- `--book <label>` — run only specific local books
+- `--book-list <path>` — use a different curated allowlist file
+- `--books-root <path>` — override the local books directory
+- `--web-assets-dir <path>` — override the packaged web assets directory
+- `--full-page-rule <id>` — add a browser-only full-page rule in addition to the default `color-contrast`
+
+### Scope and expectations
+
+These tools are intended as **developer tooling**, not as a guarantee that every accessibility issue in every book is fixed. They are designed to catch shared ADT Studio output regressions such as landmark, heading, image-`alt`, and browser-verifiable manual-review problems that can affect many exported ADTs.
+
+Notes:
+
+- They do **not** require the local Studio/API dev server to be running.
+- They are heavier than a normal test pass because they rebuild and repackage books.
+- `runAccessibilityAssessment` may still emit jsdom canvas warnings to stderr during local runs.
+- The browser recheck requires Playwright Chromium to be installed.
 
 ## Documentation
 
