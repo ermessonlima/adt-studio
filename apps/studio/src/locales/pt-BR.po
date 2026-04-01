@@ -513,8 +513,8 @@ msgstr "Peça para a IA editar..."
 msgid "Asking the AI to put on its creative hat..."
 msgstr "Pedindo para a IA colocar o chapéu criativo..."
 
-msgid "Aspect:"
-msgstr "Proporção:"
+#~ msgid "Aspect:"
+#~ msgstr "Proporção:"
 
 msgid "Audio Settings"
 msgstr "Configurações de áudio"
@@ -820,6 +820,9 @@ msgstr "Recortar"
 msgid "Crop Image"
 msgstr "Recortar imagem"
 
+msgid "Crop preview"
+msgstr "Pré-visualização de recorte"
+
 msgid "Cropping Prompt"
 msgstr "Prompt de recorte"
 
@@ -832,8 +835,8 @@ msgstr "Current effective values"
 msgid "Current Preview Page"
 msgstr "Current Preview Page"
 
-msgid "Custom"
-msgstr "Personalizado"
+#~ msgid "Custom"
+#~ msgstr "Personalizado"
 
 msgid "Custom section {index}"
 msgstr "Custom section {index}"
@@ -971,6 +974,9 @@ msgstr "Exibição"
 
 msgid "Drag to move boxes, drag edges/corners to resize"
 msgstr "Drag to move boxes, drag edges/corners to resize"
+
+msgid "Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box."
+msgstr "Arraste para mover a caixa de recorte, arraste bordas/cantos para redimensionar. Clique e arraste na imagem para desenhar uma nova caixa."
 
 msgid "Drag to reorder"
 msgstr "Arraste para reordenar"
@@ -1232,8 +1238,8 @@ msgstr "Formato"
 msgid "Forms & controls"
 msgstr "Forms & controls"
 
-msgid "Free"
-msgstr "Livre"
+#~ msgid "Free"
+#~ msgstr "Livre"
 
 msgid "From reference image..."
 msgstr "A partir de imagem de referência..."
@@ -1945,8 +1951,8 @@ msgstr "Optional page-level summary or handoff note"
 msgid "Optional suggestion for fixing or improving this item"
 msgstr "Optional suggestion for fixing or improving this item"
 
-msgid "Original"
-msgstr "Original"
+#~ msgid "Original"
+#~ msgstr "Original"
 
 msgid "Other"
 msgstr "Outro"
@@ -2526,8 +2532,8 @@ msgstr "Sessions"
 msgid "Sessions let different reviewers capture findings independently, including language-specific reviews."
 msgstr "Sessions let different reviewers capture findings independently, including language-specific reviews."
 
-msgid "Set"
-msgstr "Definir"
+#~ msgid "Set"
+#~ msgstr "Definir"
 
 msgid "Set a Gemini API key to generate audio"
 msgstr "Defina uma chave de API do Gemini para gerar áudio"
@@ -3039,5 +3045,5 @@ msgstr "Seus livros"
 msgid "ZIP Archive"
 msgstr "Arquivo ZIP"
 
-msgid "Zoom"
-msgstr "Zoom"
+#~ msgid "Zoom"
+#~ msgstr "Zoom"

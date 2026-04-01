@@ -513,8 +513,8 @@ msgstr "Ask AI to edit..."
 msgid "Asking the AI to put on its creative hat..."
 msgstr "Asking the AI to put on its creative hat..."
 
-msgid "Aspect:"
-msgstr "Aspect:"
+#~ msgid "Aspect:"
+#~ msgstr "Aspect:"
 
 msgid "Audio Settings"
 msgstr "Audio Settings"
@@ -820,6 +820,9 @@ msgstr "Crop"
 msgid "Crop Image"
 msgstr "Crop Image"
 
+msgid "Crop preview"
+msgstr "Crop preview"
+
 msgid "Cropping Prompt"
 msgstr "Cropping Prompt"
 
@@ -832,8 +835,8 @@ msgstr "Current effective values"
 msgid "Current Preview Page"
 msgstr "Current Preview Page"
 
-msgid "Custom"
-msgstr "Custom"
+#~ msgid "Custom"
+#~ msgstr "Custom"
 
 msgid "Custom section {index}"
 msgstr "Custom section {index}"
@@ -971,6 +974,9 @@ msgstr "Display"
 
 msgid "Drag to move boxes, drag edges/corners to resize"
 msgstr "Drag to move boxes, drag edges/corners to resize"
+
+msgid "Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box."
+msgstr "Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box."
 
 msgid "Drag to reorder"
 msgstr "Drag to reorder"
@@ -1232,8 +1238,8 @@ msgstr "Format"
 msgid "Forms & controls"
 msgstr "Forms & controls"
 
-msgid "Free"
-msgstr "Free"
+#~ msgid "Free"
+#~ msgstr "Free"
 
 msgid "From reference image..."
 msgstr "From reference image..."
@@ -1945,8 +1951,8 @@ msgstr "Optional page-level summary or handoff note"
 msgid "Optional suggestion for fixing or improving this item"
 msgstr "Optional suggestion for fixing or improving this item"
 
-msgid "Original"
-msgstr "Original"
+#~ msgid "Original"
+#~ msgstr "Original"
 
 msgid "Other"
 msgstr "Other"
@@ -2526,8 +2532,8 @@ msgstr "Sessions"
 msgid "Sessions let different reviewers capture findings independently, including language-specific reviews."
 msgstr "Sessions let different reviewers capture findings independently, including language-specific reviews."
 
-msgid "Set"
-msgstr "Set"
+#~ msgid "Set"
+#~ msgstr "Set"
 
 msgid "Set a Gemini API key to generate audio"
 msgstr "Set a Gemini API key to generate audio"
@@ -3037,5 +3043,5 @@ msgstr "Your Books"
 msgid "ZIP Archive"
 msgstr "ZIP Archive"
 
-msgid "Zoom"
-msgstr "Zoom"
+#~ msgid "Zoom"
+#~ msgstr "Zoom"
