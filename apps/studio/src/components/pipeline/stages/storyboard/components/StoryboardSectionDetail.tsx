@@ -815,6 +815,26 @@ export function StoryboardSectionDetail({
     [pendingRendering, page.rendering, sectionIndex]
   )
 
+  // Update a single activity answer value in the rendering
+  const updateAnswer = useCallback(
+    (itemKey: string, value: string) => {
+      const rBase = pendingRendering ?? page.rendering
+      if (!rBase) return
+      const updated = {
+        ...rBase,
+        sections: rBase.sections.map((s) => {
+          if (s.sectionIndex !== sectionIndex) return s
+          return {
+            ...s,
+            activityAnswers: { ...s.activityAnswers, [itemKey]: value },
+          }
+        }),
+      }
+      setPendingRendering(updated)
+    },
+    [pendingRendering, page.rendering, sectionIndex]
+  )
+
   // Delete selected block from rendered HTML
   const handleDeleteBlock = useCallback(
     (dataId: string) => {
@@ -2331,6 +2351,7 @@ export function StoryboardSectionDetail({
         sectionTypes={sectionTypes}
         textTypes={textTypes}
         groupTypes={groupTypes}
+        activityAnswers={renderedSection?.activityAnswers}
         onChangeSectionType={changeSectionType}
         onToggleSectionPruned={toggleSectionPruned}
         onTogglePartPruned={togglePartPruned}
@@ -2350,6 +2371,7 @@ export function StoryboardSectionDetail({
         onDeleteSection={handleDeleteSection}
         onRerender={handleRerender}
         onAddImage={() => setAddImageDialogOpen(true)}
+        onUpdateAnswer={updateAnswer}
         versionPickerNode={
           <VersionPicker
             currentVersion={page.versions.sectioning}

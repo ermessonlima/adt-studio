@@ -45,6 +45,7 @@ interface SectionDataPanelProps {
   sectionTypes?: Record<string, string>
   textTypes?: Record<string, string>
   groupTypes?: Record<string, string>
+  activityAnswers?: Record<string, string | boolean | number>
   onChangeSectionType: (type: string) => void
   onToggleSectionPruned: () => void
   onTogglePartPruned: (partIndex: number) => void
@@ -69,6 +70,7 @@ interface SectionDataPanelProps {
   onDeleteSection: () => void
   onRerender: (prompt?: string) => void
   onAddImage: () => void
+  onUpdateAnswer: (itemKey: string, value: string) => void
   // Version picker
   versionPickerNode: ReactNode
   // Disabled states
@@ -226,6 +228,7 @@ export function SectionDataPanel({
   sectionTypes,
   textTypes,
   groupTypes,
+  activityAnswers,
   onChangeSectionType,
   onToggleSectionPruned,
   onTogglePartPruned,
@@ -245,6 +248,7 @@ export function SectionDataPanel({
   onDeleteSection,
   onRerender,
   onAddImage,
+  onUpdateAnswer,
   versionPickerNode,
   merging,
   cloning,
@@ -894,6 +898,36 @@ export function SectionDataPanel({
             {t`Add Group`}
           </button>
         </div>
+
+        {/* Activity Answers */}
+        {activityAnswers && Object.keys(activityAnswers).length > 0 && (
+          <div>
+            <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              {t`Answers`}
+            </h3>
+            <div className="space-y-1.5">
+              {Object.entries(activityAnswers)
+                .sort(([a], [b]) => {
+                  const numA = parseInt(a.replace(/\D/g, ""), 10) || 0
+                  const numB = parseInt(b.replace(/\D/g, ""), 10) || 0
+                  return numA - numB
+                })
+                .map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2 px-3 py-1.5 rounded border bg-amber-50/60">
+                    <span className="shrink-0 text-[10px] font-medium text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">
+                      {key}
+                    </span>
+                    <input
+                      type="text"
+                      value={String(value)}
+                      onChange={(e) => onUpdateAnswer(key, e.target.value)}
+                      className="flex-1 min-w-0 text-xs rounded border border-transparent bg-transparent px-1.5 py-1 hover:border-border hover:bg-white focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                    />
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Images */}
         <div>

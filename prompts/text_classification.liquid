@@ -23,6 +23,7 @@ EXTRACTION RULES:
 11. Preserve original spelling and punctuation exactly as shown
 12. If the page is blank or contains only images with no text, return an empty groups array
 13. Use the OCR text as a reference but trust the image as the primary source — correct OCR errors when the image clearly shows different text
+14. For fill-in-the-blank activities: when a word appears as a placeholder (dotted, underlined, inside blanks, surrounded by dots like "..word..", or with underscores like "___word___"), wrap it as `[placeholder:word]`. This marks it as a blank hint for downstream processing. Examples: "..afloja.." → "[placeholder:afloja]", "___estrella___" → "[placeholder:estrella]". Only do this when the word is visually styled as a fill-in blank on the page image — do not wrap normal text.
 {% endchat %}
 
 {% chat role: "user" %}

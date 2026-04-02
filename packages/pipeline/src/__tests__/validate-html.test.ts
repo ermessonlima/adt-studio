@@ -777,6 +777,144 @@ describe("validateSectionHtml", () => {
     )
   })
 
+  it("preserves [[blank:item-N]] markers and skips text replacement", () => {
+    const html = `
+      <section>
+        <p class="fitb-sentence" data-id="tx001">The [[blank:item-1]] is a type of star.</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "The sun is a type of star."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+    // The blank marker must be preserved — not replaced with the original text
+    expect(result.sectionHtml).toContain("[[blank:item-1]]")
+    expect(result.sectionHtml).not.toContain("The sun is a type of star.")
+  })
+
+  it("preserves blank markers when expected text has underscore placeholders", () => {
+    const html = `
+      <section>
+        <p class="fitb-sentence" data-id="tx001">No lo [[blank:item-1]] ni [[blank:item-2]] la raíz.</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "No lo ___ ni ___ la raíz."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+    expect(result.sectionHtml).toContain("[[blank:item-1]]")
+    expect(result.sectionHtml).toContain("[[blank:item-2]]")
+  })
+
+  it("preserves blank markers when expected text has dot placeholders", () => {
+    const html = `
+      <section>
+        <p class="fitb-sentence" data-id="tx001">Definición extraída de [[blank:item-1]]</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "Definición extraída de ........................................................."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+    expect(result.sectionHtml).toContain("[[blank:item-1]]")
+  })
+
+  it("preserves blank markers with hint text and skips text replacement", () => {
+    const html = `
+      <section>
+        <p class="fitb-sentence" data-id="tx001">The [[blank:item-1:Paris]] of France is beautiful.</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "The capital of France is beautiful."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+    expect(result.sectionHtml).toContain("[[blank:item-1:Paris]]")
+  })
+
+  it("rejects blank-marker text with low similarity to expected", () => {
+    const html = `
+      <section>
+        <p class="fitb-sentence" data-id="tx001">Totally unrelated [[blank:item-1]] content here.</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "The sun is a type of star."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('Text mismatch for data-id "tx001"')
+    )
+  })
+
+  it("reports error when [[blank:item-N]] markers lack fitb-sentence class", () => {
+    const html = `
+      <section>
+        <p data-id="tx001">The [[blank:item-1]] is a type of star.</p>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "The ___ is a type of star."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(false)
+    expect(result.errors).toContainEqual(
+      expect.stringContaining('missing the "fitb-sentence" class')
+    )
+  })
+
+  it("accepts [[blank:item-N]] markers when fitb-sentence is on an ancestor", () => {
+    const html = `
+      <section>
+        <div class="fitb-sentence">
+          <span data-id="tx001">The [[blank:item-1]] is a type of star.</span>
+        </div>
+      </section>
+    `
+    const expectedTexts = new Map([["tx001", "The ___ is a type of star."]])
+    const result = validateSectionHtml(
+      html,
+      ["tx001"],
+      [],
+      undefined,
+      { expectedTexts }
+    )
+    expect(result.valid).toBe(true)
+  })
+
   it("does not substitute expected text on image data-ids", () => {
     const html = `
       <section>

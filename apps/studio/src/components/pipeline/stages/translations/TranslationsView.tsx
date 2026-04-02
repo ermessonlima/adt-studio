@@ -24,6 +24,11 @@ function isImageEntry(id: string): boolean {
   return IMAGE_ID_RE.test(id)
 }
 
+const ANSWER_ID_RE = /_ans_/
+function isAnswerEntry(id: string): boolean {
+  return ANSWER_ID_RE.test(id)
+}
+
 const langNames = new Intl.DisplayNames(["en"], { type: "language" })
 function displayLang(code: string): string {
   try { return langNames.of(code) ?? code } catch { return code }
@@ -503,6 +508,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
             const translated = translatedMap.get(entry.id)
             const audio = audioMap.get(entry.id)
             const isImg = isImageEntry(entry.id)
+            const isAnswer = isAnswerEntry(entry.id)
 
             return (
               <div
@@ -519,7 +525,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
               >
                 <div className="pb-1">
                   {isSourceLang ? (
-                    <div className="flex items-start gap-3 px-3 py-2.5 rounded-md border bg-card">
+                    <div className={cn("flex items-start gap-3 px-3 py-2.5 rounded-md border", isAnswer ? "bg-amber-50/60" : "bg-card")}>
                       {isImg && (
                         <img
                           src={`${BASE_URL}/books/${bookLabel}/images/${entry.id}`}
@@ -528,10 +534,13 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                         />
                       )}
                       <div className="flex-1 min-w-0">
-                        <span className="text-[10px] text-muted-foreground">{entry.id}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {entry.id}
+                          {isAnswer && <span className="ml-1.5 text-[9px] font-medium text-amber-700 bg-amber-100 rounded px-1 py-0.5">{t`Answer`}</span>}
+                        </span>
                         <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
                       </div>
-                      <AudioAction
+                      {!isAnswer && <AudioAction
                         audio={audio}
                         audioLang={audioLang}
                         bookLabel={bookLabel}
@@ -545,10 +554,10 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                           generateAudioMutation.variables?.language === audioLang
                         }
                         errorMessage={generateErrorById[entry.id]}
-                      />
+                      />}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border bg-card">
+                    <div className={cn("grid grid-cols-2 gap-3 px-3 py-2.5 rounded-md border", isAnswer ? "bg-amber-50/60" : "bg-card")}>
                       <div className="flex items-start gap-3">
                         {isImg && (
                           <img
@@ -558,7 +567,10 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                           />
                         )}
                         <div className="min-w-0">
-                          <span className="text-[10px] text-muted-foreground">{entry.id}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {entry.id}
+                            {isAnswer && <span className="ml-1.5 text-[9px] font-medium text-amber-700 bg-amber-100 rounded px-1 py-0.5">{t`Answer`}</span>}
+                          </span>
                           <p className="text-sm leading-relaxed mt-0.5">{entry.text}</p>
                         </div>
                       </div>
@@ -574,7 +586,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                             rows={1}
                           />
                         </div>
-                        <AudioAction
+                        {!isAnswer && <AudioAction
                           audio={audio}
                           audioLang={audioLang}
                           bookLabel={bookLabel}
@@ -588,7 +600,7 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
                             generateAudioMutation.variables?.language === audioLang
                           }
                           errorMessage={generateErrorById[entry.id]}
-                        />
+                        />}
                       </div>
                     </div>
                   )}

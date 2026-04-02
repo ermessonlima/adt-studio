@@ -471,8 +471,14 @@ msgstr "Se está generando una imagen con IA. ¿Cancelar y navegar?"
 msgid "An open-ended answer activity."
 msgstr "Una actividad de respuesta abierta."
 
+msgid "Answer"
+msgstr "Respuesta"
+
 msgid "Answer Prompt"
 msgstr "Prompt de respuesta"
+
+msgid "Answers"
+msgstr "Respuestas"
 
 msgid "Any other section type."
 msgstr "Cualquier otro tipo de sección."

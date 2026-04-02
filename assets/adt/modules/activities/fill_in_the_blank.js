@@ -4,10 +4,115 @@ import { loadInputState } from './open_ended.js';
 import { translateText } from '../translations.js';
 import { executeMail } from './send-email.js';
 import { findAppropriateParentForFeedback } from './validation.js';
+import { announceToScreenReader } from '../ui_utils.js';
 //import { correctAnswers } from './correct_answers.js';
 
+/**
+ * Hydrate [[blank:item-N]] placeholders inside .fitb-sentence elements
+ * into actual <input> elements. Called on initial setup and after language changes.
+ */
+export const hydrateFitbSentences = (container) => {
+    const sentences = container.querySelectorAll('.fitb-sentence');
+    let ariaCounter = 0;
+
+    // First pass: count total blanks for "N of M" labeling
+    let totalBlanks = 0;
+    sentences.forEach(sentence => {
+        const targets = sentence.querySelectorAll('[data-id]');
+        const elements = targets.length > 0 ? targets : [sentence];
+        elements.forEach(el => {
+            const matches = el.innerHTML.match(/\[\[blank:item-\d+(?::[^\]]+)?\]\]/g);
+            if (matches) totalBlanks += matches.length;
+        });
+    });
+
+    sentences.forEach(sentence => {
+        // Walk all child elements that might contain markers (elements with data-id, or the sentence itself)
+        const targets = sentence.querySelectorAll('[data-id]');
+        const elementsToProcess = targets.length > 0 ? targets : [sentence];
+
+        elementsToProcess.forEach(el => {
+            const html = el.innerHTML;
+            if (!html.includes('[[blank:')) return;
+
+            const hydratedHtml = html.replace(
+                /\[\[blank:item-(\d+)(?::([^\]]+))?\]\]/g,
+                (_match, itemNum, hint) => {
+                    ariaCounter++;
+                    const placeholderAttr = hint
+                        ? ` placeholder="${hint.replace(/"/g, '&quot;')}"`
+                        : '';
+                    const blankLabel = totalBlanks > 1
+                        ? translateText('fitb-blank-label-n-of-m', { n: ariaCounter, m: totalBlanks })
+                        : translateText('fitb-blank-label');
+                    // Fallback if translation keys are not yet available
+                    const label = blankLabel.startsWith('fitb-')
+                        ? (totalBlanks > 1 ? `Blank ${ariaCounter} of ${totalBlanks}` : 'Blank')
+                        : blankLabel;
+                    // Size the input to roughly fit the expected answer.
+                    // Use the hint length when available, otherwise a sensible default.
+                    const charWidth = hint ? Math.max(hint.length + 2, 6) : 8;
+                    return `<input type="text" `
+                        + `id="fitb-input-${itemNum}" `
+                        + `class="fitb-inline-input inline-block mx-1 px-1 py-0.5 border-b-2 border-gray-400 bg-transparent text-center focus:border-blue-500 focus:outline-none" `
+                        + `style="width: ${charWidth}ch; min-width: 4ch; max-width: 100%;" `
+                        + `aria-label="${label.replace(/"/g, '&quot;')}" `
+                        + `aria-invalid="false" `
+                        + `autocomplete="off" `
+                        + `data-aria-id="aria-${ariaCounter}-0-0" `
+                        + `data-activity-item="item-${itemNum}" `
+                        + `tabindex="0"${placeholderAttr} />`;
+                }
+            );
+
+            if (hydratedHtml !== html) {
+                el.innerHTML = hydratedHtml;
+            }
+        });
+    });
+};
+
+/**
+ * Re-hydrate fill-in-the-blank sentences after a language change.
+ * Translations overwrite innerHTML with the translated text (which contains
+ * [[blank:item-N]] as literal text), so we must convert them back to inputs
+ * and restore any saved user state.
+ */
+const handleLanguageChange = () => {
+    // Preserve focus — remember which item was focused before re-hydration
+    const focused = document.activeElement;
+    const focusedItem = focused?.getAttribute?.('data-activity-item');
+
+    const sections = document.querySelectorAll('section[data-section-type="activity_fill_in_the_blank"]');
+    sections.forEach(section => {
+        hydrateFitbSentences(section);
+        const inputs = section.querySelectorAll('input[type="text"]:not(#filter-input), textarea:not(#filter-input)');
+        setupInputListeners(inputs);
+        loadInputState(inputs);
+    });
+
+    // Restore focus to the same logical input after DOM replacement
+    if (focusedItem) {
+        const restored = document.querySelector(`[data-activity-item="${focusedItem}"]`);
+        if (restored) restored.focus();
+    }
+};
+
+// Listen for language changes to re-hydrate inline blanks
+document.addEventListener('adt-language-changed', handleLanguageChange);
 
 export const preparefillInBlank = (section) => {
+    // Enhance ARIA: promote role to "form" now that runtime detection is done
+    const activitySection = section.querySelector('section[role="activity"]') || section;
+    if (activitySection.getAttribute('role') === 'activity') {
+        activitySection.setAttribute('role', 'form');
+    }
+    if (!activitySection.getAttribute('aria-label')) {
+        activitySection.setAttribute('aria-label', translateText('fitb-activity-label') || 'Fill in the blank activity');
+    }
+
+    // Hydrate [[blank:item-N]] markers into actual input elements
+    hydrateFitbSentences(section);
     const inputs = section.querySelectorAll('section input[type="text"]:not(#filter-input), section textarea:not(#filter-input)');
     setupInputListeners(inputs);
     loadInputState(inputs);
@@ -112,23 +217,14 @@ export const clearInputValidationFeedback = (input) => {
     );
 
     // Reset ARIA attributes and data attributes
-    input.removeAttribute("aria-invalid");
+    input.setAttribute("aria-invalid", "false");
     input.removeAttribute("data-has-profanity-feedback");
     input.removeAttribute("data-has-gibberish-feedback");
 
-    // Preserve enhanced accessibility aria-label with options list, but remove validation text
+    // Preserve the base aria-label, stripping any appended validation text (after " - ")
     const originalLabel = input.getAttribute("aria-label") || "";
     if (originalLabel.includes(" - ")) {
-        // If the aria-label has validation text (contains " - "), remove only the validation part
-        // but keep the options information
-        const parts = originalLabel.split(" - ");
-        if (parts[0].includes("Las opciones disponibles son:")) {
-            // This is one of our enhanced labels, preserve the options info
-            input.setAttribute("aria-label", parts[0]);
-        } else {
-            // Regular validation feedback, remove it
-            input.setAttribute("aria-label", parts[0]);
-        }
+        input.setAttribute("aria-label", originalLabel.split(" - ")[0]);
     }
 
     // Remove the right padding we added for the icon
@@ -253,6 +349,17 @@ const setAriaAttributes = (input, dataActivityItem) => {
 const handleValidationResult = (validationResult) => {
     const { allCorrect, firstIncorrectInput, unfilledCount } = validationResult;
 
+    // Announce result to screen readers
+    if (allCorrect) {
+        announceToScreenReader(translateText('fitb-all-correct') || 'All answers are correct!', true);
+    } else if (unfilledCount > 0) {
+        const msg = translateText('fitb-blanks-remaining', { count: unfilledCount })
+            || `${unfilledCount} blank${unfilledCount > 1 ? 's' : ''} still empty. Please complete all fields.`;
+        announceToScreenReader(msg, true);
+    } else {
+        announceToScreenReader(translateText('fitb-some-incorrect') || 'Some answers are incorrect. Please try again.', true);
+    }
+
     if (firstIncorrectInput) {
         firstIncorrectInput.focus();
     }
@@ -374,6 +481,7 @@ const updateInputValidationStyle = (input, isValid) => {
     const trimmedValue = input.value.trim();
     if (trimmedValue !== "") {
         input.classList.add(isValid ? 'border-green-500' : 'border-red-500');
+        input.setAttribute('aria-invalid', isValid ? 'false' : 'true');
 
         // Get previous validation state
         const wasValid = input.dataset.wasValid === 'true';
@@ -389,6 +497,9 @@ const updateInputValidationStyle = (input, isValid) => {
 
         // Store current validation state for next time
         input.dataset.wasValid = isValid.toString();
+    } else {
+        // Reset aria-invalid when input is cleared
+        input.setAttribute('aria-invalid', 'false');
     }
 };
 
@@ -434,6 +545,9 @@ export const countUnfilledInputs = (inputs) => {
 
     if (firstUnfilledInput) {
         firstUnfilledInput.focus();
+        const msg = translateText('fitb-blanks-remaining', { count: unfilledCount })
+            || `${unfilledCount} blank${unfilledCount > 1 ? 's' : ''} still empty. Please complete all fields.`;
+        announceToScreenReader(msg, true);
     }
 
     return unfilledCount;

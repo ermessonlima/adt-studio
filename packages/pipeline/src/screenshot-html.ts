@@ -51,6 +51,9 @@ export async function buildScreenshotHtml(
 
   const normalizedHtml = promoteFirstHeadingToH1(htmlWithInlineImages)
 
+  // Detect if the section contains FITB blank markers that need hydration
+  const hasFitbMarkers = /\[\[blank:item-\d+/.test(normalizedHtml)
+
   const contentBlock = /^\s*<div\b[^>]*\bid="content"/.test(normalizedHtml)
     ? normalizedHtml
     : `<div id="content">
@@ -69,6 +72,7 @@ export async function buildScreenshotHtml(
   <main class="w-full">
     ${contentBlock}
   </main>
+${hasFitbMarkers ? FITB_HYDRATION_SCRIPT : ""}
 </body>
 </html>`
 }
@@ -139,6 +143,38 @@ function buildInlineFontCss(webAssetsDir: string): string {
 
   return rules.join("\n")
 }
+
+/**
+ * Minimal inline script that hydrates [[blank:item-N]] markers into styled
+ * <input> elements for screenshot rendering. This mirrors the runtime
+ * hydrateFitbSentences() logic but without event listeners or accessibility
+ * features — purely visual so the visual review LLM sees actual input fields.
+ */
+const FITB_HYDRATION_SCRIPT = `<script>
+(function() {
+  var sentences = document.querySelectorAll('.fitb-sentence');
+  sentences.forEach(function(sentence) {
+    var targets = sentence.querySelectorAll('[data-id]');
+    var elements = targets.length > 0 ? targets : [sentence];
+    elements.forEach(function(el) {
+      var html = el.innerHTML;
+      if (html.indexOf('[[blank:') === -1) return;
+      el.innerHTML = html.replace(
+        /\\[\\[blank:item-(\\d+)(?::([^\\]]+))?\\]\\]/g,
+        function(_, itemNum, hint) {
+          var charWidth = hint ? Math.max(hint.length + 2, 6) : 8;
+          var valueAttr = hint ? ' placeholder="' + hint.replace(/"/g, '&quot;') + '"' : '';
+          return '<input type="text"'
+            + ' class="fitb-inline-input inline-block mx-1 px-1 py-0.5 border-b-2 border-gray-400 bg-transparent text-center"'
+            + ' style="width: ' + charWidth + 'ch; min-width: 4ch; max-width: 100%;"'
+            + ' data-activity-item="item-' + itemNum + '"'
+            + valueAttr + ' />';
+        }
+      );
+    });
+  });
+})();
+</script>`
 
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;")

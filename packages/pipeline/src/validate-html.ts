@@ -12,6 +12,14 @@ export interface HtmlValidationResult {
 }
 
 const EXEMPT_TAGS = new Set(["style", "script"])
+/** Matches fill-in-the-blank inline markers like [[blank:item-1]] or [[blank:item-1:hint]] */
+const BLANK_MARKER_RE = /\[\[blank:item-\d+(?::[^\]]+)?\]\]/g
+/** Non-global version for .test() checks (avoids stateful lastIndex issues) */
+const BLANK_MARKER_TEST_RE = /\[\[blank:item-\d+(?::[^\]]+)?\]\]/
+/** Matches placeholder sequences used in textbooks for blanks (3+ underscores or 3+ dots) */
+const TEXTBOOK_BLANK_RE = /_{3,}|\.{3,}/g
+/** Matches [placeholder:word] markers added during text classification */
+const PLACEHOLDER_MARKER_RE = /\[placeholder:[^\]]+\]/g
 const DISALLOWED_TAGS = new Set(["script", "iframe", "object", "embed"])
 const URL_ATTRS = new Set(["src", "href", "xlink:href", "formaction"])
 const NAMED_HTML_ENTITIES: Record<string, string> = {
@@ -153,6 +161,19 @@ function validateRequiredSectionAttributes(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function hasFitbSentenceClass(node: any): boolean {
+  let current = node
+  while (current) {
+    if (current.type === "tag" && current.attribs?.class) {
+      const classes = current.attribs.class.split(/\s+/)
+      if (classes.includes("fitb-sentence")) return true
+    }
+    current = current.parent
+  }
+  return false
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function walkNode(
   node: any,
   allowedIds: Set<string>,
@@ -230,13 +251,42 @@ function walkNode(
     ) {
       const actualText = normalizeText(DomUtils.getText(node))
       const expectedText = normalizeText(options.expectedTexts.get(dataId)!)
-      replacementText = options.expectedTexts.get(dataId)!
-      if (actualText !== expectedText) {
-        const similarity = textSimilarity(actualText, expectedText)
-        if (similarity < TEXT_SIMILARITY_THRESHOLD) {
+
+      // Check if the element contains [[blank:item-N]] markers (fill-in-the-blank
+      // inline blanks). When present, strip them before comparing similarity so we
+      // don't flag the blank placeholders as a text mismatch. Also skip the
+      // replacement step to preserve the markers in the output HTML.
+      const hasBlankMarkers = BLANK_MARKER_TEST_RE.test(actualText)
+
+      if (hasBlankMarkers) {
+        // Verify the fitb-sentence class is present on this element or an ancestor,
+        // otherwise the runtime JS won't find and hydrate the blank markers.
+        if (!hasFitbSentenceClass(node)) {
           errors.push(
-            `Text mismatch for data-id "${dataId}": expected "${expectedText.slice(0, 80)}" but got "${actualText.slice(0, 80)}"`
+            `Element with data-id "${dataId}" contains [[blank:item-N]] markers but is missing the "fitb-sentence" class (required on the element or an ancestor for runtime hydration)`
           )
+        }
+        // Compare without the blank markers in actual and underscore/dot/placeholder markers in expected
+        const strippedActual = normalizeText(actualText.replace(BLANK_MARKER_RE, ""))
+        const strippedExpected = normalizeText(expectedText.replace(TEXTBOOK_BLANK_RE, "").replace(PLACEHOLDER_MARKER_RE, ""))
+        if (strippedActual !== strippedExpected) {
+          const similarity = textSimilarity(strippedActual, strippedExpected)
+          if (similarity < TEXT_SIMILARITY_THRESHOLD) {
+            errors.push(
+              `Text mismatch for data-id "${dataId}": expected "${strippedExpected.slice(0, 80)}" but got "${strippedActual.slice(0, 80)}"`
+            )
+          }
+        }
+        // Do NOT set replacementText — preserve the blank markers in the HTML
+      } else {
+        replacementText = options.expectedTexts.get(dataId)!
+        if (actualText !== expectedText) {
+          const similarity = textSimilarity(actualText, expectedText)
+          if (similarity < TEXT_SIMILARITY_THRESHOLD) {
+            errors.push(
+              `Text mismatch for data-id "${dataId}": expected "${expectedText.slice(0, 80)}" but got "${actualText.slice(0, 80)}"`
+            )
+          }
         }
       }
     }

@@ -180,6 +180,10 @@ export const applyTranslations = async () => {
         }
     }
 
+    // Override activity answers with translated values from the text catalog.
+    // Answer entries use the convention: {sectionId}_ans_{itemKey}
+    updateTranslatedAnswers();
+
     if (typeof document !== 'undefined' && typeof document.dispatchEvent === 'function') {
         document.dispatchEvent(
             new CustomEvent('adt-language-changed', {
@@ -188,6 +192,27 @@ export const applyTranslations = async () => {
                 }
             })
         );
+    }
+};
+
+/**
+ * Override window.correctAnswers with translated answer values from the text catalog.
+ * Answer entries in the catalog use the ID convention: {sectionId}_ans_{itemKey}
+ * where sectionId comes from the page's <meta name="title-id"> tag.
+ */
+const updateTranslatedAnswers = () => {
+    if (!window.correctAnswers || !state.translations) return;
+
+    const titleMeta = document.querySelector('meta[name="title-id"]');
+    if (!titleMeta) return;
+    const sectionId = titleMeta.getAttribute('content');
+    if (!sectionId) return;
+
+    for (const key of Object.keys(window.correctAnswers)) {
+        const translatedValue = state.translations[`${sectionId}_ans_${key}`];
+        if (translatedValue !== undefined) {
+            window.correctAnswers[key] = translatedValue;
+        }
     }
 };
 

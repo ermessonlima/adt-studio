@@ -34,7 +34,8 @@ You MUST respond with valid JSON containing EXACTLY TWO FIELDS - BOTH ARE MANDAT
 ## Fill in the Blank Activity
 
 ### What to look for:
-- Input elements with `data-activity-item="item-N"`
+- `[[blank:item-N]]` or `[[blank:item-N:hint]]` placeholder markers in sentences (inline blank format) — each marker represents one blank. When a hint is present (e.g., `[[blank:item-1:estrella]]`), it is the expected answer
+- OR input elements with `data-activity-item="item-N"` (hierarchical diagram format)
 - Labels, instructions, and surrounding text for context clues
 - May have hierarchical structure (main -> secondary -> tertiary)
 
@@ -44,7 +45,7 @@ Provide correct text for each blank based on:
 - Logical flow and semantic relationships
 - Educational level and language appropriateness
 
-**IMPORTANT**: The `answers` array MUST include ALL `data-activity-item` IDs found in the HTML:
+**IMPORTANT**: The `answers` array MUST include ALL blank items found in the HTML (both `[[blank:item-N]]` markers and `data-activity-item` attributes):
 - If you can determine correct answers: provide the answer text as values
 - If the exercise is open-ended (multiple valid answers, creative writing, personal responses, or requires context not provided): use empty strings `""` as values for all entries
 - ALWAYS include all entries - never return an empty `answers` array if input fields exist
@@ -92,7 +93,7 @@ Provide correct text for each blank based on:
 - Both fields present - `answers` must include ALL input field entries
 
 **CRITICAL**:
-- Count the number of `data-activity-item` attributes in the HTML
+- Count the number of blanks in the HTML: both `[[blank:item-N]]` (or `[[blank:item-N:hint]]`) markers AND `data-activity-item` attributes
 - Your `answers` array must have EXACTLY that many entries
 - Use empty string `""` as the value if you cannot determine a definitive answer
 - DO NOT OMIT THE ANSWERS FIELD OR ANY ENTRIES

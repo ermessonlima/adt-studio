@@ -306,4 +306,143 @@ describe("buildTextCatalog", () => {
     expect(result.generatedAt).toBeDefined()
     expect(new Date(result.generatedAt).getTime()).not.toBeNaN()
   })
+
+  it("emits activity answer entries with _ans_ IDs", async () => {
+    const storage = createMockStorage({
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "activity_fill_in_the_blank",
+              reasoning: "",
+              html: '<section><p data-id="pg001_gp001_tx001">The [[blank:item-1]] is hot.</p></section>',
+              activityAnswers: { "item-1": "sun", "item-2": "moon" },
+            },
+          ],
+        },
+      },
+      "page-sectioning": {
+        pg001: {
+          reasoning: "",
+          sections: [
+            {
+              sectionId: "pg001_section_0",
+              sectionType: "activity_fill_in_the_blank",
+              parts: [],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await buildTextCatalog(storage, [pages[0]])
+
+    expect(result.entries).toContainEqual({ id: "pg001_section_0_ans_item-1", text: "sun" })
+    expect(result.entries).toContainEqual({ id: "pg001_section_0_ans_item-2", text: "moon" })
+  })
+
+  it("stringifies boolean and number answer values", async () => {
+    const storage = createMockStorage({
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "activity_fill_in_the_blank",
+              reasoning: "",
+              html: '<section><p data-id="pg001_gp001_tx001">Text</p></section>',
+              activityAnswers: { "item-1": true, "item-2": 42 },
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await buildTextCatalog(storage, [pages[0]])
+
+    expect(result.entries).toContainEqual({ id: "pg001_sec001_ans_item-1", text: "true" })
+    expect(result.entries).toContainEqual({ id: "pg001_sec001_ans_item-2", text: "42" })
+  })
+
+  it("skips sections without activity answers", async () => {
+    const storage = createMockStorage({
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "text",
+              reasoning: "",
+              html: '<section><p data-id="pg001_gp001_tx001">Hello</p></section>',
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await buildTextCatalog(storage, [pages[0]])
+
+    expect(result.entries).toEqual([{ id: "pg001_gp001_tx001", text: "Hello" }])
+    expect(result.entries.some((e) => e.id.includes("_ans_"))).toBe(false)
+  })
+
+  it("produces unique answer IDs for multiple sections with same item keys", async () => {
+    const storage = createMockStorage({
+      "web-rendering": {
+        pg001: {
+          sections: [
+            {
+              sectionIndex: 0,
+              sectionType: "activity_fill_in_the_blank",
+              reasoning: "",
+              html: '<section><p data-id="pg001_gp001_tx001">First</p></section>',
+              activityAnswers: { "item-1": "alpha" },
+            },
+            {
+              sectionIndex: 1,
+              sectionType: "activity_fill_in_the_blank",
+              reasoning: "",
+              html: '<section><p data-id="pg001_gp002_tx001">Second</p></section>',
+              activityAnswers: { "item-1": "beta" },
+            },
+          ],
+        },
+      },
+      "page-sectioning": {
+        pg001: {
+          reasoning: "",
+          sections: [
+            {
+              sectionId: "pg001_section_0",
+              sectionType: "activity_fill_in_the_blank",
+              parts: [],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+            {
+              sectionId: "pg001_section_1",
+              sectionType: "activity_fill_in_the_blank",
+              parts: [],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        },
+      },
+    })
+
+    const result = await buildTextCatalog(storage, [pages[0]])
+
+    expect(result.entries).toContainEqual({ id: "pg001_section_0_ans_item-1", text: "alpha" })
+    expect(result.entries).toContainEqual({ id: "pg001_section_1_ans_item-1", text: "beta" })
+  })
 })

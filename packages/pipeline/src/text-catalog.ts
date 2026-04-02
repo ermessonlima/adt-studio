@@ -1,11 +1,13 @@
 import { parseDocument, DomUtils } from "htmlparser2"
 import type {
   WebRenderingOutput,
+  SectionRendering,
   ImageCaptioningOutput,
   GlossaryOutput,
   QuizGenerationOutput,
   TextCatalogEntry,
   TextCatalogOutput,
+  PageSectioningOutput as PageSectioningOutputType,
 } from "@adt/types"
 import { WebRenderingOutput as WebRenderingOutputSchema, PageSectioningOutput } from "@adt/types"
 import type { Storage, PageData } from "@adt/storage"
@@ -26,7 +28,8 @@ function extractPageEntries(
   pageId: string,
   rendering: WebRenderingOutput,
   captionMap: Map<string, string>,
-  prunedSectionIndices?: Set<number>
+  prunedSectionIndices?: Set<number>,
+  sectioning?: PageSectioningOutputType
 ): TextCatalogEntry[] {
   const entries: TextCatalogEntry[] = []
   let activityCounter = 0
@@ -62,8 +65,38 @@ function extractPageEntries(
         }
       }
     }
+
+    // Emit activity answer entries so they appear in the text catalog
+    // for viewing, editing, and translation
+    entries.push(...extractAnswerEntries(pageId, section, sectioning))
   }
 
+  return entries
+}
+
+/**
+ * Extract activity answer entries from a section's activityAnswers.
+ * Uses the sectionId from sectioning data for unique catalog IDs.
+ */
+function extractAnswerEntries(
+  pageId: string,
+  section: SectionRendering,
+  sectioning?: PageSectioningOutputType
+): TextCatalogEntry[] {
+  const answers = section.activityAnswers
+  if (!answers || Object.keys(answers).length === 0) return []
+
+  const sectionId =
+    sectioning?.sections[section.sectionIndex]?.sectionId ??
+    `${pageId}_sec${pad3(section.sectionIndex + 1)}`
+
+  const entries: TextCatalogEntry[] = []
+  for (const [key, value] of Object.entries(answers)) {
+    const text = String(value)
+    if (text.length > 0) {
+      entries.push({ id: `${sectionId}_ans_${key}`, text })
+    }
+  }
   return entries
 }
 
@@ -160,7 +193,13 @@ export async function buildTextCatalog(
     }
 
     const captionMap = loadCaptionMap(storage, page.pageId)
-    entries.push(...extractPageEntries(page.pageId, parsed.data, captionMap, prunedIndices))
+    entries.push(...extractPageEntries(
+      page.pageId,
+      parsed.data,
+      captionMap,
+      prunedIndices,
+      sectioningParsed?.success ? sectioningParsed.data : undefined
+    ))
 
     // Yield to event loop so the server stays responsive during large books
     await new Promise(resolve => setTimeout(resolve, 0))

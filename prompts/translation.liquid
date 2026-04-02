@@ -10,6 +10,7 @@ TRANSLATION RULES:
 6. Preserve punctuation style appropriate for the target language
 7. Do not add, remove, or merge text segments — translate each one individually
 8. For very short segments (single words, numbers, labels), translate them appropriately in context
+9. Preserve any `[[blank:item-N]]` or `[[blank:item-N:hint]]` placeholder markers. These are fill-in-the-blank markers for interactive activities. Place them at the grammatically correct position in the translated sentence — the blank position may differ between languages. If a hint is present after the colon, translate the hint text too (e.g., `[[blank:item-1:star]]` → `[[blank:item-1:estrella]]`)
 {% endchat %}
 
 {% chat role: "user" %}

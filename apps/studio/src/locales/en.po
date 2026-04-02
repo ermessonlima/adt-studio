@@ -471,8 +471,14 @@ msgstr "An AI image is being generated. Cancel it and navigate?"
 msgid "An open-ended answer activity."
 msgstr "An open-ended answer activity."
 
+msgid "Answer"
+msgstr "Answer"
+
 msgid "Answer Prompt"
 msgstr "Answer Prompt"
+
+msgid "Answers"
+msgstr "Answers"
 
 msgid "Any other section type."
 msgstr "Any other section type."
