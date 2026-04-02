@@ -632,4 +632,260 @@ describe("Page routes", () => {
       expect(res.status).toBe(404)
     })
   })
+
+  // ---------------------------------------------------------------------------
+  // Downstream data clearing tests
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Seed downstream pipeline data (image-captioning, text-catalog,
+   * text-catalog-translation, tts) and their step_runs so we can verify
+   * they get cleared after storyboard/image edits.
+   */
+  function seedDownstreamData(dir: string, bookLabel: string) {
+    const s = createBookStorage(bookLabel, dir)
+    try {
+      s.putNodeData("image-captioning", `${bookLabel}_p1`, {
+        captions: [{ imageId: "img1", reasoning: "test", caption: "A cat" }],
+      })
+      s.putNodeData("text-catalog", `${bookLabel}_p1`, {
+        entries: [{ id: "t1", text: "Hello" }],
+      })
+      s.putNodeData("text-catalog-translation", `${bookLabel}_p1`, {
+        locale: "es", entries: [{ id: "t1", text: "Hola" }],
+      })
+      s.putNodeData("tts", `${bookLabel}_p1`, {
+        entries: [{ id: "t1", url: "audio.mp3" }],
+      })
+      // Mark corresponding steps as completed
+      s.markStepCompleted("image-captioning")
+      s.markStepCompleted("text-catalog")
+      s.markStepCompleted("catalog-translation")
+      s.markStepCompleted("tts")
+    } finally {
+      s.close()
+    }
+  }
+
+  /** Assert that all caption + text-and-speech node data and step_runs were cleared. */
+  function expectAllDownstreamCleared(dir: string, bookLabel: string) {
+    const s = createBookStorage(bookLabel, dir)
+    try {
+      // Node data should be gone
+      expect(s.getLatestNodeData("image-captioning", `${bookLabel}_p1`)).toBeNull()
+      expect(s.getLatestNodeData("text-catalog", `${bookLabel}_p1`)).toBeNull()
+      expect(s.getLatestNodeData("text-catalog-translation", `${bookLabel}_p1`)).toBeNull()
+      expect(s.getLatestNodeData("tts", `${bookLabel}_p1`)).toBeNull()
+      // Step runs should be gone
+      const runs = s.getStepRuns()
+      const clearedSteps = ["image-captioning", "text-catalog", "catalog-translation", "tts"]
+      for (const step of clearedSteps) {
+        expect(runs.find((r) => r.step === step)).toBeUndefined()
+      }
+    } finally {
+      s.close()
+    }
+  }
+
+  /** Assert that text-and-speech (but NOT image-captioning) node data and step_runs were cleared. */
+  function expectTextAndSpeechCleared(dir: string, bookLabel: string) {
+    const s = createBookStorage(bookLabel, dir)
+    try {
+      // image-captioning should still exist
+      expect(s.getLatestNodeData("image-captioning", `${bookLabel}_p1`)).not.toBeNull()
+      // text-catalog, translations, tts should be gone
+      expect(s.getLatestNodeData("text-catalog", `${bookLabel}_p1`)).toBeNull()
+      expect(s.getLatestNodeData("text-catalog-translation", `${bookLabel}_p1`)).toBeNull()
+      expect(s.getLatestNodeData("tts", `${bookLabel}_p1`)).toBeNull()
+      // Step runs: image-captioning should remain, text steps should be gone
+      const runs = s.getStepRuns()
+      expect(runs.find((r) => r.step === "image-captioning")).toBeDefined()
+      for (const step of ["text-catalog", "catalog-translation", "tts"]) {
+        expect(runs.find((r) => r.step === step)).toBeUndefined()
+      }
+    } finally {
+      s.close()
+    }
+  }
+
+  describe("PUT /api/books/:label/pages/:pageId/sectioning clears downstream", () => {
+    it("clears caption + text-and-speech data on sectioning save", async () => {
+      seedDownstreamData(tmpDir, label)
+
+      const data = {
+        reasoning: "updated",
+        sections: [{
+          sectionId: `${label}_p1_sec001`,
+          sectionType: "content",
+          parts: [{
+            type: "text_group",
+            groupId: "g1",
+            groupType: "paragraph",
+            texts: [{ textId: "g1_tx001", textType: "section_text", text: "Updated text", isPruned: false }],
+            isPruned: false,
+          }],
+          backgroundColor: "#ffffff",
+          textColor: "#000000",
+          pageNumber: 1,
+          isPruned: false,
+        }],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/sectioning`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(200)
+      expectAllDownstreamCleared(tmpDir, label)
+    })
+  })
+
+  describe("PUT /api/books/:label/pages/:pageId/rendering clears downstream", () => {
+    it("clears caption + text-and-speech data on rendering save", async () => {
+      seedDownstreamData(tmpDir, label)
+
+      const data = {
+        sections: [{
+          sectionIndex: 0,
+          sectionType: "content",
+          reasoning: "updated render",
+          html: "<div>Updated</div>",
+        }],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/rendering`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(200)
+      expectAllDownstreamCleared(tmpDir, label)
+    })
+  })
+
+  describe("POST clone clears downstream", () => {
+    it("clears caption + text-and-speech data on section clone", async () => {
+      seedDownstreamData(tmpDir, label)
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/sections/0/clone`,
+        { method: "POST" }
+      )
+
+      expect(res.status).toBe(200)
+      expectAllDownstreamCleared(tmpDir, label)
+    })
+  })
+
+  describe("POST delete clears downstream", () => {
+    it("clears caption + text-and-speech data on section delete", async () => {
+      // Need at least 2 sections so delete is valid
+      const s = createBookStorage(label, tmpDir)
+      try {
+        s.putNodeData("page-sectioning", `${label}_p1`, {
+          reasoning: "sectioned",
+          sections: [
+            {
+              sectionId: `${label}_p1_sec001`,
+              sectionType: "content",
+              parts: [],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+            {
+              sectionId: `${label}_p1_sec002`,
+              sectionType: "content",
+              parts: [],
+              backgroundColor: "#ffffff",
+              textColor: "#000000",
+              pageNumber: 1,
+              isPruned: false,
+            },
+          ],
+        })
+        s.putNodeData("web-rendering", `${label}_p1`, {
+          sections: [
+            { sectionIndex: 0, sectionType: "content", reasoning: "r", html: "<div>A</div>" },
+            { sectionIndex: 1, sectionType: "content", reasoning: "r", html: "<div>B</div>" },
+          ],
+        })
+      } finally {
+        s.close()
+      }
+
+      seedDownstreamData(tmpDir, label)
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/sections/1`,
+        { method: "DELETE" }
+      )
+
+      expect(res.status).toBe(200)
+      expectAllDownstreamCleared(tmpDir, label)
+    })
+  })
+
+  describe("POST crop (images) clears downstream", () => {
+    it("clears caption + text-and-speech data on image crop", async () => {
+      seedDownstreamData(tmpDir, label)
+
+      // Minimal valid PNG (1x1 pixel)
+      const pngHeader = Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01,
+        0x00, 0x00, 0x00, 0x01,
+        0x08, 0x02, 0x00, 0x00, 0x00,
+        0x90, 0x77, 0x53, 0xde,
+      ])
+
+      const formData = new FormData()
+      formData.append("image", new Blob([pngHeader], { type: "image/png" }), "crop.png")
+      formData.append("pageId", `${label}_p1`)
+      formData.append("sourceImageId", `${label}_p1_page`)
+
+      const res = await app.request(`/api/books/${label}/images`, {
+        method: "POST",
+        body: formData,
+      })
+
+      expect(res.status).toBe(200)
+      expectAllDownstreamCleared(tmpDir, label)
+    })
+  })
+
+  describe("PUT image-captioning clears text-and-speech downstream", () => {
+    it("clears text-catalog/translations/TTS but keeps image-captioning", async () => {
+      seedDownstreamData(tmpDir, label)
+
+      const data = {
+        captions: [{ imageId: "img1", reasoning: "updated", caption: "A dog" }],
+      }
+
+      const res = await app.request(
+        `/api/books/${label}/pages/${label}_p1/image-captioning`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      )
+
+      expect(res.status).toBe(200)
+      // image-captioning was just saved (new version), so it should exist
+      // but text-catalog, translations, tts should be cleared
+      expectTextAndSpeechCleared(tmpDir, label)
+    })
+  })
 })

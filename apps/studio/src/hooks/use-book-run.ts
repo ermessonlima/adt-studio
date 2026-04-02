@@ -12,6 +12,7 @@ import { STEP_TO_STAGE, PIPELINE, getStageClearOrder } from "@adt/types"
 import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
 import { bookTasksKey } from "./use-book-tasks"
+import { invalidateStoryboardDependents } from "./use-page-mutations"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -259,6 +260,9 @@ export function useBookRunStatus(label: string): BookRunContextValue {
           }
           if ((completedTask?.kind === "image-generate" || completedTask?.kind === "re-render" || completedTask?.kind === "ai-edit") && completedTask.pageId) {
             queryClient.invalidateQueries({ queryKey: ["books", label, "pages", completedTask.pageId] })
+          }
+          if (completedTask?.kind === "re-render" || completedTask?.kind === "ai-edit" || completedTask?.kind === "image-generate") {
+            invalidateStoryboardDependents(queryClient, label)
           }
           // Always refetch tasks so we pick up the final state even if we missed start
           queryClient.invalidateQueries({ queryKey: bookTasksKey(label) })

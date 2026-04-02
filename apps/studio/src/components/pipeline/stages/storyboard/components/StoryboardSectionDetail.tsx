@@ -8,6 +8,7 @@ import type { PageDetail, VersionEntry } from "@/api/client"
 import { useApiKey } from "@/hooks/use-api-key"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useBookTasks } from "@/hooks/use-book-tasks"
+import { invalidateStoryboardDependents } from "@/hooks/use-page-mutations"
 import { useStepHeader } from "../../../components/StepViewRouter"
 import { BookPreviewFrame, type BookPreviewFrameHandle } from "./BookPreviewFrame"
 import { SectionEditToolbar } from "./SectionEditToolbar"
@@ -557,6 +558,7 @@ export function StoryboardSectionDetail({
       setPendingRendering(null)
       needsRerenderRef.current = false
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
       await minDelay
 
       // Only re-render when changes require LLM (e.g., unprune, type change, reorder)
@@ -602,6 +604,7 @@ export function StoryboardSectionDetail({
       setPendingRendering(null)
       setPendingSectioning(null)
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
       await minDelay
     } catch (err) {
       setAiError(err instanceof Error ? err.message : t`Save failed`)
@@ -618,6 +621,7 @@ export function StoryboardSectionDetail({
       const result = await api.cloneSection(bookLabel, pageId, sectionIndex)
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
       onNavigateSection?.(result.clonedSectionIndex)
     } catch (err) {
       setAiError(err instanceof Error ? err.message : t`Clone failed`)
@@ -634,6 +638,7 @@ export function StoryboardSectionDetail({
       const result = await api.mergeSection(bookLabel, pageId, sectionIndex, direction)
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
       onNavigateSection?.(result.mergedSectionIndex)
 
       // Auto re-render the merged section so the LLM generates proper HTML for the combined content
@@ -660,6 +665,7 @@ export function StoryboardSectionDetail({
       const result = await api.deleteSection(bookLabel, pageId, sectionIndex)
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
       await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
       onNavigateSection?.(Math.max(0, Math.min(sectionIndex, result.remainingSections - 1)))
     } catch (err) {
       setAiError(err instanceof Error ? err.message : t`Delete failed`)

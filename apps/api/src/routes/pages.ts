@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception"
 import { parseBookLabel, TextClassificationOutput, ImageClassificationOutput, PageSectioningOutput, WebRenderingOutput, ImageCaptioningOutput, ImageSegmentRegion, DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import { openBookDb } from "@adt/storage"
 import { createBookStorage } from "@adt/storage"
+import type { Storage } from "@adt/storage"
 import { reRenderPage, aiEditSection } from "../services/page-edit-service.js"
 import type { TaskService } from "../services/task-service.js"
 import { segmentPageImages, getSegmentedImageId, loadBookConfig, applyCrop, generateStyleguide, buildStyleguideGenerationConfig } from "@adt/pipeline"
@@ -267,7 +268,7 @@ async function executeAiImageGeneration(params: AiImageGenParams): Promise<{
                     sectioning.sections[si].parts.push({ type: "image", imageId: newImageId, isPruned: false })
                   }
                 }
-                storage.putNodeData("page-sectioning", pageId, sectioning)
+                saveStoryboardNode(storage, "page-sectioning", pageId, sectioning)
               }
             }
           }
@@ -305,7 +306,7 @@ async function executeAiImageGeneration(params: AiImageGenParams): Promise<{
                 }
                 return { ...s, html }
               })
-              storage.putNodeData("web-rendering", pageId, rendering)
+              saveStoryboardNode(storage, "web-rendering", pageId, rendering)
             }
           }
         } finally {
@@ -321,6 +322,27 @@ async function executeAiImageGeneration(params: AiImageGenParams): Promise<{
   } finally {
     db.close()
   }
+}
+
+/** Clear caption + downstream text-and-speech data when images change. */
+function clearCaptionData(storage: Storage): void {
+  storage.clearNodesByType(["image-captioning", "text-catalog", "text-catalog-translation", "tts"])
+  storage.clearStepRuns(["image-captioning", "text-catalog", "catalog-translation", "tts"])
+}
+
+/**
+ * Save storyboard node data and clear stale downstream data.
+ * Use for all user-initiated storyboard saves (NOT pipeline stage runs).
+ */
+function saveStoryboardNode(
+  storage: Storage,
+  node: "page-sectioning" | "web-rendering",
+  itemId: string,
+  data: unknown
+): number {
+  const version = storage.putNodeData(node, itemId, data)
+  clearCaptionData(storage)
+  return version
 }
 
 export function createPageRoutes(
@@ -642,7 +664,7 @@ export function createPageRoutes(
         throw new HTTPException(404, { message: `Page not found: ${pageId}` })
       }
 
-      const version = storage.putNodeData("page-sectioning", pageId, parsed.data)
+      const version = saveStoryboardNode(storage, "page-sectioning", pageId, parsed.data)
       return c.json({ version })
     } finally {
       storage.close()
@@ -670,7 +692,7 @@ export function createPageRoutes(
         throw new HTTPException(404, { message: `Page not found: ${pageId}` })
       }
 
-      const version = storage.putNodeData("web-rendering", pageId, parsed.data)
+      const version = saveStoryboardNode(storage, "web-rendering", pageId, parsed.data)
       return c.json({ version })
     } finally {
       storage.close()
@@ -699,6 +721,9 @@ export function createPageRoutes(
       }
 
       const version = storage.putNodeData("image-captioning", pageId, parsed.data)
+      // Caption change cascades to text-catalog/translations/TTS
+      storage.clearNodesByType(["text-catalog", "text-catalog-translation", "tts"])
+      storage.clearStepRuns(["text-catalog", "catalog-translation", "tts"])
       return c.json({ version })
     } finally {
       storage.close()
@@ -866,7 +891,7 @@ export function createPageRoutes(
                   s.sectionIndex === idx ? { ...s, html: result.html } : s
                 ),
               }
-              storage.putNodeData("web-rendering", pageId, updated)
+              saveStoryboardNode(storage, "web-rendering", pageId, updated)
             }
           } finally {
             storage.close()
@@ -989,9 +1014,9 @@ export function createPageRoutes(
         }
         updatedRendering = { sections: shifted }
       }
-      const sectioningVersion = storage.putNodeData("page-sectioning", pageId, updatedSectioning)
+      const sectioningVersion = saveStoryboardNode(storage, "page-sectioning", pageId, updatedSectioning)
       if (updatedRendering) {
-        renderingVersion = storage.putNodeData("web-rendering", pageId, updatedRendering)
+        renderingVersion = saveStoryboardNode(storage, "web-rendering", pageId, updatedRendering)
       }
 
       return c.json({
@@ -1129,9 +1154,9 @@ export function createPageRoutes(
         updatedRendering = { sections: shifted }
       }
 
-      const sectioningVersion = storage.putNodeData("page-sectioning", pageId, updatedSectioning)
+      const sectioningVersion = saveStoryboardNode(storage, "page-sectioning", pageId, updatedSectioning)
       if (updatedRendering) {
-        renderingVersion = storage.putNodeData("web-rendering", pageId, updatedRendering)
+        renderingVersion = saveStoryboardNode(storage, "web-rendering", pageId, updatedRendering)
       }
 
       return c.json({
@@ -1236,9 +1261,9 @@ export function createPageRoutes(
         updatedRendering = { sections: shifted }
       }
 
-      const sectioningVersion = storage.putNodeData("page-sectioning", pageId, updatedSectioning)
+      const sectioningVersion = saveStoryboardNode(storage, "page-sectioning", pageId, updatedSectioning)
       if (updatedRendering) {
-        renderingVersion = storage.putNodeData("web-rendering", pageId, updatedRendering)
+        renderingVersion = saveStoryboardNode(storage, "web-rendering", pageId, updatedRendering)
       }
 
       return c.json({
@@ -1430,6 +1455,14 @@ export function createPageRoutes(
         [newImageId, pageId, `images/${filename}`, hash, width, height, "crop"]
       )
 
+      // Clear caption data since the image content changed
+      const storage = createBookStorage(safeLabel, booksDir)
+      try {
+        clearCaptionData(storage)
+      } finally {
+        storage.close()
+      }
+
       return c.json({ imageId: newImageId, width, height })
     } finally {
       db.close()
@@ -1507,6 +1540,14 @@ export function createPageRoutes(
          VALUES (?, ?, ?, ?, ?, ?, 'upload')`,
         [newImageId, pageId, `images/${filename}`, hash, width, height]
       )
+
+      // Clear caption data since a new image was added
+      const storage = createBookStorage(safeLabel, booksDir)
+      try {
+        clearCaptionData(storage)
+      } finally {
+        storage.close()
+      }
 
       return c.json({ imageId: newImageId, width, height })
     } finally {
@@ -1674,6 +1715,7 @@ export function createPageRoutes(
         })
       }
 
+      clearCaptionData(storage)
       return c.json({ segments })
     } catch (err) {
       console.error(`[segment/apply] Error applying segmentation for ${imageId}:`, err)

@@ -7,6 +7,7 @@ import { usePages, usePage } from "@/hooks/use-pages"
 import { useStepHeader } from "../../components/StepViewRouter"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useApiKey } from "@/hooks/use-api-key"
+import { invalidateStoryboardDependents } from "@/hooks/use-page-mutations"
 import { StageRunCard } from "../../components/StageRunCard"
 import { useSectionNav } from "@/routes/books.$label"
 import { Trans } from "@lingui/react/macro"
@@ -241,6 +242,7 @@ function PageCaptions({
     await api.updateImageCaptioning(bookLabel, pageId, pending)
     setPending(null)
     await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
+    invalidateStoryboardDependents(queryClient, bookLabel)
     await minDelay
     setSaving(false)
   }
