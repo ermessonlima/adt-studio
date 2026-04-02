@@ -13,6 +13,7 @@ import mupdf, {
 } from "mupdf";
 import { cropPng, decodePng, stitchPngsHorizontally } from "./png-utils.js";
 import { extractTextFromStructuredText } from "./fm-sinhala.js";
+import type { RenderMethodValue } from "@adt/types";
 import { renderSvgToPng } from "./svg-render.js";
 
 // ============================================================================
@@ -35,9 +36,13 @@ export interface ExtractedPage {
   text: string;
   pageImage: ExtractedImage;
   images: ExtractedImage[];
+  /** Debug info about figure grouping and render decisions */
+  extractionDebug?: ExtractionDebugOutput;
 }
 
 export type ImageFormat = "png" | "jpeg";
+
+export type RenderMethod = RenderMethodValue;
 
 export interface ExtractedImage {
   imageId: string;
@@ -47,6 +52,8 @@ export interface ExtractedImage {
   width: number;
   height: number;
   hash: string;
+  /** How this image was produced during extraction */
+  renderMethod?: RenderMethod;
 }
 
 export interface PdfMetadata {
@@ -71,6 +78,42 @@ export interface ExtractResult {
 export interface ExtractProgress {
   page: number;
   totalPages: number;
+}
+
+/** Debug info for a single shape in a group */
+export interface ShapeDebugInfo {
+  type: "vector" | "image" | "text";
+  bbox: [number, number, number, number];
+  textLength?: number;
+}
+
+/** Debug info for a figure group extraction decision */
+export interface GroupDebugInfo {
+  imageId: string;
+  groupIndex: number;
+  shapeCount: number;
+  shapes: ShapeDebugInfo[];
+  groupBbox: [number, number, number, number];
+  hasImages: boolean;
+  hasText: boolean;
+  hasNonText: boolean;
+  renderMethod: RenderMethod;
+  renderReason: string;
+}
+
+/** Full extraction debug output for a page */
+export interface ExtractionDebugOutput {
+  pageId: string;
+  totalShapes: number;
+  totalTextShapes: number;
+  totalVectorShapes: number;
+  totalImageShapes: number;
+  backgroundsFiltered: number;
+  groupsBeforeMerge: number;
+  groupsAfterMerge: number;
+  textOnlyGroupsSkipped: number;
+  tooSmallGroupsSkipped: number;
+  groups: GroupDebugInfo[];
 }
 
 // ============================================================================
@@ -322,22 +365,32 @@ async function extractPage(doc: MupdfDocument, pageIndex: number): Promise<Extra
   // Extract text (handles legacy FM Sinhala font remapping when detected)
   const stext = page.toStructuredText();
   const text = extractTextFromStructuredText(stext);
+  const pageBounds = page.getBounds();
+  const textShapes = extractTextShapes(stext, 0, pageBounds[2] - pageBounds[0]);
 
   // Extract raster images directly from PDF objects (not SVG)
   const pdfDoc = doc as unknown as PDFDocument;
   const pdfPage = page as unknown as PDFPage;
-  const rasterImages = extractRasterImagesFromPdf(pdfDoc, pdfPage, pageId);
+  const allRasterImages = extractRasterImagesFromPdf(pdfDoc, pdfPage, pageId);
 
-  // SVG only needed for vector extraction
+  // Extract vector shapes and figure groups from SVG (text shapes participate in grouping)
   const pageSvg = getPageSvg(page);
-  const vectorImages = await extractVectorImagesFromSvg(pageSvg, pageId, rasterImages.length);
+  const { images: figureImages, coveredRasterHashes, debug: extractionDebug } = await extractVectorImagesFromSvg(
+    pageSvg, pageId, allRasterImages.length, pagePngBuf, textShapes
+  );
+
+  // Filter out raster images that are covered by figure groups (dedup)
+  const rasterImages = coveredRasterHashes.size > 0
+    ? allRasterImages.filter(img => !coveredRasterHashes.has(img.hash))
+    : allRasterImages;
 
   return {
     pageId,
     pageNumber: pageNum,
     text,
     pageImage,
-    images: [...rasterImages, ...vectorImages],
+    images: [...rasterImages, ...figureImages],
+    extractionDebug,
   };
 }
 
@@ -381,34 +434,70 @@ async function extractSpreadPage(
   };
 
   // Concatenate text from both pages (handles legacy FM Sinhala font remapping)
-  const leftText = extractTextFromStructuredText(leftPage.toStructuredText());
-  const rightText = extractTextFromStructuredText(rightPage.toStructuredText());
+  const leftStext = leftPage.toStructuredText();
+  const rightStext = rightPage.toStructuredText();
+  const leftText = extractTextFromStructuredText(leftStext);
+  const rightText = extractTextFromStructuredText(rightStext);
   const text = leftText + "\n" + rightText;
+  const leftBounds = leftPage.getBounds();
+  const rightBounds = rightPage.getBounds();
+  const leftTextShapes = extractTextShapes(leftStext, 0, leftBounds[2] - leftBounds[0]);
+  const rightTextShapes = extractTextShapes(rightStext, leftTextShapes.length, rightBounds[2] - rightBounds[0]);
 
   // Extract raster images from both pages
   const pdfDoc = doc as unknown as PDFDocument;
   const leftPdfPage = leftPage as unknown as PDFPage;
   const rightPdfPage = rightPage as unknown as PDFPage;
-  const leftRaster = extractRasterImagesFromPdf(pdfDoc, leftPdfPage, pageId);
-  const rightRaster = extractRasterImagesFromPdf(pdfDoc, rightPdfPage, pageId, leftRaster.length);
+  const allLeftRaster = extractRasterImagesFromPdf(pdfDoc, leftPdfPage, pageId);
+  const allRightRaster = extractRasterImagesFromPdf(pdfDoc, rightPdfPage, pageId, allLeftRaster.length);
 
-  // Extract vector images from both pages
+  // Extract vector shapes and figure groups from both pages
   const leftSvg = getPageSvg(leftPage);
   const rightSvg = getPageSvg(rightPage);
-  const rasterCount = leftRaster.length + rightRaster.length;
-  const leftVector = await extractVectorImagesFromSvg(leftSvg, pageId, rasterCount);
-  const rightVector = await extractVectorImagesFromSvg(
+  const rasterCount = allLeftRaster.length + allRightRaster.length;
+  const leftResult = await extractVectorImagesFromSvg(leftSvg, pageId, rasterCount, leftPng, leftTextShapes);
+  const rightResult = await extractVectorImagesFromSvg(
     rightSvg,
     pageId,
-    rasterCount + leftVector.length
+    rasterCount + leftResult.images.length,
+    rightPng,
+    rightTextShapes,
   );
+
+  // Merge covered hashes from both pages and filter raster images
+  const coveredRasterHashes = new Set([
+    ...leftResult.coveredRasterHashes,
+    ...rightResult.coveredRasterHashes,
+  ]);
+  const leftRaster = coveredRasterHashes.size > 0
+    ? allLeftRaster.filter(img => !coveredRasterHashes.has(img.hash))
+    : allLeftRaster;
+  const rightRaster = coveredRasterHashes.size > 0
+    ? allRightRaster.filter(img => !coveredRasterHashes.has(img.hash))
+    : allRightRaster;
+
+  // Merge debug from both pages
+  const extractionDebug: ExtractionDebugOutput = {
+    pageId,
+    totalShapes: leftResult.debug.totalShapes + rightResult.debug.totalShapes,
+    totalTextShapes: leftResult.debug.totalTextShapes + rightResult.debug.totalTextShapes,
+    totalVectorShapes: leftResult.debug.totalVectorShapes + rightResult.debug.totalVectorShapes,
+    totalImageShapes: leftResult.debug.totalImageShapes + rightResult.debug.totalImageShapes,
+    backgroundsFiltered: leftResult.debug.backgroundsFiltered + rightResult.debug.backgroundsFiltered,
+    groupsBeforeMerge: leftResult.debug.groupsBeforeMerge + rightResult.debug.groupsBeforeMerge,
+    groupsAfterMerge: leftResult.debug.groupsAfterMerge + rightResult.debug.groupsAfterMerge,
+    textOnlyGroupsSkipped: leftResult.debug.textOnlyGroupsSkipped + rightResult.debug.textOnlyGroupsSkipped,
+    tooSmallGroupsSkipped: leftResult.debug.tooSmallGroupsSkipped + rightResult.debug.tooSmallGroupsSkipped,
+    groups: [...leftResult.debug.groups, ...rightResult.debug.groups],
+  };
 
   return {
     pageId,
     pageNumber: leftNum,
     text,
     pageImage,
-    images: [...leftRaster, ...rightRaster, ...leftVector, ...rightVector],
+    images: [...leftRaster, ...rightRaster, ...leftResult.images, ...rightResult.images],
+    extractionDebug,
   };
 }
 
@@ -537,6 +626,7 @@ function extractRasterImagesFromPdf(
           width: dims.width || dictWidth,
           height: dims.height || dictHeight,
           hash: hashBuffer(buf),
+          renderMethod: "raster",
         });
       } catch (err) {
         console.warn(
@@ -565,15 +655,44 @@ function extractRasterImagesFromPdf(
 const MIN_VECTOR_DIMENSION = 25;
 
 /**
- * Percentage of page dimension above which items are considered backgrounds.
+ * Shapes spanning more than this fraction of the page (in both dimensions)
+ * are "background candidates". They are excluded from initial grouping to
+ * prevent merging unrelated groups, but get re-attached to any group they
+ * overlap. Standalone backgrounds (no overlapping group) are discarded.
  */
-const OVERLAP_THRESHOLD_PERCENT = 0.75;
+const BACKGROUND_THRESHOLD = 0.75;
 
 /**
  * Margin (in points) for overlap detection when grouping shapes.
  * Positive values allow shapes to be grouped if they're within this distance.
  */
 const OVERLAP_MARGIN = 2;
+
+/**
+ * Larger margin (in points) for grouping text with nearby non-text shapes.
+ * Text labels (dimensions, captions) are typically positioned near but not
+ * overlapping the figure elements they annotate.
+ */
+const TEXT_OVERLAP_MARGIN = 10;
+
+/**
+ * Maximum text line width as a ratio of page width for figure label candidacy.
+ * Lines wider than this are likely body paragraphs, not figure labels/annotations.
+ */
+const TEXT_MAX_WIDTH_RATIO = 0.5;
+
+/**
+ * Maximum gap (in points) between small aligned groups to merge them.
+ * Bridges gaps between elements in a row/column (e.g., calculator buttons)
+ * without pulling in unrelated figures further away.
+ */
+const ROW_MERGE_GAP = 20;
+
+/**
+ * Groups smaller than this (in both dimensions) are candidates for row/column merging.
+ * Larger groups are already meaningful figures and should not be merged.
+ */
+const ROW_MERGE_MAX_DIMENSION = 80;
 
 type BBox = [number, number, number, number]; // [minX, minY, maxX, maxY]
 
@@ -587,6 +706,14 @@ interface ShapeInfo {
   svgElement: string;
   /** All clip path IDs this shape is inside (for nested clips) */
   clipPathIds: string[];
+  /** True if this shape represents an <image> element (raster content) */
+  isImage?: boolean;
+  /** SHA-256 hash prefix of the decoded image data (for dedup with raster extraction) */
+  imageDataHash?: string;
+  /** True if this shape represents a text line (from structured text, not SVG) */
+  isText?: boolean;
+  /** Character count of the text content (only set when isText is true) */
+  textLength?: number;
 }
 
 /**
@@ -1195,6 +1322,53 @@ function extractShapesFromSvg(svgContent: string): ShapeInfo[] {
     }
   }
 
+  // Extract <image> elements (raster images embedded in SVG by mupdf)
+  const imageRegex = /<image[^>]*>/gi;
+  while ((match = imageRegex.exec(contentWithoutDefs)) !== null) {
+    const fullElement = match[0];
+    const xMatch = /\sx="([^"]+)"/.exec(fullElement);
+    const yMatch = /\sy="([^"]+)"/.exec(fullElement);
+    const wMatch = /\swidth="([^"]+)"/.exec(fullElement);
+    const hMatch = /\sheight="([^"]+)"/.exec(fullElement);
+
+    if (xMatch && yMatch && wMatch && hMatch) {
+      const x = parseFloat(xMatch[1]);
+      const y = parseFloat(yMatch[1]);
+      const w = parseFloat(wMatch[1]);
+      const h = parseFloat(hMatch[1]);
+
+      if (w > 0 && h > 0) {
+        const originalBbox: BBox = [x, y, x + w, y + h];
+
+        const transformMatch = /\stransform="([^"]+)"/.exec(fullElement);
+        const bbox = applyMatrixTransformToBbox(originalBbox, transformMatch?.[1] ?? null);
+
+        // Extract data URI and compute hash for dedup with raster extraction
+        let imageDataHash: string | undefined;
+        const hrefMatch = /\s(?:xlink:)?href="data:[^;]+;base64,([^"]+)"/.exec(fullElement);
+        if (hrefMatch) {
+          try {
+            const buf = Buffer.from(hrefMatch[1], "base64");
+            imageDataHash = hashBuffer(buf);
+          } catch {
+            // Ignore decode failures
+          }
+        }
+
+        const clipPathIds = getClipIdsForPosition(match.index);
+        shapes.push({
+          bbox,
+          originalBbox,
+          seqno: seqno++,
+          svgElement: fullElement,
+          clipPathIds,
+          isImage: true,
+          imageDataHash,
+        });
+      }
+    }
+  }
+
   return shapes;
 }
 
@@ -1241,10 +1415,28 @@ function groupOverlappingShapes(
     }
   };
 
+  // Max character count for a text line to be treated as a figure label.
+  // Short text (labels like "3 km", "120°", "A") gets the expanded margin.
+  // Long text (sentences/paragraphs) only groups with the standard margin,
+  // preventing body text near figures from being pulled into the crop.
+  const LABEL_MAX_CHARS = 20;
+
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      // Group shapes that overlap spatially - each shape keeps its own clips for rendering
-      if (boxesOverlap(shapes[i].bbox, shapes[j].bbox, margin)) {
+      const iText = shapes[i].isText;
+      const jText = shapes[j].isText;
+
+      let m = margin;
+      if (iText !== jText) {
+        // Text-to-shape: use expanded margin only if the text is short (a label)
+        const textShape = iText ? shapes[i] : shapes[j];
+        m = (textShape.textLength ?? 0) <= LABEL_MAX_CHARS
+          ? TEXT_OVERLAP_MARGIN
+          : margin;
+      }
+      // Text-to-text: standard margin to avoid chaining paragraphs
+
+      if (boxesOverlap(shapes[i].bbox, shapes[j].bbox, m)) {
         union(i, j);
       }
     }
@@ -1282,6 +1474,134 @@ function computeGroupBbox(group: ShapeInfo[]): BBox {
   }
 
   return [minX, minY, maxX, maxY];
+}
+
+/**
+ * Second-pass merge: combine small aligned groups that form a row or column.
+ * E.g., a row of calculator buttons that are individually too small to extract
+ * but together form a meaningful figure.
+ *
+ * Two groups merge when:
+ *  - At least one is "small" (both dimensions < ROW_MERGE_MAX_DIMENSION)
+ *  - They are aligned (significant overlap in one axis)
+ *  - The gap along the other axis is < ROW_MERGE_GAP
+ */
+function mergeAlignedGroups(groups: ShapeInfo[][]): ShapeInfo[][] {
+  if (groups.length <= 1) return groups;
+
+  const bboxes = groups.map(g => computeGroupBbox(g));
+  const n = groups.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+
+  const find = (x: number): number => {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  };
+
+  const union = (x: number, y: number): void => {
+    const xr = find(x);
+    const yr = find(y);
+    if (xr !== yr) parent[yr] = xr;
+  };
+
+  for (let i = 0; i < n; i++) {
+    const [ax0, ay0, ax1, ay1] = bboxes[i];
+    const aw = ax1 - ax0;
+    const ah = ay1 - ay0;
+    const aSmall = aw < ROW_MERGE_MAX_DIMENSION && ah < ROW_MERGE_MAX_DIMENSION;
+
+    for (let j = i + 1; j < n; j++) {
+      const [bx0, by0, bx1, by1] = bboxes[j];
+      const bw = bx1 - bx0;
+      const bh = by1 - by0;
+      const bSmall = bw < ROW_MERGE_MAX_DIMENSION && bh < ROW_MERGE_MAX_DIMENSION;
+
+      // At least one group must be small
+      if (!aSmall && !bSmall) continue;
+
+      // Horizontal alignment: y-ranges overlap by at least 50% of the shorter height
+      const yOverlap = Math.max(0, Math.min(ay1, by1) - Math.max(ay0, by0));
+      const minH = Math.min(ah, bh);
+      const horizontallyAligned = minH > 0 && yOverlap / minH >= 0.5;
+
+      // Vertical alignment: x-ranges overlap by at least 50% of the shorter width
+      const xOverlap = Math.max(0, Math.min(ax1, bx1) - Math.max(ax0, bx0));
+      const minW = Math.min(aw, bw);
+      const verticallyAligned = minW > 0 && xOverlap / minW >= 0.5;
+
+      if (horizontallyAligned) {
+        // Gap along x-axis
+        const xGap = Math.max(0, Math.max(ax0, bx0) - Math.min(ax1, bx1));
+        if (xGap <= ROW_MERGE_GAP) union(i, j);
+      } else if (verticallyAligned) {
+        // Gap along y-axis
+        const yGap = Math.max(0, Math.max(ay0, by0) - Math.min(ay1, by1));
+        if (yGap <= ROW_MERGE_GAP) union(i, j);
+      }
+    }
+  }
+
+  const merged = new Map<number, ShapeInfo[]>();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    if (!merged.has(root)) merged.set(root, []);
+    merged.get(root)!.push(...groups[i]);
+  }
+
+  return Array.from(merged.values()).map(g => g.sort((a, b) => a.seqno - b.seqno));
+}
+
+/**
+ * Extract text line bounding boxes from structured text as ShapeInfo entries.
+ * These participate in Union-Find grouping so text labels near figures
+ * are naturally included in figure groups.
+ */
+function extractTextShapes(
+  stext: ReturnType<ReturnType<MupdfDocument["loadPage"]>["toStructuredText"]>,
+  startSeqno: number,
+  pageWidth: number,
+): ShapeInfo[] {
+  const shapes: ShapeInfo[] = [];
+  let seqno = startSeqno;
+  let currentBbox: BBox | null = null;
+  let charCount = 0;
+  const maxTextWidth = pageWidth * TEXT_MAX_WIDTH_RATIO;
+
+  stext.walk({
+    beginLine(bbox: [number, number, number, number]) {
+      currentBbox = [bbox[0], bbox[1], bbox[2], bbox[3]];
+      charCount = 0;
+    },
+    onChar(c: string) {
+      if (c.trim().length > 0) charCount++;
+    },
+    endLine() {
+      if (currentBbox && charCount > 0) {
+        const [x0, y0, x1, y1] = currentBbox;
+        const lineWidth = x1 - x0;
+        // Skip wide text lines — they're body paragraphs, not figure labels.
+        // Figure annotations (labels, dimensions) are short and localized.
+        if (x1 > x0 && y1 > y0 && lineWidth <= maxTextWidth) {
+          shapes.push({
+            bbox: currentBbox,
+            originalBbox: currentBbox,
+            seqno: seqno++,
+            svgElement: "",
+            clipPathIds: [],
+            isText: true,
+            textLength: charCount,
+          });
+        }
+      }
+      currentBbox = null;
+      charCount = 0;
+    },
+  });
+
+  return shapes;
 }
 
 /**
@@ -1521,54 +1841,242 @@ ${shapeElements}
   }
 }
 
+/**
+ * Crop a figure group from the full-page PNG render.
+ * Converts the group bbox from PDF points to pixel coordinates (2x scale).
+ */
+function cropFigureFromPageRender(
+  pagePngBuffer: Buffer,
+  bbox: BBox,
+  pageId: string,
+  imgIndex: number,
+  pageWidth: number,
+  pageHeight: number,
+): ExtractedImage | null {
+  const pageDims = pngDimensions(pagePngBuffer);
+  const scaleX = pageDims.width / pageWidth;
+  const scaleY = pageDims.height / pageHeight;
+
+  // Convert bbox from PDF points to pixel coordinates
+  const left = Math.max(0, Math.floor(bbox[0] * scaleX));
+  const top = Math.max(0, Math.floor(bbox[1] * scaleY));
+  const right = Math.min(pageDims.width, Math.ceil(bbox[2] * scaleX));
+  const bottom = Math.min(pageDims.height, Math.ceil(bbox[3] * scaleY));
+  const cropW = right - left;
+  const cropH = bottom - top;
+
+  if (cropW <= 0 || cropH <= 0) return null;
+
+  try {
+    const pngBuf = cropPng(pagePngBuffer, { left, top, width: cropW, height: cropH });
+    const imgId = pageId + "_im" + String(imgIndex).padStart(3, "0");
+
+    return {
+      imageId: imgId,
+      pageId,
+      buffer: pngBuf,
+      format: "png" as const,
+      width: pngBuf.readUInt32BE(16),
+      height: pngBuf.readUInt32BE(20),
+      hash: hashBuffer(pngBuf),
+    };
+  } catch (err) {
+    console.warn(`[cropFigureFromPageRender] Failed to crop figure ${imgIndex} on ${pageId}:`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+interface FigureExtractionResult {
+  images: ExtractedImage[];
+  /** Hashes of raster images that are part of figure groups (for dedup with XObject extraction) */
+  coveredRasterHashes: Set<string>;
+  /** Debug info about grouping and render decisions */
+  debug: ExtractionDebugOutput;
+}
+
 async function extractVectorImagesFromSvg(
   svg: PageSvgData,
   pageId: string,
-  startIndex: number
-): Promise<ExtractedImage[]> {
+  startIndex: number,
+  pagePngBuffer: Buffer,
+  textShapes?: ShapeInfo[],
+): Promise<FigureExtractionResult> {
   const images: ExtractedImage[] = [];
+  const coveredRasterHashes = new Set<string>();
   let imgIndex = startIndex;
 
   const { svgContent, pageWidth, pageHeight } = svg;
   const svgDefs = `<defs>${svg.svgDefs}</defs>`;
 
-  // Extract shapes from SVG content
+  // Debug tracking
+  const debug: ExtractionDebugOutput = {
+    pageId,
+    totalShapes: 0,
+    totalTextShapes: 0,
+    totalVectorShapes: 0,
+    totalImageShapes: 0,
+    backgroundsFiltered: 0,
+    groupsBeforeMerge: 0,
+    groupsAfterMerge: 0,
+    textOnlyGroupsSkipped: 0,
+    tooSmallGroupsSkipped: 0,
+    groups: [],
+  };
+
+  // Extract shapes from SVG content (paths, rects, and image elements)
   const allShapes = extractShapesFromSvg(svgContent);
-  if (allShapes.length === 0) return images;
+  const svgShapeCount = allShapes.length;
 
-  // Skip background shapes - large in either dimension (>75% of page)
-  // These are backgrounds/decorative elements that would merge unrelated groups
-  const largeWidthThreshold = pageWidth * OVERLAP_THRESHOLD_PERCENT;
-  const largeHeightThreshold = pageHeight * OVERLAP_THRESHOLD_PERCENT;
+  // Include text line shapes so they participate in spatial grouping.
+  // Wide text lines are already filtered out in extractTextShapes (TEXT_MAX_WIDTH_RATIO).
+  let textShapesIncluded = 0;
+  if (textShapes && textShapes.length > 0) {
+    for (const ts of textShapes) {
+      allShapes.push(ts);
+      textShapesIncluded++;
+    }
+  }
 
+  debug.totalShapes = allShapes.length;
+  debug.totalTextShapes = textShapesIncluded;
+
+  if (allShapes.length === 0) return { images, coveredRasterHashes, debug };
+
+  // Filter out background shapes — large in either dimension (>75% of page).
+  // These are page-level fills/decorations that would merge unrelated groups.
+  const bgWidthThreshold = pageWidth * BACKGROUND_THRESHOLD;
+  const bgHeightThreshold = pageHeight * BACKGROUND_THRESHOLD;
   const normalShapes: ShapeInfo[] = [];
+
   for (const shape of allShapes) {
     const [minX, minY, maxX, maxY] = shape.bbox;
-    const width = maxX - minX;
-    const height = maxY - minY;
-    if (width <= 0 || height <= 0) continue;
-    if (width >= largeWidthThreshold || height >= largeHeightThreshold) continue;
+    const w = maxX - minX;
+    const h = maxY - minY;
+    if (w <= 0 || h <= 0) continue;
+    if (w >= bgWidthThreshold || h >= bgHeightThreshold) {
+      debug.backgroundsFiltered++;
+      continue;
+    }
     normalShapes.push(shape);
   }
 
-  // Group overlapping shapes
-  const groups = groupOverlappingShapes(normalShapes, OVERLAP_MARGIN);
+  // Count shape types after filtering (so totals are consistent)
+  debug.totalTextShapes = 0;
+  for (const s of normalShapes) {
+    if (s.isText) debug.totalTextShapes++;
+    else if (s.isImage) debug.totalImageShapes++;
+    else debug.totalVectorShapes++;
+  }
+  debug.totalShapes = normalShapes.length;
+
+  // Group overlapping normal shapes (vectors, images, and text lines)
+  const initialGroups = groupOverlappingShapes(normalShapes, OVERLAP_MARGIN);
+  debug.groupsBeforeMerge = initialGroups.length;
+
+  // Second pass: merge small aligned groups that form rows/columns
+  // (e.g., calculator buttons, icon sequences with gaps between them)
+  const groups = mergeAlignedGroups(initialGroups);
+  debug.groupsAfterMerge = groups.length;
+
+  // Sort groups by vertical position (top of bbox) so images come out in reading order.
+  groups.sort((a, b) => {
+    const aBbox = computeGroupBbox(a);
+    const bBbox = computeGroupBbox(b);
+    return (aBbox[1] - bBbox[1]) || (aBbox[0] - bBbox[0]);
+  });
 
   // Render each group as a single image, skipping groups too small to be meaningful.
-  // Uses && so thin shapes (e.g. tall narrow lines) still pass through — only skip
-  // when both dimensions are below the threshold.
+  let groupIndex = 0;
   for (const group of groups) {
+    groupIndex++;
     const bbox = computeGroupBbox(group);
     const groupW = bbox[2] - bbox[0];
     const groupH = bbox[3] - bbox[1];
-    if (groupW < MIN_VECTOR_DIMENSION && groupH < MIN_VECTOR_DIMENSION) continue;
+
+    if (groupW < MIN_VECTOR_DIMENSION && groupH < MIN_VECTOR_DIMENSION) {
+      debug.tooSmallGroupsSkipped++;
+      continue;
+    }
+
+    const hasImages = group.some(s => s.isImage);
+    const hasNonText = group.some(s => !s.isText);
+    if (!hasNonText) {
+      debug.textOnlyGroupsSkipped++;
+      continue;
+    }
+
+    const hasText = group.some(s => s.isText);
+    const nonTextShapes = group.filter(s => !s.isText);
+    const cropBbox = bbox;
+
+    const cropW = cropBbox[2] - cropBbox[0];
+    const cropH = cropBbox[3] - cropBbox[1];
+    if (cropW < MIN_VECTOR_DIMENSION && cropH < MIN_VECTOR_DIMENSION) {
+      debug.tooSmallGroupsSkipped++;
+      continue;
+    }
 
     imgIndex++;
-    const img = await renderShapeGroup(group, pageId, imgIndex, svgDefs, pageWidth, pageHeight, bbox);
+
+    // Determine render method and reason
+    let renderMethod: RenderMethod;
+    let renderReason: string;
+    if (hasImages && hasText) {
+      renderMethod = "page-crop";
+      renderReason = "group has raster images + text — page crop for correct compositing and text positioning";
+    } else if (hasImages) {
+      renderMethod = "page-crop";
+      renderReason = "group has raster images — page crop to capture all layers";
+    } else if (hasText) {
+      renderMethod = "page-crop";
+      renderReason = "group has text labels — page crop for correct text positioning";
+    } else {
+      renderMethod = "vector";
+      renderReason = "pure vector group (no text, no raster) — SVG render for crisp output";
+    }
+
+    // Build per-shape debug info (cap at 50 shapes to keep output manageable)
+    const shapesDebug: ShapeDebugInfo[] = group.slice(0, 50).map(s => ({
+      type: s.isText ? "text" as const : s.isImage ? "image" as const : "vector" as const,
+      bbox: s.bbox,
+      ...(s.isText && s.textLength != null ? { textLength: s.textLength } : {}),
+    }));
+
+    const imageId = pageId + "_im" + String(imgIndex).padStart(3, "0");
+    debug.groups.push({
+      imageId,
+      groupIndex,
+      shapeCount: group.length,
+      shapes: shapesDebug,
+      groupBbox: cropBbox,
+      hasImages,
+      hasText,
+      hasNonText,
+      renderMethod,
+      renderReason,
+    });
+
+    let img: ExtractedImage | null;
+
+    if (hasImages || hasText) {
+      img = cropFigureFromPageRender(pagePngBuffer, cropBbox, pageId, imgIndex, pageWidth, pageHeight);
+      if (img) {
+        img.renderMethod = "page-crop";
+        for (const s of group) {
+          if (s.isImage && s.imageDataHash) {
+            coveredRasterHashes.add(s.imageDataHash);
+          }
+        }
+      }
+    } else {
+      img = await renderShapeGroup(nonTextShapes, pageId, imgIndex, svgDefs, pageWidth, pageHeight, cropBbox);
+      if (img) img.renderMethod = "vector";
+    }
+
     if (img) images.push(img);
   }
 
-  return images;
+  return { images, coveredRasterHashes, debug };
 }
 
 // ============================================================================

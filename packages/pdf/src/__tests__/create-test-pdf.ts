@@ -107,6 +107,163 @@ Q
   return Buffer.from(doc.saveToBuffer("").asUint8Array());
 }
 
+/**
+ * Create a 1-page PDF with a raster image AND overlapping vector shapes.
+ * This simulates a "figure" composed of layered elements:
+ *   - A 40x40 raster image placed at (100, 500) scaled to 200x200pt
+ *   - A red vector rectangle overlapping the image at (120, 520) 50x50pt
+ *   - An isolated blue vector rectangle far away at (450, 100) 60x60pt (should NOT be grouped)
+ *
+ * Expected: The raster image and overlapping red rect should be grouped into a single figure.
+ * The isolated blue rect should remain a separate vector image.
+ */
+export function createFigureGroupTestPdf(): Buffer {
+  const doc = new mupdf.PDFDocument();
+
+  // Create a 40x40 test image: green/yellow pattern
+  const imgW = 40;
+  const imgH = 40;
+  const pixmap = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, imgW, imgH], false);
+  pixmap.clear(255);
+  const samples = pixmap.getPixels();
+  for (let y = 0; y < imgH; y++) {
+    for (let x = 0; x < imgW; x++) {
+      const i = (y * imgW + x) * 3;
+      samples[i] = x < imgW / 2 ? 0 : 255;       // R
+      samples[i + 1] = 200;                         // G
+      samples[i + 2] = y < imgH / 2 ? 0 : 100;    // B
+    }
+  }
+
+  const image = new mupdf.Image(pixmap);
+  const imgObj = doc.addImage(image);
+
+  const xobjects = doc.newDictionary();
+  xobjects.put("Im1", imgObj);
+  const resourcesDict = doc.newDictionary();
+  resourcesDict.put("XObject", xobjects);
+  const resources = doc.addObject(resourcesDict);
+
+  // Image at (100, 500) scaled to 200x200, plus overlapping red rect and isolated blue rect
+  const stream = `
+q
+200 0 0 200 100 500 cm
+/Im1 Do
+Q
+q
+1 0 0 rg
+120 520 50 50 re f
+Q
+q
+0 0 1 rg
+450 100 60 60 re f
+Q
+`;
+  const buf = new mupdf.Buffer();
+  buf.writeLine(stream);
+  doc.insertPage(-1, doc.addPage([0, 0, 612, 792], 0, resources, buf));
+  return Buffer.from(doc.saveToBuffer("").asUint8Array());
+}
+
+/**
+ * Create a 1-page PDF with a standalone raster image (no overlapping vectors).
+ * Used to verify that raster-only pages are unaffected by figure grouping.
+ */
+export function createRasterOnlyTestPdf(): Buffer {
+  const doc = new mupdf.PDFDocument();
+
+  const imgW = 30;
+  const imgH = 30;
+  const pixmap = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, imgW, imgH], false);
+  pixmap.clear(255);
+  const samples = pixmap.getPixels();
+  for (let y = 0; y < imgH; y++) {
+    for (let x = 0; x < imgW; x++) {
+      const i = (y * imgW + x) * 3;
+      samples[i] = 128; samples[i + 1] = 64; samples[i + 2] = 200;
+    }
+  }
+
+  const image = new mupdf.Image(pixmap);
+  const imgObj = doc.addImage(image);
+
+  const xobjects = doc.newDictionary();
+  xobjects.put("Im1", imgObj);
+  const resourcesDict = doc.newDictionary();
+  resourcesDict.put("XObject", xobjects);
+  const resources = doc.addObject(resourcesDict);
+
+  const stream = `
+q
+200 0 0 200 100 300 cm
+/Im1 Do
+Q
+`;
+  const buf = new mupdf.Buffer();
+  buf.writeLine(stream);
+  doc.insertPage(-1, doc.addPage([0, 0, 612, 792], 0, resources, buf));
+  return Buffer.from(doc.saveToBuffer("").asUint8Array());
+}
+
+/**
+ * Create a 1-page PDF with a raster image, overlapping vector, AND nearby text label.
+ * The text "Figure 1" is placed just below the image+vector figure.
+ * Used to verify text label absorption expands the figure group bbox.
+ */
+export function createFigureWithTextPdf(): Buffer {
+  const doc = new mupdf.PDFDocument();
+
+  // Create a 30x30 test image
+  const imgW = 30;
+  const imgH = 30;
+  const pixmap = new mupdf.Pixmap(mupdf.ColorSpace.DeviceRGB, [0, 0, imgW, imgH], false);
+  pixmap.clear(255);
+  const samples = pixmap.getPixels();
+  for (let y = 0; y < imgH; y++) {
+    for (let x = 0; x < imgW; x++) {
+      const i = (y * imgW + x) * 3;
+      samples[i] = 100; samples[i + 1] = 150; samples[i + 2] = 200;
+    }
+  }
+
+  const image = new mupdf.Image(pixmap);
+  const imgObj = doc.addImage(image);
+
+  // Create a font for text
+  const font = new mupdf.Font("Helvetica");
+  const fontObj = doc.addSimpleFont(font);
+
+  const xobjects = doc.newDictionary();
+  xobjects.put("Im1", imgObj);
+  const fontDict = doc.newDictionary();
+  fontDict.put("F1", fontObj);
+  const resourcesDict = doc.newDictionary();
+  resourcesDict.put("XObject", xobjects);
+  resourcesDict.put("Font", fontDict);
+  const resources = doc.addObject(resourcesDict);
+
+  // Image at (100, 400) scaled to 200x200, overlapping red rect, plus text label below
+  const stream = `
+q
+200 0 0 200 100 400 cm
+/Im1 Do
+Q
+q
+1 0 0 rg
+120 420 50 50 re f
+Q
+BT
+/F1 12 Tf
+120 390 Td
+(Figure 1) Tj
+ET
+`;
+  const buf = new mupdf.Buffer();
+  buf.writeLine(stream);
+  doc.insertPage(-1, doc.addPage([0, 0, 612, 792], 0, resources, buf));
+  return Buffer.from(doc.saveToBuffer("").asUint8Array());
+}
+
 function addRasterClipPage(doc: PDFDoc) {
   // Create a 20x20 test image: red left half, blue right half
   const imgW = 20;

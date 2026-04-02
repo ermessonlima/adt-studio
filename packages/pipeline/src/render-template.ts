@@ -59,10 +59,13 @@ export async function renderSectionTemplate(
           })),
         }
       }
+      const segMatch = part.imageId.match(/^(.+)_seg\d{3}_v\d+$/)
       return {
         type: "image",
         image_id: part.imageId,
         image_url: `${imageUrlPrefix}/${part.imageId}`,
+        is_segment: !!segMatch,
+        source_image_id: segMatch ? segMatch[1] : null,
       }
     }),
   }

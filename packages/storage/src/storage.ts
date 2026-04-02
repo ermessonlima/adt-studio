@@ -1,5 +1,6 @@
 import type { ExtractedPage } from "@adt/pdf"
 import type { LlmLogEntry } from "@adt/llm"
+import type { RenderMethodValue } from "@adt/types"
 
 export interface PageData {
   pageId: string
@@ -11,6 +12,8 @@ export interface ImageData {
   imageId: string
   width: number
   height: number
+  /** How this image was produced: vector SVG render, page crop, or direct raster extraction */
+  renderMethod?: RenderMethodValue
 }
 
 export interface NodeDataRow {

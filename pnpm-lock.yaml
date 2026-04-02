@@ -233,6 +233,9 @@ importers:
 
   packages/pdf:
     dependencies:
+      '@adt/types':
+        specifier: workspace:*
+        version: link:../types
       '@resvg/resvg-wasm':
         specifier: ^2.6.2
         version: 2.6.2

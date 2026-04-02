@@ -114,13 +114,14 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
 
     getPageImages(pageId: string): ImageData[] {
       const rows = db.all(
-        "SELECT image_id, width, height FROM images WHERE page_id = ? ORDER BY image_id",
+        "SELECT image_id, width, height, render_method FROM images WHERE page_id = ? ORDER BY image_id",
         [pageId]
-      ) as Array<{ image_id: string; width: number; height: number }>
+      ) as Array<{ image_id: string; width: number; height: number; render_method: string | null }>
       return rows.map((r) => ({
         imageId: r.image_id,
         width: r.width,
         height: r.height,
+        renderMethod: r.render_method as ImageData["renderMethod"],
       }))
     },
 
@@ -341,15 +342,16 @@ function writeImage(
 
   db.run(
     `INSERT INTO images
-       (image_id, page_id, path, hash, width, height, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+       (image_id, page_id, path, hash, width, height, source, render_method)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT (image_id) DO UPDATE SET
        page_id = excluded.page_id,
        path = excluded.path,
        hash = excluded.hash,
        width = excluded.width,
        height = excluded.height,
-       source = excluded.source`,
+       source = excluded.source,
+       render_method = excluded.render_method`,
     [
       image.imageId,
       pageId,
@@ -358,6 +360,7 @@ function writeImage(
       image.width,
       image.height,
       source,
+      image.renderMethod ?? null,
     ]
   )
 }

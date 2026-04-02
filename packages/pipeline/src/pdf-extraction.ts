@@ -41,6 +41,10 @@ export async function extractPDF(
 
     for (const page of result.pages) {
       storage.putExtractedPage(page)
+      // Store extraction debug info (grouping decisions, render method choices)
+      if (page.extractionDebug) {
+        storage.putNodeData("extraction-debug", page.pageId, page.extractionDebug)
+      }
     }
 
     progress.emit({ type: "step-complete", step: "extract" })

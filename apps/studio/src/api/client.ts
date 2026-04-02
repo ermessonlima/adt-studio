@@ -159,6 +159,17 @@ export interface PageDetail {
       reason?: string
     }>
   } | null
+  imageCropping: {
+    crops: Array<{
+      imageId: string
+      reasoning: string
+      shouldCrop: boolean
+      cropLeft?: number
+      cropTop?: number
+      cropRight?: number
+      cropBottom?: number
+    }>
+  } | null
   sectioning: {
     reasoning: string
     sections: Array<{
@@ -194,6 +205,7 @@ export interface PageDetail {
   versions: {
     textClassification: number | null
     imageClassification: number | null
+    imageCropping: number | null
     sectioning: number | null
     rendering: number | null
     imageCaptioning: number | null

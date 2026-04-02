@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS images (
   hash TEXT NOT NULL DEFAULT '',
   width INTEGER NOT NULL,
   height INTEGER NOT NULL,
-  source TEXT NOT NULL CHECK (source IN ('page', 'extract', 'crop', 'segment', 'upload'))
+  source TEXT NOT NULL CHECK (source IN ('page', 'extract', 'crop', 'segment', 'upload')),
+  render_method TEXT CHECK (render_method IN ('vector', 'page-crop', 'raster') OR render_method IS NULL)
 );
 
 CREATE TABLE IF NOT EXISTS llm_log (
@@ -118,6 +119,12 @@ function initSchema(db: sqlite.Database): void {
   if (version === 8) {
     migrateV8toV9(db)
     version = 9
+  }
+
+  // Migrate v9 → v10: add render_method and alt_image_id columns to images
+  if (version === 9) {
+    migrateV9toV10(db)
+    version = 10
   }
 
   if (version === SCHEMA_VERSION) {
@@ -278,6 +285,24 @@ function migrateV8toV9(db: sqlite.Database): void {
       INSERT INTO images_new SELECT * FROM images;
       DROP TABLE images;
       ALTER TABLE images_new RENAME TO images;
+    `)
+    db.exec("COMMIT")
+  } catch (err) {
+    db.exec("ROLLBACK")
+    throw err
+  }
+}
+
+/**
+ * Migrate v9 → v10: add render_method column to images.
+ * Simple ALTER TABLE — no CHECK constraint changes needed.
+ */
+function migrateV9toV10(db: sqlite.Database): void {
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    db.exec(`
+      ALTER TABLE images ADD COLUMN render_method TEXT
+        CHECK (render_method IN ('vector', 'page-crop', 'raster') OR render_method IS NULL);
     `)
     db.exec("COMMIT")
   } catch (err) {

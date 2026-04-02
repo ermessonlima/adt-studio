@@ -144,6 +144,7 @@ export async function sectionPage(
 
   const sections = result.object.sections.map((s, idx) => {
     const sectionId = `${input.pageId}_sec${String(idx + 1).padStart(3, "0")}`
+    // Expand part_ids to full SectionPart objects
     const parts: SectionPart[] = s.part_ids.map((partId) => {
       assignedPartIds.add(partId)
 
@@ -182,6 +183,46 @@ export async function sectionPage(
       isPruned: prunedSet.has(s.section_type),
     }
   })
+
+  // Build a map from segmented source image → ordered segment image IDs.
+  // Segmented images have IDs like "{sourceId}_seg{NNN}_v{N}".
+  const segmentsBySource = new Map<string, string[]>()
+  for (const img of input.imageClassification.images) {
+    const segMatch = img.imageId.match(/^(.+)_seg\d{3}_v\d+$/)
+    if (segMatch) {
+      const sourceId = segMatch[1]
+      if (!segmentsBySource.has(sourceId)) segmentsBySource.set(sourceId, [])
+      segmentsBySource.get(sourceId)!.push(img.imageId)
+    }
+  }
+
+  // Replace segmented originals in-place with their segments.
+  // This keeps segments in the same position as the original image
+  // instead of appending them to the end of the section.
+  for (const section of sections) {
+    const expandedParts: SectionPart[] = []
+    for (const part of section.parts) {
+      if (part.type === "image" && segmentsBySource.has(part.imageId)) {
+        // Replace the original (now pruned) with its segments in-place
+        const segIds = segmentsBySource.get(part.imageId)!
+        for (const segId of segIds) {
+          const segClass = imageClassMap.get(segId)
+          expandedParts.push({
+            type: "image",
+            imageId: segId,
+            isPruned: segClass?.isPruned ?? false,
+            ...(segClass?.reason ? { reason: segClass.reason } : {}),
+          })
+          assignedPartIds.add(segId)
+        }
+        // Keep the original as pruned
+        expandedParts.push({ ...part, isPruned: true, reason: "segmented" })
+      } else {
+        expandedParts.push(part)
+      }
+    }
+    section.parts = expandedParts
+  }
 
   // Collect unassigned parts and add them to the last non-pruned section
   const unassignedParts: SectionPart[] = []

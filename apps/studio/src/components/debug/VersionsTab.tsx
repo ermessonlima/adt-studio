@@ -14,8 +14,10 @@ import { Input } from "@/components/ui/input"
 import { useVersionHistory } from "@/hooks/use-debug"
 
 const NODE_TYPES = [
+  "extraction-debug",
   "text-classification",
   "image-filtering",
+  "image-cropping",
   "page-sectioning",
   "web-rendering",
   "metadata",

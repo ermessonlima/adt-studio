@@ -31,12 +31,14 @@ interface PageDetail {
   text: string
   textClassification: unknown | null
   imageClassification: unknown | null
+  imageCropping: unknown | null
   sectioning: unknown | null
   rendering: unknown | null
   imageCaptioning: unknown | null
   versions: {
     textClassification: number | null
     imageClassification: number | null
+    imageCropping: number | null
     sectioning: number | null
     rendering: number | null
     imageCaptioning: number | null
@@ -517,6 +519,7 @@ export function createPageRoutes(
 
       const textClassNode = getNodeData("text-classification")
       const imageClassNode = getNodeData("image-filtering")
+      const imageCroppingNode = getNodeData("image-cropping")
       const sectioningNode = getNodeData("page-sectioning")
       const renderingNode = getNodeData("web-rendering")
       const imageCaptioningNode = getNodeData("image-captioning")
@@ -527,12 +530,14 @@ export function createPageRoutes(
         text: page.text,
         textClassification: textClassNode?.data ?? null,
         imageClassification: imageClassNode?.data ?? null,
+        imageCropping: imageCroppingNode?.data ?? null,
         sectioning: sectioningNode?.data ?? null,
         rendering: renderingNode?.data ?? null,
         imageCaptioning: imageCaptioningNode?.data ?? null,
         versions: {
           textClassification: textClassNode?.version ?? null,
           imageClassification: imageClassNode?.version ?? null,
+          imageCropping: imageCroppingNode?.version ?? null,
           sectioning: sectioningNode?.version ?? null,
           rendering: renderingNode?.version ?? null,
           imageCaptioning: imageCaptioningNode?.version ?? null,

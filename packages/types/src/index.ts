@@ -1,6 +1,9 @@
 export {
   SCHEMA_VERSION,
   ImageSource,
+  RenderMethodEnum,
+  type RenderMethodValue,
+  RenderMethod,
   PageRow,
   ImageRow,
 } from "./db.js"

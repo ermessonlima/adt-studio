@@ -163,7 +163,7 @@ function AddBookPage() {
   const [endPage, setEndPage] = useState("")
   const [spreadMode, setSpreadMode] = useState(false)
   const [imageCropping, setImageCropping] = useState(false)
-  const [imageSegmentation, setImageSegmentation] = useState(true)
+  const [imageSegmentation, setImageSegmentation] = useState(false)
   const [segMinSide, setSegMinSide] = useState("")
 
   // Step 2 — Layout
@@ -285,13 +285,12 @@ function AddBookPage() {
       setImageMinSide(f.min_side != null ? String(f.min_side) : "")
       setImageMaxSide(f.max_side != null ? String(f.max_side) : "")
       setImageCropping(f.cropping === true)
-      // Default segmentation to true unless explicitly disabled
-      setImageSegmentation(f.segmentation !== false)
+      setImageSegmentation(f.segmentation === true)
     } else {
       setImageMinSide("")
       setImageMaxSide("")
       setImageCropping(false)
-      setImageSegmentation(true)
+      setImageSegmentation(false)
     }
 
     // Segmentation min side from preset
