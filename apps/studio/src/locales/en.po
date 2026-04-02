@@ -697,6 +697,9 @@ msgstr "Clear language"
 msgid "Click images to select"
 msgstr "Click images to select"
 
+msgid "Click to edit"
+msgstr "Click to edit"
+
 msgid "Click to pick a style reference image"
 msgstr "Click to pick a style reference image"
 

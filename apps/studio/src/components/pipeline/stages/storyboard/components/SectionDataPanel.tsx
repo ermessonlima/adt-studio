@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, type ReactNode } from "react"
+import { useState, useRef, useCallback, useEffect, type ReactNode } from "react"
 import {
   Copy,
   Eye,
@@ -57,6 +57,7 @@ interface SectionDataPanelProps {
   onDuplicateGroup: (partIndex: number) => void
   onDeleteGroup: (partIndex: number) => void
   onReorderParts: (fromIndex: number, toIndex: number) => void
+  onEditText: (partIndex: number, textIndex: number, newText: string) => void
   onMoveText: (
     fromPartIndex: number,
     textIndex: number,
@@ -133,6 +134,81 @@ function ImageCard({
   )
 }
 
+// -- Inline editable text --
+
+function EditableText({
+  value,
+  onCommit,
+}: {
+  value: string
+  onCommit: (newText: string) => void
+}) {
+  const { t } = useLingui()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+  // Guard against double-commit (Enter triggers blur when textarea is removed)
+  // and against committing on Escape (blur fires when editing is cancelled).
+  const cancelRef = useRef(false)
+
+  // Sync draft when value changes externally while not editing
+  useEffect(() => {
+    if (!editing) setDraft(value)
+  }, [value, editing])
+
+  const commit = useCallback(() => {
+    if (cancelRef.current) {
+      cancelRef.current = false
+      return
+    }
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed && trimmed !== value) {
+      onCommit(trimmed)
+    } else {
+      setDraft(value)
+    }
+  }, [draft, value, onCommit])
+
+  if (!editing) {
+    return (
+      <span
+        className="leading-relaxed flex-1 min-w-0 text-xs cursor-text rounded px-0.5 -mx-0.5 hover:bg-accent/50 transition-colors"
+        onClick={() => {
+          setEditing(true)
+        }}
+        title={t`Click to edit`}
+      >
+        {value}
+      </span>
+    )
+  }
+
+  return (
+    <textarea
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault()
+          // Let blur handler do the commit — prevents double-fire
+          cancelRef.current = false
+          e.currentTarget.blur()
+        }
+        if (e.key === "Escape") {
+          // Discard edit — suppress the blur commit
+          cancelRef.current = true
+          setDraft(value)
+          setEditing(false)
+        }
+      }}
+      className="leading-relaxed flex-1 min-w-0 text-xs rounded border border-ring bg-background px-1 py-0.5 -mx-0.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+      rows={Math.max(2, Math.ceil(draft.length / 50))}
+      autoFocus
+    />
+  )
+}
+
 // -- Drag types --
 
 const DRAG_TYPE_GROUP = "application/x-group-index"
@@ -158,6 +234,7 @@ export function SectionDataPanel({
   onToggleTextPruned,
   onDeleteTextEntry,
   onDuplicateTextEntry,
+  onEditText,
   onAddGroup,
   onDuplicateGroup,
   onDeleteGroup,
@@ -735,9 +812,12 @@ export function SectionDataPanel({
                                 {textEntry.textType}
                               </span>
                             )}
-                            <span className="leading-relaxed flex-1 min-w-0 text-xs">
-                              {textEntry.text}
-                            </span>
+                            <EditableText
+                              value={textEntry.text}
+                              onCommit={(newText) =>
+                                onEditText(partIndex, ti, newText)
+                              }
+                            />
                             <div className="shrink-0 flex items-center gap-0.5 self-center opacity-0 group-hover/text:opacity-100 transition-opacity">
                               <button
                                 type="button"

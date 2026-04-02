@@ -573,6 +573,7 @@ export function StoryboardSectionDetail({
 
   const discardSectioning = () => {
     setPendingSectioning(null)
+    setPendingRendering(null)
     needsRerenderRef.current = false
   }
 
@@ -938,6 +939,73 @@ export function StoryboardSectionDetail({
       }),
     }
     setPendingSectioning(updated)
+  }
+
+  // Edit text content for a specific text entry (from sidebar)
+  const editText = (partIndex: number, textIndex: number, newText: string) => {
+    // 1. Update sectioning data
+    const sBase = pendingSectioning ?? page.sectioning
+    if (!sBase) return
+    const updatedSectioning: SectioningData = {
+      ...sBase,
+      sections: sBase.sections.map((s, si) => {
+        if (si !== sectionIndex) return s
+        return {
+          ...s,
+          parts: s.parts.map((p, pi) => {
+            if (pi !== partIndex || p.type !== "text_group") return p
+            return {
+              ...p,
+              texts: p.texts.map((t, ti) => {
+                if (ti !== textIndex) return t
+                return { ...t, text: newText }
+              }),
+            }
+          }),
+        }
+      }),
+    }
+    setPendingSectioning(updatedSectioning)
+
+    // 2. Forward-propagate to rendering HTML if available
+    const rBase = pendingRendering ?? page.rendering
+    if (rBase) {
+      const currentSection = getRenderedSectionByIndex(rBase, sectionIndex)
+      if (currentSection?.html) {
+        // Resolve the actual data-id from the HTML (may differ from positional
+        // index after delete/duplicate operations that shift the texts array).
+        const part = sBase.sections[sectionIndex]?.parts[partIndex]
+        if (part?.type === "text_group") {
+          const actualIds = resolveGroupDataIds(part.groupId)
+          const textId = actualIds[textIndex]
+          if (!textId) {
+            needsRerenderRef.current = true
+            return
+          }
+          const parser = new DOMParser()
+          const doc = parser.parseFromString(currentSection.html, "text/html")
+          const el = doc.querySelector(`[data-id="${textId}"]`)
+          if (el) {
+            el.textContent = newText
+            const updatedHtml = doc.body.innerHTML
+            const updatedRendering: RenderingData = {
+              ...rBase,
+              sections: rBase.sections.map((s) => {
+                if (s.sectionIndex !== sectionIndex) return s
+                return { ...s, html: updatedHtml }
+              }),
+            }
+            setPendingRendering(updatedRendering)
+          } else {
+            // Element not found in HTML — need re-render to sync
+            needsRerenderRef.current = true
+          }
+        }
+      }
+    } else {
+      // No rendering data — need re-render to sync
+      needsRerenderRef.current = true
+    }
   }
 
   // Change group type for a specific text group
@@ -2265,6 +2333,7 @@ export function StoryboardSectionDetail({
         onToggleTextPruned={toggleTextPruned}
         onDeleteTextEntry={deleteTextEntry}
         onDuplicateTextEntry={duplicateTextEntry}
+        onEditText={editText}
         onAddGroup={addGroup}
         onDuplicateGroup={duplicateGroup}
         onDeleteGroup={deleteGroup}
