@@ -1,4 +1,4 @@
-export { extractPdf } from "./extract.js";
+export { extractPdf, extractPdfStream } from "./extract.js";
 export type {
   ExtractInput,
   ExtractedPage,
@@ -6,6 +6,7 @@ export type {
   ImageFormat,
   PdfMetadata,
   ExtractResult,
+  ExtractStreamResult,
   ExtractProgress,
 } from "./extract.js";
 export { renderSvgToPng } from "./svg-render.js";

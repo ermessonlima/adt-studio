@@ -47,16 +47,11 @@ describe("extractPDF", () => {
       const { progress, events } = collectingProgress()
 
       try {
-        const result = await extractPDF(
+        await extractPDF(
           { pdfPath: RAVEN_PDF, startPage: 1, endPage: 3 },
           storage,
           progress
         )
-
-        // Verify extraction result
-        expect(result.pages).toHaveLength(3)
-        expect(result.totalPagesInPdf).toBe(12)
-        expect(result.pdfMetadata).toBeDefined()
 
         // Verify progress events
         const starts = events.filter((e) => e.type === "step-start")

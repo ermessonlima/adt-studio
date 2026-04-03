@@ -1,5 +1,5 @@
 import fs from "node:fs"
-import { extractPdf, type ExtractResult } from "@adt/pdf"
+import { extractPdfStream, type ExtractStreamResult } from "@adt/pdf"
 import type { Storage } from "@adt/storage"
 import type { Progress } from "./progress.js"
 import { toBookMetadata } from "./metadata-model.js"
@@ -15,7 +15,7 @@ export async function extractPDF(
   options: ExtractOptions,
   storage: Storage,
   progress: Progress
-): Promise<ExtractResult> {
+): Promise<void> {
   const { pdfPath, startPage, endPage, spreadMode } = options
 
   progress.emit({ type: "step-start", step: "extract" })
@@ -23,7 +23,7 @@ export async function extractPDF(
   try {
     const pdfBuffer = fs.readFileSync(pdfPath)
 
-    const result = await extractPdf(
+    const { pdfMetadata, pages } = extractPdfStream(
       { pdfBuffer, startPage, endPage, spreadMode },
       (p) => {
         progress.emit({
@@ -37,9 +37,9 @@ export async function extractPDF(
     )
 
     storage.clearExtractedData()
-    storage.putNodeData("metadata", "book", toBookMetadata(result.pdfMetadata))
+    storage.putNodeData("metadata", "book", toBookMetadata(pdfMetadata))
 
-    for (const page of result.pages) {
+    for await (const page of pages) {
       storage.putExtractedPage(page)
       // Store extraction debug info (grouping decisions, render method choices)
       if (page.extractionDebug) {
@@ -48,8 +48,6 @@ export async function extractPDF(
     }
 
     progress.emit({ type: "step-complete", step: "extract" })
-
-    return result
   } catch (err) {
     progress.emit({
       type: "step-error",

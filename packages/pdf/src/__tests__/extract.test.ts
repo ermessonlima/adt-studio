@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { deflateSync } from "zlib";
 import mupdf from "mupdf";
-import { extractPdf } from "../extract.js";
+import { extractPdf, extractPdfStream } from "../extract.js";
 import { stitchPngsHorizontally, decodePng } from "../png-utils.js";
 import { PNG } from "pngjs";
 
@@ -223,6 +223,55 @@ describe("extractPdf", () => {
     expect(vecImage.width).toBeGreaterThan(0);
     expect(vecImage.height).toBeGreaterThan(0);
     expect(vecImage.hash).toMatch(/^[a-f0-9]{16}$/);
+  });
+});
+
+describe("extractPdfStream", () => {
+  it("yields pages one at a time matching extractPdf output", async () => {
+    const pdfBuffer = Buffer.from(TWO_PAGE_PDF);
+    const { pdfMetadata, totalPagesInPdf, pages } = extractPdfStream({ pdfBuffer });
+
+    // Metadata available before iterating
+    expect(totalPagesInPdf).toBe(2);
+    expect(pdfMetadata).toBeDefined();
+
+    const collected = [];
+    for await (const page of pages) {
+      collected.push(page);
+    }
+
+    expect(collected).toHaveLength(2);
+    expect(collected[0].pageId).toBe("pg001");
+    expect(collected[1].pageId).toBe("pg002");
+  });
+
+  it("calls progress callback for each page", async () => {
+    const pdfBuffer = Buffer.from(TWO_PAGE_PDF);
+    const progressCalls: { page: number; totalPages: number }[] = [];
+    const { pages } = extractPdfStream({ pdfBuffer }, (p) => {
+      progressCalls.push({ ...p });
+    });
+
+    // Drain the generator
+    for await (const _ of pages) { /* consume */ }
+
+    expect(progressCalls).toEqual([
+      { page: 1, totalPages: 2 },
+      { page: 2, totalPages: 2 },
+    ]);
+  });
+
+  it("cleans up document when generator is abandoned early", async () => {
+    const pdfBuffer = Buffer.from(TWO_PAGE_PDF);
+    const { pages } = extractPdfStream({ pdfBuffer });
+
+    // Break after first page — should not leak the document
+    for await (const page of pages) {
+      expect(page.pageId).toBe("pg001");
+      break;
+    }
+    // If doc.destroy() is not called in finally, WASM memory leaks.
+    // No assertion needed — this test verifies no crash on early exit.
   });
 });
 

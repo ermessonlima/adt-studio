@@ -78,7 +78,7 @@ export async function runPipeline(
     // Step 1: Extract PDF
     const config = loadBookConfig(label, booksRoot, configPath)
 
-    const result = await extractPDF(
+    await extractPDF(
       {
         pdfPath,
         startPage: startPage ?? config.start_page,

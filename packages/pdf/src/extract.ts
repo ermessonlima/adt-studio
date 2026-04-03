@@ -75,6 +75,12 @@ export interface ExtractResult {
   totalPagesInPdf: number;
 }
 
+export interface ExtractStreamResult {
+  pdfMetadata: PdfMetadata;
+  totalPagesInPdf: number;
+  pages: AsyncGenerator<ExtractedPage, void, unknown>;
+}
+
 export interface ExtractProgress {
   page: number;
   totalPages: number;
@@ -179,6 +185,63 @@ export async function extractPdf(
     pages,
     pdfMetadata,
     totalPagesInPdf,
+  };
+}
+
+/**
+ * Streaming variant of extractPdf — yields pages one at a time via an async
+ * generator so the caller can persist each page to disk and release it from
+ * memory before the next page is extracted. Peak memory drops from O(all
+ * pages) to ~O(1 page).
+ */
+export function extractPdfStream(
+  input: ExtractInput,
+  onProgress?: (progress: ExtractProgress) => void
+): ExtractStreamResult {
+  const { pdfBuffer, startPage = 1, endPage, spreadMode = false } = input;
+  validatePageRange(startPage, endPage);
+
+  const doc = openPdfFromBuffer(pdfBuffer);
+  const pdfMetadata = extractPdfMetadata(doc);
+  const totalPagesInPdf = doc.countPages();
+
+  const start = startPage - 1;
+  const end = Math.min(endPage ?? totalPagesInPdf, totalPagesInPdf);
+
+  async function* generatePages(): AsyncGenerator<ExtractedPage, void, unknown> {
+    try {
+      if (spreadMode) {
+        const logicalGroups = computeSpreadGroups(start, end);
+        const totalLogical = logicalGroups.length;
+
+        for (let g = 0; g < totalLogical; g++) {
+          const group = logicalGroups[g];
+          const page =
+            group.length === 2
+              ? await extractSpreadPage(doc, group[0], group[1])
+              : await extractPage(doc, group[0]);
+
+          onProgress?.({ page: g + 1, totalPages: totalLogical });
+          yield page;
+        }
+      } else {
+        const rangeSize = end - start;
+        for (let i = start; i < end; i++) {
+          const page = await extractPage(doc, i);
+
+          onProgress?.({ page: i - start + 1, totalPages: rangeSize });
+          yield page;
+        }
+      }
+    } finally {
+      doc.destroy();
+    }
+  }
+
+  return {
+    pdfMetadata,
+    totalPagesInPdf,
+    pages: generatePages(),
   };
 }
 
