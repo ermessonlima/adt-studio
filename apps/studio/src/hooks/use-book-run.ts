@@ -11,6 +11,7 @@ import {
 import { STEP_TO_STAGE, PIPELINE, getStageClearOrder, PAGE_PROGRESS_STEPS } from "@adt/types"
 import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
+import { playCompletionSound } from "@/lib/completion-sound"
 import { bookTasksKey } from "./use-book-tasks"
 import { invalidateStoryboardDependents } from "./use-page-mutations"
 import { useApiKey } from "./use-api-key"
@@ -175,6 +176,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
       } else if (d.type === "step-complete" || d.type === "step-skip") {
         // Mark step as done/skipped, recompute stage state
         const nextStepState: StepState = d.type === "step-skip" ? "skipped" : "done"
+        let stageCompleted = false
         queryClient.setQueryData<StepStatusResponse>(stepStatusKey(label), (old) => {
           if (!old) return old
           const steps = { ...old.steps, [pipelineStep]: nextStepState }
@@ -187,8 +189,10 @@ export function useBookRunStatus(label: string): BookRunContextValue {
             [uiStage]: allDone ? "done" : old.stages[uiStage],
           }
 
+          stageCompleted = allDone
           return { ...old, stages, steps }
         })
+        if (stageCompleted) playCompletionSound()
         progressRef.current.delete(pipelineStep)
 
         // Also invalidate data queries for the completed step's stage
@@ -291,6 +295,8 @@ export function useBookRunStatus(label: string): BookRunContextValue {
 
         return { tasks }
       })
+
+      if (d.type === "task-complete") playCompletionSound()
     })
 
     return () => {
