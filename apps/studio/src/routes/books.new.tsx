@@ -503,7 +503,7 @@ function AddBookPage() {
               await api.runStages(
                 book.label,
                 apiKey,
-                { fromStage: "extract", toStage: "storyboard" },
+                { fromStage: "extract", toStage: "extract" },
                 {
                   azure: { key: azureKey, region: azureRegion },
                   geminiApiKey: geminiKey,
