@@ -48,6 +48,10 @@ export interface BookPreviewFrameHandle {
   /** Regenerate Tailwind CSS including the given extra HTML, then inject into iframe.
    *  Use after AI edits introduce new Tailwind classes not yet in the DB. */
   refreshCss: (extraHtml: string) => Promise<void>
+  /** Read the Tailwind classes on an element by data-id */
+  getElementClasses: (dataId: string) => string[]
+  /** Set the full class list on an element by data-id. Returns updated full HTML, or null. */
+  setElementClasses: (dataId: string, classes: string[]) => string | null
 }
 
 export interface BookPreviewFrameProps {
@@ -61,8 +65,9 @@ export interface BookPreviewFrameProps {
   prunedDataIds?: string[]
   /** Elements that have been edited — shows subtle indicator + original on hover */
   changedElements?: Array<{ dataId: string; originalText?: string }>
-  /** Called when a data-id element is clicked (single click) */
-  onSelectElement?: (dataId: string, rect: DOMRect) => void
+  /** Called when a data-id element is clicked (single click).
+   *  tagName is provided for container elements (div, section, etc.) that don't have a pre-existing data-id. */
+  onSelectElement?: (dataId: string, rect: DOMRect, tagName?: string) => void
   /** Called when a text element is edited (blur/Enter after contenteditable) */
   onTextChanged?: (dataId: string, newText: string, fullHtml: string) => void
   /** When true (default), applies data-background-color to the iframe body */
@@ -122,6 +127,42 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
         if (h && h > 0) setContentHeight(h)
       })
     },
+    getElementClasses: (dataId: string): string[] => {
+      const doc = iframeRef.current?.contentDocument
+      if (!doc) return []
+      const el = doc.querySelector(`[data-id="${CSS.escape(dataId)}"]`) as HTMLElement | null
+      if (!el) return []
+      return Array.from(el.classList)
+    },
+    setElementClasses: (dataId: string, classes: string[]): string | null => {
+      const doc = iframeRef.current?.contentDocument
+      if (!doc) return null
+      const el = doc.querySelector(`[data-id="${CSS.escape(dataId)}"]`) as HTMLElement | null
+      if (!el) return null
+      el.className = classes.join(" ")
+      // Strip transient selection/editing attributes before extracting HTML
+      const transientEls = doc.querySelectorAll("[data-adt-selected], [data-adt-editing]")
+      transientEls.forEach((te) => {
+        te.removeAttribute("data-adt-selected")
+        te.removeAttribute("data-adt-editing")
+      })
+      // Also strip dynamically-assigned container data-ids (prefixed _el)
+      doc.querySelectorAll('[data-id^="_el"]').forEach((te) => te.removeAttribute("data-id"))
+      // Extract the full HTML to persist into rendering
+      const wrapper = doc.getElementById("content")
+      let html: string
+      if (wrapper) {
+        const cls = (wrapper.getAttribute("class") || "").trim()
+        html = cls ? wrapper.outerHTML : wrapper.innerHTML
+      } else {
+        html = doc.body.innerHTML
+      }
+      // Restore the selected attribute on the current element
+      el.setAttribute("data-adt-selected", "true")
+      // Restore the dynamic data-id if it was stripped
+      if (dataId.startsWith("_el")) el.setAttribute("data-id", dataId)
+      return html
+    },
   }))
   const [iframeReady, setIframeReady] = useState(false)
   const [scale, setScale] = useState(1)
@@ -177,8 +218,34 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
   var editing = null;
   var savedDisplayHtml = null;
   var savedOriginalText = null;
+  var containerIdCounter = 0;
 
   function isEditable() { return document.body.dataset.editable === 'true'; }
+
+  /** Structural tags eligible for container selection (when no data-id ancestor). */
+  var CONTAINER_TAGS = { DIV:1, SECTION:1, ARTICLE:1, MAIN:1, NAV:1, ASIDE:1, HEADER:1, FOOTER:1,
+    BUTTON:1, A:1, UL:1, OL:1, LI:1, FIGURE:1, FIGCAPTION:1, BLOCKQUOTE:1, TABLE:1,
+    THEAD:1, TBODY:1, TR:1, TD:1, TH:1, FORM:1, FIELDSET:1, DETAILS:1, SUMMARY:1, SPAN:1,
+    INPUT:1, SELECT:1, TEXTAREA:1, LABEL:1 };
+
+  /** Walk up from target to find the nearest meaningful container element. */
+  function findContainer(target) {
+    var el = target;
+    while (el && el !== document.body && el.id !== 'content') {
+      if (el.nodeType === 1 && CONTAINER_TAGS[el.tagName]) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  /** Ensure the element has a data-id; assign one if missing. */
+  function ensureDataId(el) {
+    var id = el.getAttribute('data-id');
+    if (id) return id;
+    id = '_el' + (++containerIdCounter);
+    el.setAttribute('data-id', id);
+    return id;
+  }
 
   function getRect(el) {
     var r = el.getBoundingClientRect();
@@ -187,8 +254,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
 
   function clearSelection() {
     if (selected) {
-      selected.style.outline = '';
-      selected.style.outlineOffset = '';
+      selected.removeAttribute('data-adt-selected');
     }
     selected = null;
   }
@@ -196,8 +262,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
   function selectElement(el) {
     clearSelection();
     selected = el;
-    el.style.outline = '2px solid rgba(59,130,246,0.8)';
-    el.style.outlineOffset = '2px';
+    el.setAttribute('data-adt-selected', 'true');
     var isImg = el.tagName === 'IMG';
     parent.postMessage({
       type: isImg ? 'select-image' : 'select',
@@ -219,8 +284,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
     // in finishEditing compares LaTeX-to-LaTeX, not MathML-to-LaTeX
     savedOriginalText = el.textContent || '';
     el.contentEditable = 'true';
-    el.style.outline = '2px solid rgba(59,130,246,1)';
-    el.style.outlineOffset = '2px';
+    el.setAttribute('data-adt-editing', 'true');
     el.focus();
     parent.postMessage({ type: 'editing', dataId: dataId }, '*');
   }
@@ -234,8 +298,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
     savedDisplayHtml = null;
     savedOriginalText = null;
     el.contentEditable = 'false';
-    el.style.outline = '';
-    el.style.outlineOffset = '';
+    el.removeAttribute('data-adt-editing');
     // Capture the edited text before restoring MathML display
     var newText = el.textContent || '';
     var dataId = el.getAttribute('data-id');
@@ -265,6 +328,27 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
     if (!isEditable()) return;
     var el = e.target.closest('[data-id]');
     if (!el) {
+      // No data-id ancestor — try selecting a container element
+      var container = findContainer(e.target);
+      if (container) {
+        // Prevent native focus/interaction on form elements so the click selects for editing
+        var tag = container.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || tag === 'BUTTON') {
+          e.preventDefault();
+        }
+        if (editing) finishEditing();
+        var cId = ensureDataId(container);
+        clearSelection();
+        selected = container;
+        container.setAttribute('data-adt-selected', 'true');
+        parent.postMessage({
+          type: 'select-container',
+          dataId: cId,
+          tagName: container.tagName.toLowerCase(),
+          rect: getRect(container)
+        }, '*');
+        return;
+      }
       if (editing) finishEditing();
       clearSelection();
       parent.postMessage({ type: 'deselect' }, '*');
@@ -295,8 +379,7 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
           savedDisplayHtml = null;
         }
         editing.contentEditable = 'false';
-        editing.style.outline = '';
-        editing.style.outlineOffset = '';
+        editing.removeAttribute('data-adt-editing');
         editing = null;
       }
       return;
@@ -312,7 +395,17 @@ export const BookPreviewFrame = forwardRef<BookPreviewFrameHandle, BookPreviewFr
   // apply when editing is enabled, without needing to change the srcdoc.
   const interactiveStyles = `body[data-editable="true"] [data-id] { cursor: pointer; transition: outline 0.1s; }
     body[data-editable="true"] [data-id]:hover { outline: 2px solid rgba(59,130,246,0.3); outline-offset: 2px; }
-    body[data-editable="true"] img[data-id] { position: relative; z-index: 1; }`
+    body[data-editable="true"] img[data-id] { position: relative; z-index: 1; }
+    body[data-editable="true"] div:hover, body[data-editable="true"] section:hover,
+    body[data-editable="true"] button:hover, body[data-editable="true"] nav:hover,
+    body[data-editable="true"] article:hover, body[data-editable="true"] aside:hover,
+    body[data-editable="true"] figure:hover, body[data-editable="true"] li:hover,
+    body[data-editable="true"] input:hover, body[data-editable="true"] select:hover,
+    body[data-editable="true"] textarea:hover, body[data-editable="true"] label:hover {
+      outline: 1px dashed rgba(59,130,246,0.25); outline-offset: 1px;
+    }
+    [data-adt-selected] { outline: 2px solid rgba(59,130,246,0.8) !important; outline-offset: 2px !important; }
+    [data-adt-editing] { outline: 2px solid rgba(59,130,246,1) !important; outline-offset: 2px !important; }`
 
   // Stable shell — loaded once, never changes.
   // Mirrors the preview's renderPageHtml output: same CSS, fonts, body classes.
@@ -345,9 +438,9 @@ ${interactiveScript}
   const handleMessage = useCallback((e: MessageEvent) => {
     const iframe = iframeRef.current
     if (!iframe || e.source !== iframe.contentWindow) return
-    const { type, dataId, rect, newText, fullHtml } = e.data ?? {}
-    if (type === "select" || type === "select-image") {
-      callbacksRef.current.onSelectElement?.(dataId, rect)
+    const { type, dataId, rect, newText, fullHtml, tagName } = e.data ?? {}
+    if (type === "select" || type === "select-image" || type === "select-container") {
+      callbacksRef.current.onSelectElement?.(dataId, rect, tagName)
     } else if (type === "text-changed") {
       // Reconstruct fullHtml from original LaTeX HTML to prevent MathML
       // from leaking into the data model when saving edits

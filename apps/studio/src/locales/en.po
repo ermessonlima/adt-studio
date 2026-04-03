@@ -396,6 +396,9 @@ msgstr "Add Book"
 msgid "Add checklist item to this section"
 msgstr "Add checklist item to this section"
 
+msgid "Add class"
+msgstr "Add class"
+
 msgid "Add entry below"
 msgstr "Add entry below"
 
@@ -462,6 +465,9 @@ msgstr "AI sees the current image and modifies it"
 
 msgid "AIza..."
 msgstr "AIza..."
+
+#~ msgid "Align {align}"
+#~ msgstr "Align {align}"
 
 msgid "All Categories"
 msgstr "All Categories"
@@ -599,6 +605,9 @@ msgstr "Background"
 #. placeholder {0}: section.backgroundColor
 msgid "Background: {0}"
 msgstr "Background: {0}"
+
+msgid "base"
+msgstr "base"
 
 msgid "Be descriptive — include style, colors, mood, and composition."
 msgstr "Be descriptive — include style, colors, mood, and composition."
@@ -900,8 +909,14 @@ msgstr "Current Preview Page"
 msgid "Custom section {index}"
 msgstr "Custom section {index}"
 
+msgid "Custom:"
+msgstr "Custom:"
+
 #~ msgid "Debug Panel"
 #~ msgstr "Debug Panel"
+
+#~ msgid "Decrease font size"
+#~ msgstr "Decrease font size"
 
 msgid "Decrease indent"
 msgstr "Decrease indent"
@@ -1164,6 +1179,9 @@ msgstr "End page"
 
 msgid "English"
 msgstr "English"
+
+msgid "Enter hex color and press Enter"
+msgstr "Enter hex color and press Enter"
 
 msgid "Error"
 msgstr "Error"
@@ -1524,6 +1542,9 @@ msgstr "Include in render"
 
 #~ msgid "Include section in render"
 #~ msgstr "Include section in render"
+
+#~ msgid "Increase font size"
+#~ msgstr "Increase font size"
 
 msgid "Increase indent"
 msgstr "Increase indent"
@@ -1959,6 +1980,9 @@ msgstr "No link"
 msgid "No log entries found yet."
 msgstr "No log entries found yet."
 
+msgid "No matches"
+msgstr "No matches"
+
 msgid "No matches for \"{search}\""
 msgstr "No matches for \"{search}\""
 
@@ -2228,6 +2252,9 @@ msgstr "Polishing paragraphs to perfection..."
 msgid "Portuguese (BR)"
 msgstr "Portuguese (BR)"
 
+msgid "Press Enter to add"
+msgstr "Press Enter to add"
+
 msgid "Prev"
 msgstr "Prev"
 
@@ -2316,6 +2343,9 @@ msgstr "Re-package ADT"
 msgid "Re-render"
 msgstr "Re-render"
 
+msgid "Re-render (your edits will be preserved)"
+msgstr "Re-render (your edits will be preserved)"
+
 msgid "Re-render failed"
 msgstr "Re-render failed"
 
@@ -2402,6 +2432,9 @@ msgstr "Reset to inherited defaults"
 
 msgid "Resolving source language..."
 msgstr "Resolving source language..."
+
+msgid "Responsive / State variants"
+msgstr "Responsive / State variants"
 
 msgid "Restore"
 msgstr "Restore"
@@ -2559,6 +2592,9 @@ msgstr "SCORM Export"
 
 msgid "SCORM Package"
 msgstr "SCORM Package"
+
+#~ msgid "Search classes..."
+#~ msgstr "Search classes..."
 
 msgid "Search languages..."
 msgstr "Search languages..."
@@ -2895,6 +2931,9 @@ msgstr "Text Classification"
 msgid "Text Classification Prompt"
 msgstr "Text Classification Prompt"
 
+#~ msgid "Text color"
+#~ msgstr "Text color"
+
 #. placeholder {0}: section.textColor
 msgid "Text color: {0}"
 msgstr "Text color: {0}"
@@ -3070,6 +3109,9 @@ msgstr "Two-column template for story content"
 msgid "Type"
 msgstr "Type"
 
+msgid "Type class name or search..."
+msgstr "Type class name or search..."
+
 msgid "Types used during page sectioning. Pruned types are classified but excluded from rendering. Disabled types are hidden from the LLM entirely."
 msgstr "Types used during page sectioning. Pruned types are classified but excluded from rendering. Disabled types are hidden from the LLM entirely."
 
@@ -3157,6 +3199,9 @@ msgstr "Validation"
 #. placeholder {0}: data.validationErrors.length
 msgid "Validation Errors ({0})"
 msgstr "Validation Errors ({0})"
+
+msgid "Variant:"
+msgstr "Variant:"
 
 #. placeholder {0}: String(version)
 msgid "Version {0}"

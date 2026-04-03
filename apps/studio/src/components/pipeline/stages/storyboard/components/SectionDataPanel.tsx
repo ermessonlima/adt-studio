@@ -467,14 +467,16 @@ export function SectionDataPanel({
             <button
               type="button"
               onClick={() => setRerenderOpen(!rerenderOpen)}
-              disabled={rerendering || dirty || renderingDirty || saving || !hasApiKey}
+              disabled={rerendering || dirty || saving || !hasApiKey}
               className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
               title={
                 !hasApiKey
                   ? t`API key required to re-render`
-                  : dirty || renderingDirty
+                  : dirty
                     ? t`Save changes before re-rendering`
-                    : t`Re-render this section`
+                    : renderingDirty
+                      ? t`Re-render (your edits will be preserved)`
+                      : t`Re-render this section`
               }
             >
               {rerendering ? (

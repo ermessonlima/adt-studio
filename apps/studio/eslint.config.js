@@ -81,6 +81,9 @@ export default [
             "iconColor",
             "colorClass",
 
+            // --- Data labels (technical CSS descriptions, pipeline labels — not user-facing prose) ---
+            "label",
+
             // --- Pipeline / config identifiers ---
             "slug",
             "stageSlug",
@@ -161,6 +164,7 @@ export default [
             // --- String / array operations (used for internal comparisons) ---
             "*.replace",
             "*.startsWith",
+            "*.endsWith",
             "*.includes",
 
             // --- URL / search params manipulation ---
@@ -198,6 +202,8 @@ export default [
             "^[a-z][a-z0-9._:/-]*( [a-z!][a-z0-9._:/-]*)+$",
             // Hex color values (e.g. "#ffffff", "#2563eb")
             "^#[0-9a-fA-F]+$",
+            // CSS dimension values (e.g. "10px", "1.5rem", "48px")
+            "^[0-9]",
             // React Server Components directives (shadcn boilerplate)
             "^use (client|server)$",
             // Brand name (never translated)

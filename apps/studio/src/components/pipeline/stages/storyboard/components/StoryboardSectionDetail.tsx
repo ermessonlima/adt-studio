@@ -195,6 +195,100 @@ function getRenderedSectionByIndex(
   return rendering?.sections.find((s) => s.sectionIndex === sectionIndex)
 }
 
+/**
+ * Compare pending (edited) HTML against saved (original) HTML and produce
+ * structured LLM instructions describing the user's manual edits.
+ * Returns an empty string if there are no meaningful differences.
+ */
+/* eslint-disable lingui/no-unlocalized-strings -- LLM prompt instructions, not user-visible */
+function buildEditInstructions(savedHtml: string, pendingHtml: string): string {
+  if (savedHtml === pendingHtml) return ""
+
+  const parser = new DOMParser()
+  const savedDoc = parser.parseFromString(savedHtml, "text/html")
+  const pendingDoc = parser.parseFromString(pendingHtml, "text/html")
+
+  const lines: string[] = []
+
+  // Compare elements with data-id (text + image elements)
+  pendingDoc.querySelectorAll("[data-id]").forEach((pendingEl) => {
+    const dataId = pendingEl.getAttribute("data-id")
+    if (!dataId) return
+    const savedEl = savedDoc.querySelector(`[data-id="${dataId}"]`)
+
+    // Class changes
+    const pendingClasses = pendingEl.getAttribute("class") ?? ""
+    const savedClasses = savedEl?.getAttribute("class") ?? ""
+    if (pendingClasses !== savedClasses) {
+      const tag = pendingEl.tagName.toLowerCase()
+      if (pendingClasses.trim()) {
+        lines.push(`- <${tag} data-id="${dataId}"> must use these Tailwind classes: "${pendingClasses}"`)
+      } else if (savedClasses.trim()) {
+        lines.push(`- <${tag} data-id="${dataId}"> had all classes removed — do NOT add any classes`)
+      }
+    }
+
+    // Text content changes (non-image elements only)
+    if (pendingEl.tagName !== "IMG" && savedEl) {
+      const pendingText = pendingEl.textContent?.trim() ?? ""
+      const savedText = savedEl.textContent?.trim() ?? ""
+      if (pendingText !== savedText && pendingText) {
+        lines.push(`- Element [data-id="${dataId}"] text was changed to: "${pendingText}"`)
+      }
+    }
+
+    // Deleted elements (present in saved but missing in pending)
+    // Note: we check saved → pending direction for deletions
+  })
+
+  // Check for elements deleted from saved
+  savedDoc.querySelectorAll("[data-id]").forEach((savedEl) => {
+    const dataId = savedEl.getAttribute("data-id")
+    if (!dataId) return
+    if (!pendingDoc.querySelector(`[data-id="${dataId}"]`)) {
+      lines.push(`- Element [data-id="${dataId}"] was removed — do NOT include it`)
+    }
+  })
+
+  // Compare structural/container elements (elements without data-id that wrap content)
+  // Walk the pending doc and compare parent elements by structure
+  const pendingWrapper = pendingDoc.getElementById("content") ?? pendingDoc.body
+  const savedWrapper = savedDoc.getElementById("content") ?? savedDoc.body
+
+  // Compare the wrapper class itself
+  if (pendingWrapper.getAttribute("class") !== savedWrapper.getAttribute("class")) {
+    const cls = pendingWrapper.getAttribute("class")
+    if (cls?.trim()) {
+      lines.push(`- The wrapper container (id="content") must use classes: "${cls}"`)
+    }
+  }
+
+  // Compare direct section children class changes
+  const pendingSections = pendingWrapper.querySelectorAll("section, [data-section-type]")
+  const savedSections = savedWrapper.querySelectorAll("section, [data-section-type]")
+  pendingSections.forEach((pSec, i) => {
+    const sSec = savedSections[i]
+    if (!sSec) return
+    const pCls = pSec.getAttribute("class") ?? ""
+    const sCls = sSec.getAttribute("class") ?? ""
+    if (pCls !== sCls && pCls.trim()) {
+      const sectionId = pSec.getAttribute("data-section-id") ?? `index ${i}`
+      lines.push(`- The <section> (${sectionId}) must use classes: "${pCls}"`)
+    }
+  })
+
+  if (lines.length === 0) return ""
+
+  return [
+    "IMPORTANT — PRESERVE THESE MANUAL EDITS THE USER MADE:",
+    "The user has manually edited the previous rendering. When regenerating, you MUST preserve these specific changes:",
+    ...lines,
+    "",
+    "Apply these edits to the new rendering. The classes and text changes above take priority over your default styling choices.",
+  ].join("\n")
+}
+/* eslint-enable lingui/no-unlocalized-strings */
+
 // -- Helpers --
 
 function escapeRegex(s: string) {
@@ -330,9 +424,17 @@ export function StoryboardSectionDetail({
     rect: DOMRect
     iframeTop: number
     iframeLeft: number
+    /** Set for container elements (div, section, etc.) that were dynamically assigned a data-id */
+    tagName?: string
   } | null>(null)
+  const [selectedElementClasses, setSelectedElementClasses] = useState<string[] | null>(null)
   const previewFrameRef = useRef<BookPreviewFrameHandle>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Clear cached classes when element is deselected
+  useEffect(() => {
+    if (!selectedElement) setSelectedElementClasses(null)
+  }, [selectedElement])
 
   // Track current pageId so async callbacks can detect stale closures
 
@@ -710,12 +812,37 @@ export function StoryboardSectionDetail({
     }
   }
 
-  // Manually trigger a re-render of the current section
+  // Manually trigger a re-render of the current section.
+  // If there are pending rendering edits, diff them against the saved version
+  // and inject structured instructions so the LLM preserves the user's changes.
   const handleRerender = (prompt?: string) => {
-    if (hasActiveTask || dirty || renderingDirty || saving || !hasApiKey) return
+    if (hasActiveTask || dirty || saving || !hasApiKey) return
     setPanelOpen(false)
-    api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex, prompt)
+
+    // Build edit instructions from pending changes
+    let editInstructions = ""
+    if (pendingRendering && page.rendering) {
+      const savedHtml = getRenderedSectionByIndex(page.rendering, sectionIndex)?.html ?? ""
+      const pendingHtml = getRenderedSectionByIndex(pendingRendering, sectionIndex)?.html ?? ""
+      editInstructions = buildEditInstructions(savedHtml, pendingHtml)
+    }
+
+    // Combine edit instructions with any user prompt
+    const parts: string[] = []
+    if (editInstructions) parts.push(editInstructions)
+    if (prompt) parts.push(prompt)
+    const combinedPrompt = parts.join("\n\n") || undefined
+
+    // Save pending state so we can restore on failure
+    const savedPending = pendingRendering
+    if (pendingRendering) {
+      setPendingRendering(null)
+    }
+
+    api.reRenderPage(bookLabel, pageId, apiKey, sectionIndex, combinedPrompt)
       .catch((err) => {
+        // Restore pending edits so the user doesn't lose their work
+        if (savedPending) setPendingRendering(savedPending)
         setAiError(err instanceof Error ? err.message : t`Re-render failed`)
       })
   }
@@ -1355,9 +1482,10 @@ export function StoryboardSectionDetail({
   )
 
   // Handle element selection from BookPreviewFrame
-  const handleSelectElement = useCallback((dataId: string, rect: DOMRect) => {
+  const handleSelectElement = useCallback((dataId: string, rect: DOMRect, tagName?: string) => {
     if (!dataId) {
       setSelectedElement(null)
+      setSelectedElementClasses(null)
       return
     }
     // Capture iframe viewport position at click time for accurate toolbar placement
@@ -1367,8 +1495,34 @@ export function StoryboardSectionDetail({
       rect,
       iframeTop: iframeRect?.top ?? 0,
       iframeLeft: iframeRect?.left ?? 0,
+      tagName,
     })
+    // Snapshot element classes once at selection time (not during render)
+    setSelectedElementClasses(previewFrameRef.current?.getElementClasses(dataId) ?? null)
   }, [])
+
+  // Handle Tailwind class changes from the toolbar
+  const handleClassesChange = useCallback(
+    (dataId: string, classes: string[]) => {
+      if (!page.rendering) return
+      const fullHtml = previewFrameRef.current?.setElementClasses(dataId, classes)
+      if (!fullHtml) return
+      // Optimistically update stored classes
+      setSelectedElementClasses(classes)
+      const base = pendingRendering ?? page.rendering
+      const updated = {
+        ...base,
+        sections: base.sections.map((s) => {
+          if (s.sectionIndex !== sectionIndex) return s
+          return { ...s, html: fullHtml }
+        }),
+      }
+      setPendingRendering(updated)
+      // Refresh Tailwind CSS so newly added classes render correctly
+      previewFrameRef.current?.refreshCss(fullHtml)
+    },
+    [page.rendering, pendingRendering, sectionIndex]
+  )
 
   // Handle toolbar prune toggle
   const handleToolbarPrune = useCallback(
@@ -1877,7 +2031,13 @@ export function StoryboardSectionDetail({
   // Compute toolbar info for selected element
   const getSelectedElementInfo = () => {
     if (!selectedElement || !sectioningData) return null
-    const { dataId } = selectedElement
+    const { dataId, tagName } = selectedElement
+
+    // Container elements (div, section, button, etc.) — class editing only
+    if (tagName) {
+      return { isImage: false, isContainer: true, tagName, textType: undefined, isPruned: false, imageSrc: undefined }
+    }
+
     const isImage = dataId.includes("_im")
     const loc = !isImage ? findTextByDataId(parts, dataId) : null
     const textEntry = loc
@@ -1891,6 +2051,8 @@ export function StoryboardSectionDetail({
 
     return {
       isImage,
+      isContainer: false,
+      tagName: undefined,
       textType: textEntry?.textType,
       isPruned: isImage ? imagePart?.isPruned ?? false : textEntry?.isPruned ?? false,
       imageSrc: isImage ? `${BASE_URL}/books/${bookLabel}/images/${dataId}` : undefined,
@@ -2360,18 +2522,22 @@ export function StoryboardSectionDetail({
           rect={selectedElement.rect}
           containerOffset={{ top: selectedElement.iframeTop, left: selectedElement.iframeLeft }}
           isImage={selectedInfo.isImage}
+          isContainer={selectedInfo.isContainer}
+          containerTagName={selectedInfo.tagName}
           textType={selectedInfo.textType}
           isPruned={selectedInfo.isPruned}
           textTypes={textTypes}
           imageSrc={selectedInfo.imageSrc}
-          onChangeTextType={handleToolbarChangeTextType}
-          onTogglePrune={handleToolbarPrune}
+          onChangeTextType={selectedInfo.isContainer ? undefined : handleToolbarChangeTextType}
+          onTogglePrune={selectedInfo.isContainer ? undefined : handleToolbarPrune}
           onCrop={selectedInfo.isImage ? (dataId) => setCropTarget(dataId) : undefined}
           onReplace={selectedInfo.isImage ? handleImageReplace : undefined}
           onAiImage={selectedInfo.isImage && hasApiKey ? handleAiImage : undefined}
           onSegment={selectedInfo.isImage && hasApiKey ? handleSegment : undefined}
           segmenting={segmenting}
           onDelete={handleDeleteBlock}
+          elementClasses={selectedElementClasses ?? undefined}
+          onClassesChange={handleClassesChange}
         />
       )}
 
