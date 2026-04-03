@@ -28,6 +28,8 @@ export interface ExtractInput {
   endPage?: number;
   /** When true, merge pairs of pages as spreads (page 1 = cover, 2+3, 4+5, etc.) */
   spreadMode?: boolean;
+  /** When true, include text shapes in vector grouping to produce raster crops of vectors with text overlays. Defaults to true. */
+  vectorTextGrouping?: boolean;
 }
 
 export interface ExtractedPage {
@@ -137,7 +139,7 @@ export async function extractPdf(
   input: ExtractInput,
   onProgress?: (progress: ExtractProgress) => void
 ): Promise<ExtractResult> {
-  const { pdfBuffer, startPage = 1, endPage, spreadMode = false } = input;
+  const { pdfBuffer, startPage = 1, endPage, spreadMode = false, vectorTextGrouping = true } = input;
   validatePageRange(startPage, endPage);
 
   // Open PDF (suppressing mupdf stderr spam)
@@ -163,8 +165,8 @@ export async function extractPdf(
       const group = logicalGroups[g];
       const page =
         group.length === 2
-          ? await extractSpreadPage(doc, group[0], group[1])
-          : await extractPage(doc, group[0]);
+          ? await extractSpreadPage(doc, group[0], group[1], vectorTextGrouping)
+          : await extractPage(doc, group[0], vectorTextGrouping);
       pages.push(page);
 
       onProgress?.({ page: g + 1, totalPages: totalLogical });
@@ -173,7 +175,7 @@ export async function extractPdf(
   } else {
     const rangeSize = end - start;
     for (let i = start; i < end; i++) {
-      const page = await extractPage(doc, i);
+      const page = await extractPage(doc, i, vectorTextGrouping);
       pages.push(page);
 
       onProgress?.({ page: i - start + 1, totalPages: rangeSize });
@@ -198,7 +200,7 @@ export function extractPdfStream(
   input: ExtractInput,
   onProgress?: (progress: ExtractProgress) => void
 ): ExtractStreamResult {
-  const { pdfBuffer, startPage = 1, endPage, spreadMode = false } = input;
+  const { pdfBuffer, startPage = 1, endPage, spreadMode = false, vectorTextGrouping = true } = input;
   validatePageRange(startPage, endPage);
 
   const doc = openPdfFromBuffer(pdfBuffer);
@@ -218,8 +220,8 @@ export function extractPdfStream(
           const group = logicalGroups[g];
           const page =
             group.length === 2
-              ? await extractSpreadPage(doc, group[0], group[1])
-              : await extractPage(doc, group[0]);
+              ? await extractSpreadPage(doc, group[0], group[1], vectorTextGrouping)
+              : await extractPage(doc, group[0], vectorTextGrouping);
 
           onProgress?.({ page: g + 1, totalPages: totalLogical });
           yield page;
@@ -227,7 +229,7 @@ export function extractPdfStream(
       } else {
         const rangeSize = end - start;
         for (let i = start; i < end; i++) {
-          const page = await extractPage(doc, i);
+          const page = await extractPage(doc, i, vectorTextGrouping);
 
           onProgress?.({ page: i - start + 1, totalPages: rangeSize });
           yield page;
@@ -404,7 +406,7 @@ function extractPdfMetadata(doc: MupdfDocument): PdfMetadata {
   return metadata;
 }
 
-async function extractPage(doc: MupdfDocument, pageIndex: number): Promise<ExtractedPage> {
+async function extractPage(doc: MupdfDocument, pageIndex: number, vectorTextGrouping: boolean = true): Promise<ExtractedPage> {
   const pageNum = pageIndex + 1;
   const pageId = "pg" + String(pageNum).padStart(3, "0");
 
@@ -436,10 +438,10 @@ async function extractPage(doc: MupdfDocument, pageIndex: number): Promise<Extra
   const pdfPage = page as unknown as PDFPage;
   const allRasterImages = extractRasterImagesFromPdf(pdfDoc, pdfPage, pageId);
 
-  // Extract vector shapes and figure groups from SVG (text shapes participate in grouping)
+  // Extract vector shapes and figure groups from SVG (text shapes participate in grouping when enabled)
   const pageSvg = getPageSvg(page);
   const { images: figureImages, coveredRasterHashes, debug: extractionDebug } = await extractVectorImagesFromSvg(
-    pageSvg, pageId, allRasterImages.length, pagePngBuf, textShapes
+    pageSvg, pageId, allRasterImages.length, pagePngBuf, vectorTextGrouping ? textShapes : undefined
   );
 
   // Filter out raster images that are covered by figure groups (dedup)
@@ -464,7 +466,8 @@ async function extractPage(doc: MupdfDocument, pageIndex: number): Promise<Extra
 async function extractSpreadPage(
   doc: MupdfDocument,
   leftIndex: number,
-  rightIndex: number
+  rightIndex: number,
+  vectorTextGrouping: boolean = true,
 ): Promise<ExtractedPage> {
   const leftNum = leftIndex + 1;
   const rightNum = rightIndex + 1;
@@ -518,13 +521,13 @@ async function extractSpreadPage(
   const leftSvg = getPageSvg(leftPage);
   const rightSvg = getPageSvg(rightPage);
   const rasterCount = allLeftRaster.length + allRightRaster.length;
-  const leftResult = await extractVectorImagesFromSvg(leftSvg, pageId, rasterCount, leftPng, leftTextShapes);
+  const leftResult = await extractVectorImagesFromSvg(leftSvg, pageId, rasterCount, leftPng, vectorTextGrouping ? leftTextShapes : undefined);
   const rightResult = await extractVectorImagesFromSvg(
     rightSvg,
     pageId,
     rasterCount + leftResult.images.length,
     rightPng,
-    rightTextShapes,
+    vectorTextGrouping ? rightTextShapes : undefined,
   );
 
   // Merge covered hashes from both pages and filter raster images

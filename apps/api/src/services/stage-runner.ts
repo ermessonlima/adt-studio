@@ -254,6 +254,7 @@ async function runExtractStep(
         startPage: config.start_page,
         endPage: config.end_page,
         spreadMode: config.spread_mode,
+        vectorTextGrouping: config.vector_text_grouping,
       },
       storage,
       progress

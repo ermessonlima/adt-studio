@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react"
+import { useLingui } from "@lingui/react/macro"
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import {
   Upload,
@@ -154,6 +155,7 @@ function AddBookPage() {
   const { data: existingBooks } = useBooks()
   const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
   const { openSettings } = useSettingsDialog()
+  const { t } = useLingui()
 
   const [step, setStep] = useState(1)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -168,6 +170,7 @@ function AddBookPage() {
   const [spreadMode, setSpreadMode] = useState(false)
   const [imageCropping, setImageCropping] = useState(false)
   const [imageSegmentation, setImageSegmentation] = useState(false)
+  const [vectorTextGrouping, setVectorTextGrouping] = useState(true)
   const [segMinSide, setSegMinSide] = useState("")
 
   // Step 2 — Layout
@@ -310,6 +313,11 @@ function AddBookPage() {
       setSpreadMode(config.spread_mode)
     }
 
+    // Vector text grouping from preset
+    if (typeof config.vector_text_grouping === "boolean") {
+      setVectorTextGrouping(config.vector_text_grouping)
+    }
+
     // Sectioning mode from preset
     if (config.page_sectioning && typeof config.page_sectioning === "object") {
       const ps = config.page_sectioning as Record<string, unknown>
@@ -426,6 +434,7 @@ function AddBookPage() {
       configOverrides.output_languages = Array.from(outputLanguages)
     }
     configOverrides.spread_mode = spreadMode
+    configOverrides.vector_text_grouping = vectorTextGrouping
     configOverrides.apply_body_background = applyBodyBackground
     if (parsedStartPage !== undefined) {
       configOverrides.start_page = parsedStartPage
@@ -702,6 +711,21 @@ function AddBookPage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="vector-text-grouping"
+                        checked={vectorTextGrouping}
+                        onCheckedChange={setVectorTextGrouping}
+                      />
+                      <Label htmlFor="vector-text-grouping" className="text-xs">
+                        {t`Include text overlays in vector groups`}
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t`Group text labels near vector images (e.g. chart dimensions, speech bubbles) and extract as raster crops. Disable to extract only the core vector shapes.`}
+                    </p>
                   </div>
                 </div>
               )}

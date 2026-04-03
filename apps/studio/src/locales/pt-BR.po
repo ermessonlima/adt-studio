@@ -1441,6 +1441,9 @@ msgstr "Prompt de glossário"
 msgid "Go to book"
 msgstr "Ir para o livro"
 
+msgid "Group text labels near vector images (e.g. chart dimensions, speech bubbles) and extract as raster crops. Disable to extract only the core vector shapes."
+msgstr "Agrupa rótulos de texto próximos a imagens vetoriais (por exemplo, dimensões de gráficos, balões de fala) e os extrai como recortes rasterizados. Desative para extrair apenas as formas vetoriais principais."
+
 #~ msgid "Group Types"
 #~ msgstr "Tipos de grupo"
 
@@ -1542,6 +1545,9 @@ msgstr "Incluir na renderização"
 
 #~ msgid "Include section in render"
 #~ msgstr "Incluir seção na renderização"
+
+msgid "Include text overlays in vector groups"
+msgstr "Incluir sobreposições de texto em grupos vetoriais"
 
 #~ msgid "Increase font size"
 #~ msgstr "Aumentar tamanho da fonte"
@@ -3203,6 +3209,9 @@ msgstr "Erros de validação ({0})"
 msgid "Variant:"
 msgstr "Variante:"
 
+msgid "Vector Extraction"
+msgstr "Extração vetorial"
+
 #. placeholder {0}: String(version)
 msgid "Version {0}"
 msgstr "Versão {0}"
@@ -3256,6 +3265,9 @@ msgstr "O que a IA deve alterar?"
 
 msgid "When enabled, background colors from the styleguide are applied to the full page body."
 msgstr "Quando ativado, as cores de fundo do guia de estilo são aplicadas ao corpo completo da página."
+
+msgid "When enabled, text labels near vector images (e.g. chart dimensions, speech bubbles) are grouped together and extracted as raster crops. Disable to extract only the core vector shapes without text."
+msgstr "Quando ativado, rótulos de texto próximos a imagens vetoriais (ex.: dimensões de gráficos, balões de fala) são agrupados e extraídos como recortes rasterizados. Desative para extrair apenas as formas vetoriais sem texto."
 
 msgid "Whole-book checks for packaged ADT output, plus reviewer findings captured from Preview."
 msgstr "Whole-book checks for packaged ADT output, plus reviewer findings captured from Preview."

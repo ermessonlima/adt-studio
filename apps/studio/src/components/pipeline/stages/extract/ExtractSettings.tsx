@@ -41,6 +41,7 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
   const [startPage, setStartPage] = useState("")
   const [endPage, setEndPage] = useState("")
   const [spreadMode, setSpreadMode] = useState(false)
+  const [vectorTextGrouping, setVectorTextGrouping] = useState(true)
   const [editingLanguage, setEditingLanguage] = useState("")
   const [textTypes, setTextTypes] = useState<Record<string, string>>({})
   const [prunedTextTypes, setPrunedTextTypes] = useState<Set<string>>(new Set())
@@ -75,6 +76,7 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
     if (!bookConfigData) return
     const c = bookConfigData.config
     setSpreadMode(c.spread_mode === true)
+    setVectorTextGrouping(c.vector_text_grouping !== false)
     if (c.editing_language) setEditingLanguage(normalizeLocale(String(c.editing_language)))
     if (c.start_page != null) setStartPage(String(c.start_page))
     if (c.end_page != null) setEndPage(String(c.end_page))
@@ -162,6 +164,9 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
     // Only write managed fields if touched or already in book config
     if (shouldWrite("spread_mode")) {
       overrides.spread_mode = spreadMode
+    }
+    if (shouldWrite("vector_text_grouping")) {
+      overrides.vector_text_grouping = vectorTextGrouping
     }
     if (shouldWrite("start_page")) {
       overrides.start_page = startPage.trim() ? Number(startPage) : undefined
@@ -302,6 +307,26 @@ export function ExtractSettings({ bookLabel, headerTarget, tab = "general" }: { 
             </div>
             <p className="text-xs text-muted-foreground mt-1.5">
               {t`Enable for scanned books where two pages appear on a single PDF page.`}
+            </p>
+          </div>
+
+          {/* Vector + Text Grouping */}
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              {t`Vector Extraction`}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="vector-text-grouping"
+                checked={vectorTextGrouping}
+                onCheckedChange={(v) => { setVectorTextGrouping(v); markDirty("vector_text_grouping") }}
+              />
+              <Label htmlFor="vector-text-grouping" className="text-sm font-normal">
+                {t`Include text overlays in vector groups`}
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              {t`When enabled, text labels near vector images (e.g. chart dimensions, speech bubbles) are grouped together and extracted as raster crops. Disable to extract only the core vector shapes without text.`}
             </p>
           </div>
 

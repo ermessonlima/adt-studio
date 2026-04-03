@@ -1441,6 +1441,9 @@ msgstr "Glossary Prompt"
 msgid "Go to book"
 msgstr "Go to book"
 
+msgid "Group text labels near vector images (e.g. chart dimensions, speech bubbles) and extract as raster crops. Disable to extract only the core vector shapes."
+msgstr "Group text labels near vector images (e.g. chart dimensions, speech bubbles) and extract as raster crops. Disable to extract only the core vector shapes."
+
 #~ msgid "Group Types"
 #~ msgstr "Group Types"
 
@@ -1542,6 +1545,9 @@ msgstr "Include in render"
 
 #~ msgid "Include section in render"
 #~ msgstr "Include section in render"
+
+msgid "Include text overlays in vector groups"
+msgstr "Include text overlays in vector groups"
 
 #~ msgid "Increase font size"
 #~ msgstr "Increase font size"
@@ -3203,6 +3209,9 @@ msgstr "Validation Errors ({0})"
 msgid "Variant:"
 msgstr "Variant:"
 
+msgid "Vector Extraction"
+msgstr "Vector Extraction"
+
 #. placeholder {0}: String(version)
 msgid "Version {0}"
 msgstr "Version {0}"
@@ -3254,6 +3263,9 @@ msgstr "What should the AI change?"
 
 msgid "When enabled, background colors from the styleguide are applied to the full page body."
 msgstr "When enabled, background colors from the styleguide are applied to the full page body."
+
+msgid "When enabled, text labels near vector images (e.g. chart dimensions, speech bubbles) are grouped together and extracted as raster crops. Disable to extract only the core vector shapes without text."
+msgstr "When enabled, text labels near vector images (e.g. chart dimensions, speech bubbles) are grouped together and extracted as raster crops. Disable to extract only the core vector shapes without text."
 
 msgid "Whole-book checks for packaged ADT output, plus reviewer findings captured from Preview."
 msgstr "Whole-book checks for packaged ADT output, plus reviewer findings captured from Preview."
