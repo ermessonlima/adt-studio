@@ -48,6 +48,7 @@ export interface Storage {
   getPages(): PageData[]
   getPageImageBase64(pageId: string): string
   getImageBase64(imageId: string): string
+  getImageDimensions(imageId: string): { width: number; height: number } | null
   getPageImages(pageId: string): ImageData[]
 
   /** Write a cropped image to disk as {imageId}_crop_v{version}.png and register it in the DB with source="crop". */

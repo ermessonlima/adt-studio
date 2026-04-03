@@ -7,12 +7,12 @@ import {
   ImagePlus,
   Layers,
   Loader2,
-  Merge,
   Plus,
   RefreshCw,
   Trash2,
   X,
 } from "lucide-react"
+import { SectionActionsDropdown } from "./SectionActionsDropdown"
 import { BASE_URL } from "@/api/client"
 import {
   Select,
@@ -66,6 +66,9 @@ interface SectionDataPanelProps {
     toTextIndex: number
   ) => void
   onMergeSection: (dir: "prev" | "next") => void
+  onMergeCrossPage?: (dir: "prev" | "next") => void
+  hasPrevPage?: boolean
+  hasNextPage?: boolean
   onCloneSection: () => void
   onDeleteSection: () => void
   onRerender: (prompt?: string) => void
@@ -244,6 +247,9 @@ export function SectionDataPanel({
   onReorderParts,
   onMoveText,
   onMergeSection,
+  onMergeCrossPage,
+  hasPrevPage,
+  hasNextPage,
   onCloneSection,
   onDeleteSection,
   onRerender,
@@ -514,94 +520,19 @@ export function SectionDataPanel({
             )}
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onToggleSectionPruned}
-              className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
-              title={
-                section.isPruned
-                  ? t`Include section in render`
-                  : t`Exclude section from render`
-              }
-            >
-              {section.isPruned ? (
-                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-              ) : (
-                <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-            </button>
-            {sectionIndex > 0 && (
-              <button
-                type="button"
-                onClick={() => onMergeSection("prev")}
-                disabled={merging || dirty || renderingDirty || saving}
-                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-                title={
-                  dirty || renderingDirty
-                    ? t`Save changes before merging`
-                    : t`Merge with previous section`
-                }
-              >
-                {merging ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Merge className="h-3.5 w-3.5 rotate-180" />
-                )}
-              </button>
-            )}
-            {sectionIndex < sectionCount - 1 && (
-              <button
-                type="button"
-                onClick={() => onMergeSection("next")}
-                disabled={merging || dirty || renderingDirty || saving}
-                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-                title={
-                  dirty || renderingDirty
-                    ? t`Save changes before merging`
-                    : t`Merge with next section`
-                }
-              >
-                {merging ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Merge className="h-3.5 w-3.5" />
-                )}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onCloneSection}
-              disabled={cloning || dirty || renderingDirty || saving}
-              className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              title={
-                dirty || renderingDirty
-                  ? t`Save changes before cloning`
-                  : t`Clone this section`
-              }
-            >
-              {cloning ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onDeleteSection}
-              disabled={deleting || dirty || renderingDirty || saving}
-              className="p-0.5 rounded hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
-              title={
-                dirty || renderingDirty
-                  ? t`Save changes before deleting`
-                  : t`Delete this section`
-              }
-            >
-              {deleting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5 text-red-600" />
-              )}
-            </button>
+            <SectionActionsDropdown
+              sectionIndex={sectionIndex}
+              sectionCount={sectionCount}
+              isPruned={section.isPruned}
+              hasPrevPage={hasPrevPage}
+              hasNextPage={hasNextPage}
+              onTogglePrune={onToggleSectionPruned}
+              onMerge={onMergeSection}
+              onMergeCrossPage={onMergeCrossPage}
+              onClone={onCloneSection}
+              onDelete={onDeleteSection}
+              disabled={merging || cloning || deleting || dirty || renderingDirty || saving}
+            />
             {versionPickerNode}
             <button
               type="button"

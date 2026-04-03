@@ -73,11 +73,21 @@ export async function reRenderPage(
     }
     const sectioning = sectioningParsed.data
 
-    // Build image map (all page images — expandParts filters by pruned status)
+    // Build image map: start with all page images, then add any additional images
+    // referenced in section parts (e.g. from cross-page merges).
     const allImages = storage.getPageImages(pageId)
     const renderImages = new Map<string, { base64: string; width?: number; height?: number }>()
     for (const img of allImages) {
       renderImages.set(img.imageId, { base64: storage.getImageBase64(img.imageId), width: img.width, height: img.height })
+    }
+    // Add any images referenced in sections but not found on this page
+    for (const section of sectioning.sections) {
+      for (const part of section.parts) {
+        if (part.type === "image" && !part.isPruned && !renderImages.has(part.imageId)) {
+          const dims = storage.getImageDimensions(part.imageId)
+          renderImages.set(part.imageId, { base64: storage.getImageBase64(part.imageId), width: dims?.width, height: dims?.height })
+        }
+      }
     }
 
     // Load config and build render strategy resolver

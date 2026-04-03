@@ -112,6 +112,15 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
       return fs.readFileSync(filePath).toString("base64")
     },
 
+    getImageDimensions(imageId: string): { width: number; height: number } | null {
+      const rows = db.all(
+        "SELECT width, height FROM images WHERE image_id = ?",
+        [imageId]
+      ) as Array<{ width: number; height: number }>
+      if (rows.length === 0) return null
+      return { width: rows[0].width, height: rows[0].height }
+    },
+
     getPageImages(pageId: string): ImageData[] {
       const rows = db.all(
         "SELECT image_id, width, height, render_method FROM images WHERE page_id = ? ORDER BY image_id",

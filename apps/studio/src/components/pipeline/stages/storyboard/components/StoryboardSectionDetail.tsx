@@ -286,6 +286,8 @@ export function StoryboardSectionDetail({
   navigationArrows,
   onGeneratingChange,
   onNavigateSection,
+  hasPrevPage,
+  hasNextPage,
 }: {
   bookLabel: string
   pageId: string
@@ -299,6 +301,9 @@ export function StoryboardSectionDetail({
   onGeneratingChange?: (generating: boolean) => void
   /** Called to navigate to a different section index (e.g. after clone) */
   onNavigateSection?: (index: number) => void
+  /** Whether there is a page before/after this one (for cross-page merge) */
+  hasPrevPage?: boolean
+  hasNextPage?: boolean
 }) {
   const { t } = useLingui()
   const queryClient = useQueryClient()
@@ -312,6 +317,7 @@ export function StoryboardSectionDetail({
   const [merging, setMerging] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteSection, setConfirmDeleteSection] = useState(false)
+  const [confirmMerge, setConfirmMerge] = useState<{ action: () => Promise<void>; label: string } | null>(null)
   const [pendingSectioning, setPendingSectioning] = useState<SectioningData | null>(null)
   const [pendingRendering, setPendingRendering] = useState<RenderingData | null>(null)
   // Tracks whether pending sectioning changes require LLM re-render on save.
@@ -630,9 +636,8 @@ export function StoryboardSectionDetail({
     }
   }
 
-  // Merge current section with next or previous
-  const handleMergeSection = async (direction: "next" | "prev") => {
-    if (merging || dirty || renderingDirty || saving) return
+  // Merge current section with next or previous (actual execution)
+  const executeMergeSection = async (direction: "next" | "prev") => {
     setMerging(true)
     try {
       const result = await api.mergeSection(bookLabel, pageId, sectionIndex, direction)
@@ -650,6 +655,37 @@ export function StoryboardSectionDetail({
     } finally {
       setMerging(false)
     }
+  }
+
+  // Merge current section across page boundary (actual execution)
+  const executeMergeCrossPage = async (direction: "next" | "prev") => {
+    setMerging(true)
+    try {
+      const result = await api.mergeSectionCrossPage(bookLabel, pageId, sectionIndex, direction)
+      await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", result.sourcePageId] })
+      await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", result.targetPageId] })
+      await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages"] })
+      invalidateStoryboardDependents(queryClient, bookLabel)
+      // Navigate to the previous section or 0 since the current section was removed
+      onNavigateSection?.(Math.max(0, sectionIndex - 1))
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : t`Merge failed`)
+    } finally {
+      setMerging(false)
+    }
+  }
+
+  // Confirmation wrappers for merge actions
+  const handleMergeSection = (direction: "next" | "prev") => {
+    if (merging || dirty || renderingDirty || saving) return
+    const label = direction === "prev" ? t`merge with previous` : t`merge with next`
+    setConfirmMerge({ action: () => executeMergeSection(direction), label })
+  }
+
+  const handleMergeCrossPage = (direction: "next" | "prev") => {
+    if (merging || dirty || renderingDirty || saving) return
+    const label = direction === "prev" ? t`merge into previous page` : t`merge into next page`
+    setConfirmMerge({ action: () => executeMergeCrossPage(direction), label })
   }
 
   // Delete current section
@@ -2367,6 +2403,9 @@ export function StoryboardSectionDetail({
         onReorderParts={reorderParts}
         onMoveText={moveText}
         onMergeSection={handleMergeSection}
+        onMergeCrossPage={handleMergeCrossPage}
+        hasPrevPage={hasPrevPage}
+        hasNextPage={hasNextPage}
         onCloneSection={handleCloneSection}
         onDeleteSection={handleDeleteSection}
         onRerender={handleRerender}
@@ -2461,6 +2500,38 @@ export function StoryboardSectionDetail({
         onClose={() => setAddImageDialogOpen(false)}
       />
     )}
+
+    {/* Merge confirmation dialog */}
+    <Dialog open={!!confirmMerge} onOpenChange={(open) => { if (!open) setConfirmMerge(null) }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{t`Confirm merge`}</DialogTitle>
+          <DialogDescription>
+            {t`Are you sure you want to ${confirmMerge?.label ?? ""}? This action cannot be undone.`}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={() => setConfirmMerge(null)}
+            className="px-3 py-1.5 text-sm rounded border hover:bg-accent transition-colors cursor-pointer"
+          >
+            {t`Cancel`}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const action = confirmMerge?.action
+              setConfirmMerge(null)
+              action?.()
+            }}
+            className="px-3 py-1.5 text-sm rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            {t`Continue`}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     {/* Delete section confirmation dialog */}
     <Dialog open={confirmDeleteSection} onOpenChange={setConfirmDeleteSection}>

@@ -47,6 +47,10 @@ msgstr "(activo)"
 msgid "(no target)"
 msgstr "(no target)"
 
+#. placeholder {0}: sections[0].pageNumber
+msgid "(p.{0})"
+msgstr "(p.{0})"
+
 msgid "(template)"
 msgstr "(plantilla)"
 
@@ -189,6 +193,9 @@ msgstr "{countSummary} en esta página"
 msgid "{elapsed}s"
 msgstr "{elapsed}s"
 
+msgid "{imageCount} images"
+msgstr "{imageCount} imágenes"
+
 #. placeholder {0}: issueCount === 1 ? "issue" : "issues"
 msgid "{issueCount} {0}"
 msgstr "{issueCount} {0}"
@@ -212,6 +219,9 @@ msgstr "{reviewed}/{0} checked"
 
 #~ msgid "{stepLabel} Settings"
 #~ msgstr "Configuración de {0}"
+
+msgid "{textCount} text groups"
+msgstr "{textCount} grupos de texto"
 
 #. placeholder {0}: String(filterSectionIndex + 1)
 msgid "/ Section {0}"
@@ -273,6 +283,9 @@ msgstr "Una actividad de completar tablas."
 
 msgid "A true or false activity."
 msgstr "Una actividad de verdadero o falso."
+
+#~ msgid "Accept merge"
+#~ msgstr "Aceptar combinación"
 
 msgid "Accessibility"
 msgstr "Accessibility"
@@ -501,8 +514,18 @@ msgstr "Aplicar colores de fondo de página"
 msgid "Apply Segmentation"
 msgstr "Apply Segmentation"
 
+#. placeholder {0}: confirmMerge?.label ?? ""
+msgid "Are you sure you want to {0}? This action cannot be undone."
+msgstr "¿Seguro que quieres {0}? Esta acción no se puede deshacer."
+
+msgid "Are you sure you want to {label}? This action cannot be undone."
+msgstr "¿Seguro que quieres {label}? Esta acción no se puede deshacer."
+
 msgid "Are you sure you want to delete"
 msgstr "¿Seguro que quieres eliminar"
+
+msgid "Are you sure you want to delete this image? This action cannot be undone."
+msgstr "¿Estás seguro de que quieres eliminar esta imagen? Esta acción no se puede deshacer."
 
 msgid "Are you sure you want to delete this section? This action cannot be undone."
 msgstr "¿Estás seguro de que quieres eliminar esta sección? Esta acción no se puede deshacer."
@@ -560,6 +583,9 @@ msgstr "Volver al editor"
 
 msgid "Back to preview"
 msgstr "Volver a vista previa"
+
+msgid "Background"
+msgstr "Fondo"
 
 #~ msgid "Background Tasks"
 #~ msgstr "Tareas en segundo plano"
@@ -715,8 +741,8 @@ msgstr "Haz clic para seleccionar una imagen"
 msgid "Clone failed"
 msgstr "Clone failed"
 
-msgid "Clone this section"
-msgstr "Clonar esta sección"
+#~ msgid "Clone this section"
+#~ msgstr "Clonar esta sección"
 
 msgid "Close"
 msgstr "Close"
@@ -726,6 +752,12 @@ msgstr "Cerrar datos de sección"
 
 msgid "Collapse accessibility summary"
 msgstr "Collapse accessibility summary"
+
+#~ msgid "Collapse all"
+#~ msgstr "Contraer todo"
+
+msgid "Collapse all sections"
+msgstr "Contraer todas las secciones"
 
 msgid "Collapse validation"
 msgstr "Collapse validation"
@@ -763,6 +795,9 @@ msgstr "Completion across the assigned page range for this reviewer session."
 msgid "Configure API keys for AI pipeline features."
 msgstr "Configura las claves de API para las funciones de IA."
 
+msgid "Confirm merge"
+msgstr "Confirmar fusión"
+
 msgid "Confirm Rerun"
 msgstr "Confirmar reejecutar"
 
@@ -771,6 +806,9 @@ msgstr "Consultando al consejo de estilo..."
 
 msgid "Content"
 msgstr "Contenido"
+
+msgid "Continue"
+msgstr "Continuar"
 
 #. placeholder {0}: resumeTarget.pageNumber ?? resumeTarget.pageId
 msgid "Continue on page {0}"
@@ -834,6 +872,12 @@ msgstr "Vista previa de recorte"
 
 msgid "Cropping Prompt"
 msgstr "Indicación de recorte"
+
+#~ msgid "Cross-Page"
+#~ msgstr "Entre Páginas"
+
+#~ msgid "Cross-Page Boundary"
+#~ msgstr "Límite entre páginas"
 
 msgid "Current"
 msgstr "Actual"
@@ -936,8 +980,8 @@ msgstr "Eliminar sección"
 msgid "Delete text entry"
 msgstr "Eliminar entrada de texto"
 
-msgid "Delete this section"
-msgstr "Eliminar esta sección"
+#~ msgid "Delete this section"
+#~ msgstr "Eliminar esta sección"
 
 msgid "Deleting..."
 msgstr "Eliminando..."
@@ -978,6 +1022,12 @@ msgstr "Disabled rules"
 msgid "Discard"
 msgstr "Descartar"
 
+#~ msgid "Dismiss suggestion"
+#~ msgstr "Descartar sugerencia"
+
+#~ msgid "Dismissed"
+#~ msgstr "Descartada"
+
 msgid "Display"
 msgstr "Visualización"
 
@@ -992,6 +1042,9 @@ msgstr "Arrastra para reordenar"
 
 msgid "Drag to reorder or move to another group"
 msgstr "Arrastra para reordenar o mover a otro grupo"
+
+msgid "Duplicate"
+msgstr "Duplicar"
 
 msgid "Duplicate group"
 msgstr "Duplicar grupo"
@@ -1071,6 +1124,9 @@ msgstr "Idioma de edición"
 msgid "Empty group — drag text entries here"
 msgstr "Grupo vacío — arrastra entradas de texto aquí"
 
+msgid "Empty section"
+msgstr "Sección vacía"
+
 msgid "en"
 msgstr "en"
 
@@ -1112,11 +1168,17 @@ msgstr "Costo estimado"
 msgid "Exclude from render"
 msgstr "Excluir de la renderización"
 
-msgid "Exclude section from render"
-msgstr "Excluir sección de la renderización"
+#~ msgid "Exclude section from render"
+#~ msgstr "Excluir sección de la renderización"
 
 msgid "Existing reviewer sessions keep their own checklist snapshot. New checklist changes apply to newly created sessions."
 msgstr "Existing reviewer sessions keep their own checklist snapshot. New checklist changes apply to newly created sessions."
+
+#~ msgid "Expand all"
+#~ msgstr "Expandir todo"
+
+msgid "Expand all sections"
+msgstr "Expandir todas las secciones"
 
 msgid "Export"
 msgstr "Exportar"
@@ -1439,6 +1501,9 @@ msgstr "Image upload failed"
 msgid "Images"
 msgstr "Imágenes"
 
+msgid "Images only"
+msgstr "Solo imágenes"
+
 msgid "Images Only"
 msgstr "Solo imágenes"
 
@@ -1448,8 +1513,8 @@ msgstr "Las imágenes con el lado más corto por debajo del mínimo o el lado m�
 msgid "Include in render"
 msgstr "Incluir en la renderización"
 
-msgid "Include section in render"
-msgstr "Incluir sección en la renderización"
+#~ msgid "Include section in render"
+#~ msgstr "Incluir sección en la renderización"
 
 msgid "Increase indent"
 msgstr "Aumentar sangría"
@@ -1555,6 +1620,9 @@ msgstr "Filtro de relevancia por LLM"
 msgid "LLM positions text over background images"
 msgstr "El LLM posiciona texto sobre imágenes de fondo"
 
+#~ msgid "LLM Reasoning"
+#~ msgstr "Razonamiento del LLM"
+
 msgid "LLM-based cropping to remove stray text, artifacts, and excessive whitespace from extracted images."
 msgstr "Recorte basado en LLM para eliminar texto suelto, artefactos y espacios en blanco excesivos de las imágenes extraídas."
 
@@ -1612,6 +1680,9 @@ msgstr "Loading reviewer validation summary..."
 msgid "Loading reviewer validation…"
 msgstr "Loading reviewer validation…"
 
+msgid "Loading sectioning data..."
+msgstr "Cargando datos de sección..."
+
 msgid "Loading speech instructions..."
 msgstr "Cargando instrucciones de voz..."
 
@@ -1654,11 +1725,20 @@ msgstr "Matemáticas"
 msgid "Max side (px)"
 msgstr "Lado máximo (px)"
 
+#~ msgid "May continue from {0}"
+#~ msgstr "Puede continuar desde {0}"
+
+#~ msgid "May continue to {0}"
+#~ msgstr "Puede continuar a {0}"
+
 msgid "Meaningfulness Prompt"
 msgstr "Indicación de significado"
 
 msgid "Media & timing"
 msgstr "Media & timing"
+
+#~ msgid "Merge"
+#~ msgstr "Combinar"
 
 msgid "Merge facing pages as spreads"
 msgstr "Combinar páginas enfrentadas como dobles"
@@ -1666,11 +1746,47 @@ msgstr "Combinar páginas enfrentadas como dobles"
 msgid "Merge failed"
 msgstr "Merge failed"
 
-msgid "Merge with next section"
-msgstr "Fusionar con la siguiente sección"
+msgid "merge into next page"
+msgstr "fusionar en la página siguiente"
 
-msgid "Merge with previous section"
-msgstr "Fusionar con la sección anterior"
+msgid "Merge into next page"
+msgstr "Fusionar en la página siguiente"
+
+msgid "merge into previous page"
+msgstr "fusionar en la página anterior"
+
+msgid "Merge into previous page"
+msgstr "Fusionar en la página anterior"
+
+#~ msgid "Merge Suggestion"
+#~ msgstr "Sugerencia de combinación"
+
+msgid "merge with next"
+msgstr "fusionar con la siguiente"
+
+msgid "Merge with next"
+msgstr "Fusionar con la siguiente"
+
+msgid "merge with next section"
+msgstr "fusionar con la siguiente sección"
+
+#~ msgid "Merge with next section"
+#~ msgstr "Fusionar con la siguiente sección"
+
+msgid "merge with previous"
+msgstr "fusionar con la anterior"
+
+msgid "Merge with previous"
+msgstr "Fusionar con la anterior"
+
+msgid "merge with previous section"
+msgstr "fusionar con la sección anterior"
+
+#~ msgid "Merge with previous section"
+#~ msgstr "Fusionar con la sección anterior"
+
+#~ msgid "Merged"
+#~ msgstr "Combinada"
 
 msgid "Messages"
 msgstr "Mensajes"
@@ -1870,6 +1986,9 @@ msgstr "No review areas are currently flagged in this reviewer session."
 msgid "No reviewer validation sessions have been started yet. Open Preview to create a reviewer session and begin recording page-level findings."
 msgstr "No reviewer validation sessions have been started yet. Open Preview to create a reviewer session and begin recording page-level findings."
 
+msgid "No sectioning data available."
+msgstr "No hay datos de sección disponibles."
+
 msgid "No sections for this page"
 msgstr "Sin secciones para esta página"
 
@@ -2049,6 +2168,9 @@ msgstr "Collage en papel"
 msgid "Paragraph"
 msgstr "Párrafo"
 
+msgid "Parts"
+msgstr "Partes"
+
 msgid "Pass"
 msgstr "Pass"
 
@@ -2136,8 +2258,14 @@ msgstr "Eliminar sección del flujo"
 msgid "Prune text"
 msgstr "Eliminar texto"
 
+msgid "pruned"
+msgstr "eliminado"
+
 msgid "Pruned"
 msgstr "Eliminado"
+
+msgid "Pruned Images"
+msgstr "Imágenes eliminadas"
 
 #. placeholder {0}: reason ?? ""
 msgid "Pruned: {0}"
@@ -2229,6 +2357,9 @@ msgstr "Quitar este bloque"
 
 msgid "Remove type"
 msgstr "Eliminar tipo"
+
+msgid "Render Reasoning"
+msgstr "Razonamiento de renderizado"
 
 #~ msgid "Render Strategies"
 #~ msgstr "Estrategias de renderización"
@@ -2378,14 +2509,14 @@ msgstr "Guardar y volver a ejecutar la generación de la tabla de contenidos"
 msgid "Save & Rerun Translations + Audio"
 msgstr "Guardar y reejecutar traducciones + audio"
 
-msgid "Save changes before cloning"
-msgstr "Guarda los cambios antes de clonar"
+#~ msgid "Save changes before cloning"
+#~ msgstr "Guarda los cambios antes de clonar"
 
-msgid "Save changes before deleting"
-msgstr "Guarda los cambios antes de eliminar"
+#~ msgid "Save changes before deleting"
+#~ msgstr "Guarda los cambios antes de eliminar"
 
-msgid "Save changes before merging"
-msgstr "Guarda los cambios antes de fusionar"
+#~ msgid "Save changes before merging"
+#~ msgstr "Guarda los cambios antes de fusionar"
 
 msgid "Save changes before re-rendering"
 msgstr "Guarda los cambios antes de re-renderizar"
@@ -2423,6 +2554,12 @@ msgstr "Buscar idiomas..."
 msgid "Search sections..."
 msgstr "Buscar secciones..."
 
+msgid "section"
+msgstr "sección"
+
+msgid "Section"
+msgstr "Sección"
+
 #. placeholder {0}: String(group.sectionIndex + 1)
 #. placeholder {0}: String(i + 1)
 #. placeholder {0}: i + 1
@@ -2451,6 +2588,9 @@ msgstr "Section label"
 msgid "Section not found."
 msgstr "Sección no encontrada."
 
+msgid "Section preview"
+msgstr "Vista previa de sección"
+
 msgid "Section pruned from flow"
 msgstr "Sección eliminada del flujo"
 
@@ -2466,8 +2606,17 @@ msgstr "Tipos de sección"
 msgid "Sectioning Mode"
 msgstr "Modo de sección"
 
+msgid "Sectioning Overview"
+msgstr "Vista general de secciones"
+
+msgid "Sectioning Reasoning"
+msgstr "Razonamiento de sección"
+
 msgid "sections"
 msgstr "secciones"
+
+#~ msgid "Sections can span page boundaries (tables, activities that continue)"
+#~ msgstr "Las secciones pueden abarcar los límites de página (tablas, actividades que continúan)"
 
 msgid "Segment"
 msgstr "Segmentar"
@@ -2577,6 +2726,9 @@ msgstr "Mostrar imágenes eliminadas"
 
 msgid "Show reviewer validation"
 msgstr "Show reviewer validation"
+
+msgid "Show:"
+msgstr "Mostrar:"
 
 msgid "sk-..."
 msgstr "sk-..."
@@ -2707,6 +2859,9 @@ msgstr "Template not found."
 msgid "Template Rendering"
 msgstr "Renderización por plantilla"
 
+msgid "Text"
+msgstr "Texto"
+
 msgid "Text & Images"
 msgstr "Texto e imágenes"
 
@@ -2821,6 +2976,12 @@ msgstr "This page has not been reviewed yet"
 
 msgid "This section has no storyboard rendering yet"
 msgstr "Esta sección aún no tiene renderización de storyboard"
+
+#~ msgid "This section has the same type as the first section on the next page ({nextPageId}). Content may continue across the page boundary."
+#~ msgstr "Esta sección tiene el mismo tipo que la primera sección de la página siguiente ({nextPageId}). El contenido puede continuar a través del límite de página."
+
+#~ msgid "This section has the same type as the last section on the previous page ({prevPageId}). It may be a continuation across the page boundary."
+#~ msgstr "Esta sección tiene el mismo tipo que la última sección de la página anterior ({prevPageId}). Puede ser una continuación a través del límite de página."
 
 msgid "This session is using an older reviewer checklist snapshot. Newer checklist settings will apply only to newly created reviewer sessions."
 msgstr "This session is using an older reviewer checklist snapshot. Newer checklist settings will apply only to newly created reviewer sessions."

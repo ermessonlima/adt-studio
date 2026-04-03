@@ -54,6 +54,11 @@
       "count": 2
     }
   },
+  "src/components/pipeline/stages/storyboard/components/SectioningOverview.tsx": {
+    "lingui/no-unlocalized-strings": {
+      "count": 4
+    }
+  },
   "src/hooks/run-state.test.ts": {
     "lingui/no-unlocalized-strings": {
       "count": 35

@@ -1,11 +1,12 @@
-import { useEffect, useRef, useCallback } from "react"
-import { ArrowLeft, ArrowRight, LayoutGrid, Loader2 } from "lucide-react"
+import { useEffect, useRef, useCallback, useState } from "react"
+import { ArrowLeft, ArrowRight, LayoutGrid, Loader2, Table2 } from "lucide-react"
 import { usePages, usePage } from "@/hooks/use-pages"
 import { useStepHeader } from "../../components/StepViewRouter"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useApiKey } from "@/hooks/use-api-key"
 import { StageRunCard } from "../../components/StageRunCard"
 import { StoryboardSectionDetail } from "./components/StoryboardSectionDetail"
+import { SectioningOverview } from "./components/SectioningOverview"
 import { useSectionNav } from "@/routes/books.$label"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
@@ -15,6 +16,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
   const { t } = useLingui()
   const { data: pages, isLoading: pagesLoading } = usePages(bookLabel)
   const setSelectedPageId = onSelectPage ?? (() => {})
+  const [overviewMode, setOverviewMode] = useState(false)
   const { setExtra, setOnLabelClick } = useStepHeader()
   const { stageState, queueRun } = useBookRun()
   const { apiKey, hasApiKey } = useApiKey()
@@ -131,8 +133,23 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
     </>
   ) : null
 
+  // Overview toggle button (reused in multiple header states)
+  const overviewToggle = (
+    <button
+      type="button"
+      className={`flex items-center justify-center w-7 h-7 rounded transition-colors ${
+        overviewMode ? "bg-white/30 text-white" : "bg-white/15 hover:bg-white/25 text-white/70"
+      }`}
+      onClick={() => setOverviewMode((v) => !v)}
+      title={t`Sectioning Overview`}
+    >
+      <Table2 className="h-3.5 w-3.5" />
+    </button>
+  )
+
   const navigationArrows = (
     <div className="flex gap-1">
+      {overviewToggle}
       <button
         type="button"
         className="flex items-center justify-center w-7 h-7 rounded bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-30 disabled:cursor-default"
@@ -163,6 +180,24 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
       }
     }
 
+    // Overview mode: show overview header
+    if (overviewMode) {
+      setOnLabelClick(null)
+      setExtra(
+        <>
+          <span className="text-white/40 text-sm">/</span>
+          <span className="text-sm font-medium">{t`Sectioning Overview`}</span>
+          <div className="ml-auto flex gap-1">
+            {overviewToggle}
+          </div>
+        </>
+      )
+      return () => {
+        setExtra(null)
+        setOnLabelClick(null)
+      }
+    }
+
     // When StoryboardSectionDetail is rendered, it manages the header itself
     if (page?.sectioning && sectionCount > 0) return
 
@@ -173,6 +208,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
           <span className="text-white/40 text-sm">/</span>
           <span className="text-sm font-medium">{t`Page ${String(selectedPageSummary.pageNumber)}`}</span>
           <div className="ml-auto flex gap-1">
+            {overviewToggle}
             <button
               type="button"
               className="flex items-center justify-center w-7 h-7 rounded bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-30 disabled:cursor-default"
@@ -200,7 +236,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
       setExtra(null)
       setOnLabelClick(null)
     }
-  }, [selectedPageId, selectedPageSummary?.pageNumber, sectionIndex, sectionCount, canGoPrev, canGoNext, prevPageId, nextPageId, setExtra, setOnLabelClick, page?.sectioning, showRunCard])
+  }, [selectedPageId, selectedPageSummary?.pageNumber, sectionIndex, sectionCount, canGoPrev, canGoNext, prevPageId, nextPageId, setExtra, setOnLabelClick, page?.sectioning, showRunCard, overviewMode])
 
   // Keyboard arrow navigation
   useEffect(() => {
@@ -252,6 +288,21 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
     )
   }
 
+  // Overview mode: show sectioning table for all pages
+  if (overviewMode) {
+    return (
+      <SectioningOverview
+        bookLabel={bookLabel}
+        pages={pageList}
+        onNavigateToSection={(pageId, sectionIdx) => {
+          setOverviewMode(false)
+          setSelectedPageId(pageId)
+          setSectionIndex(sectionIdx)
+        }}
+      />
+    )
+  }
+
   if (pageLoading || !page) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
@@ -297,6 +348,8 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
       navigationArrows={navigationArrows}
       onGeneratingChange={handleGeneratingChange}
       onNavigateSection={setSectionIndex}
+      hasPrevPage={!!prevPageId}
+      hasNextPage={!!nextPageId}
     />
   )
 }

@@ -573,6 +573,12 @@ export const api = {
       { method: "POST" }
     ),
 
+  mergeSectionCrossPage: (label: string, pageId: string, sectionIndex: number, direction: "next" | "prev") =>
+    request<{ sourcePageId: string; targetPageId: string; targetSectionIndex: number; sourceSectioningVersion: number; targetSectioningVersion: number; sourceRenderingVersion: number | null; targetRenderingVersion: number | null }>(
+      `/books/${label}/pages/${pageId}/sections/${sectionIndex}/merge-cross-page?direction=${direction}`,
+      { method: "POST" }
+    ),
+
   deleteSection: (label: string, pageId: string, sectionIndex: number) =>
     request<{ sectioningVersion: number; renderingVersion: number | null; remainingSections: number }>(
       `/books/${label}/pages/${pageId}/sections/${sectionIndex}`,
