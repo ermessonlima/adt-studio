@@ -72,6 +72,12 @@ msgstr "{0} {1} reviewed so far"
 #~ msgid "{0} {1} this page"
 #~ msgstr "{0} {1} this page"
 
+#. placeholder {0}: bbox.w
+#. placeholder {1}: bbox.h
+#. placeholder {2}: points.length
+msgid "{0} × {1}px · {2} points"
+msgstr "{0} × {1}px · {2} pontos"
+
 #. placeholder {0}: String(totalAudioFiles)
 msgid "{0} audio"
 msgstr "{0} áudios"
@@ -1034,14 +1040,17 @@ msgstr "Exibição"
 msgid "Drag to move boxes, drag edges/corners to resize"
 msgstr "Drag to move boxes, drag edges/corners to resize"
 
-msgid "Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box."
-msgstr "Arraste para mover a caixa de recorte, arraste bordas/cantos para redimensionar. Clique e arraste na imagem para desenhar uma nova caixa."
+#~ msgid "Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box."
+#~ msgstr "Arraste para mover a caixa de recorte, arraste bordas/cantos para redimensionar. Clique e arraste na imagem para desenhar uma nova caixa."
 
 msgid "Drag to reorder"
 msgstr "Arraste para reordenar"
 
 msgid "Drag to reorder or move to another group"
 msgstr "Arraste para reordenar ou mover para outro grupo"
+
+msgid "Drag vertices to reshape. Click midpoints (+) to add points. Right-click a vertex to remove it."
+msgstr "Arraste os vértices para remodelar. Clique nos pontos médios (+) para adicionar pontos. Clique com o botão direito em um vértice para removê-lo."
 
 msgid "Duplicate"
 msgstr "Duplicar"
@@ -2206,6 +2215,9 @@ msgstr "Etapas do pipeline"
 
 msgid "Pixel Art"
 msgstr "Pixel Art"
+
+#~ msgid "points"
+#~ msgstr "pontos"
 
 msgid "Polishing paragraphs to perfection..."
 msgstr "Polindo parágrafos até a perfeição..."

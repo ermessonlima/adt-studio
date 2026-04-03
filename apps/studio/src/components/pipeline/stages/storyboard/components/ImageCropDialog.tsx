@@ -1,12 +1,10 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Loader2 } from "lucide-react"
 import { Trans, useLingui } from "@lingui/react/macro"
 
-interface CropRegion {
-  cropLeft: number
-  cropTop: number
-  cropRight: number
-  cropBottom: number
+interface Point {
+  x: number
+  y: number
 }
 
 interface ImageCropDialogProps {
@@ -18,33 +16,34 @@ interface ImageCropDialogProps {
   onClose: () => void
 }
 
-const EDGE_SIZE = 8
+const VERTEX_RADIUS = 6
+const MIDPOINT_RADIUS = 4
+const MIN_POINTS = 3
 
 type DragMode =
-  | { type: "move"; startX: number; startY: number; origRegion: CropRegion }
-  | { type: "resize"; edge: string; startX: number; startY: number; origRegion: CropRegion }
-  | { type: "draw"; startX: number; startY: number }
+  | { type: "vertex"; index: number; startX: number; startY: number; origPoints: Point[] }
+  | { type: "edge"; index: number; startX: number; startY: number; origPoints: Point[] }
 
 /**
- * Full-screen dialog for cropping images with a draggable/resizable bounding box.
- * Draw a new box by clicking the image background, or adjust the existing box
- * by dragging to move or dragging edges/corners to resize.
+ * Full-screen dialog for cropping images with a draggable polygon.
+ * Starts as a rectangle (4 corners). Users can drag vertices to reshape,
+ * click midpoints on edges to add new vertices, or right-click vertices to remove them.
+ * The output is a rectangular PNG cropped to the polygon's bounding box,
+ * with transparent pixels outside the polygon.
  */
 export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogProps) {
   const { t } = useLingui()
-  const [region, setRegion] = useState<CropRegion | null>(null)
+  const [points, setPoints] = useState<Point[]>([])
   const [imageNatural, setImageNatural] = useState<{ w: number; h: number } | null>(null)
   const [displaySize, setDisplaySize] = useState<{ w: number; h: number } | null>(null)
   const [applying, setApplying] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<DragMode | null>(null)
   const imageRef = useRef<HTMLDivElement>(null)
-  // Single image element shared by display and canvas crop — avoids double-load mismatches
   const loadedImageRef = useRef<HTMLImageElement | null>(null)
-  // Ref to always have the latest scale available in event handlers
   const scaleRef = useRef(1)
 
-  // Load image once with crossOrigin for canvas compatibility, reuse for everything
+  // Load image once with crossOrigin for canvas compatibility
   useEffect(() => {
     const img = new Image()
     img.crossOrigin = "anonymous"
@@ -52,12 +51,13 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
       loadedImageRef.current = img
       const nat = { w: img.naturalWidth, h: img.naturalHeight }
       setImageNatural(nat)
-      setRegion({
-        cropLeft: 0,
-        cropTop: 0,
-        cropRight: nat.w,
-        cropBottom: nat.h,
-      })
+      // Initialize with rectangle covering full image
+      setPoints([
+        { x: 0, y: 0 },
+        { x: nat.w, y: 0 },
+        { x: nat.w, y: nat.h },
+        { x: 0, y: nat.h },
+      ])
     }
     img.src = imageSrc
   }, [imageSrc])
@@ -80,74 +80,60 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
   }, [imageNatural])
 
   const scale = displaySize && imageNatural ? displaySize.w / imageNatural.w : 1
-  // Keep ref in sync so mouse handlers always see the latest value
   scaleRef.current = scale
 
-  const getEdge = (e: React.MouseEvent, rect: DOMRect): string => {
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const w = rect.width
-    const h = rect.height
-    const top = y < EDGE_SIZE
-    const bottom = y > h - EDGE_SIZE
-    const left = x < EDGE_SIZE
-    const right = x > w - EDGE_SIZE
-    if (top && left) return "nw"
-    if (top && right) return "ne"
-    if (bottom && left) return "sw"
-    if (bottom && right) return "se"
-    if (top) return "n"
-    if (bottom) return "s"
-    if (left) return "w"
-    if (right) return "e"
-    return "move"
-  }
+  // Compute midpoints between consecutive vertices (for "add point" handles)
+  const midpoints = points.length >= MIN_POINTS
+    ? points.map((p, i) => {
+        const next = points[(i + 1) % points.length]
+        return { x: (p.x + next.x) / 2, y: (p.y + next.y) / 2 }
+      })
+    : []
 
-  const getCursor = (edge: string) => {
-    const map: Record<string, string> = {
-      nw: "nwse-resize",
-      se: "nwse-resize",
-      ne: "nesw-resize",
-      sw: "nesw-resize",
-      n: "ns-resize",
-      s: "ns-resize",
-      e: "ew-resize",
-      w: "ew-resize",
-      move: "grab",
-    }
-    return map[edge] ?? "default"
-  }
-
-  const handleBoxMouseDown = (e: React.MouseEvent) => {
+  const handleVertexMouseDown = useCallback((e: React.MouseEvent, index: number) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!region) return
-
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const edge = getEdge(e, rect)
-
-    if (edge === "move") {
-      dragRef.current = { type: "move", startX: e.clientX, startY: e.clientY, origRegion: { ...region } }
-    } else {
-      dragRef.current = { type: "resize", edge, startX: e.clientX, startY: e.clientY, origRegion: { ...region } }
+    dragRef.current = {
+      type: "vertex",
+      index,
+      startX: e.clientX,
+      startY: e.clientY,
+      origPoints: points.map((p) => ({ ...p })),
     }
-  }
+  }, [points])
 
-  // Click on image background to start drawing a new box
-  const handleImageMouseDown = (e: React.MouseEvent) => {
-    if (!imageNatural || !imageRef.current) return
+  const handleVertexRightClick = useCallback((e: React.MouseEvent, index: number) => {
     e.preventDefault()
-    const s = scaleRef.current
-    dragRef.current = { type: "draw", startX: e.clientX, startY: e.clientY }
-    const imgRect = imageRef.current.getBoundingClientRect()
-    const px = Math.round((e.clientX - imgRect.left) / s)
-    const py = Math.round((e.clientY - imgRect.top) / s)
-    const clampedX = Math.max(0, Math.min(imageNatural.w, px))
-    const clampedY = Math.max(0, Math.min(imageNatural.h, py))
-    setRegion({ cropLeft: clampedX, cropTop: clampedY, cropRight: clampedX, cropBottom: clampedY })
-  }
+    e.stopPropagation()
+    if (points.length <= MIN_POINTS) return
+    setPoints((prev) => prev.filter((_, i) => i !== index))
+  }, [points.length])
 
-  // Global mouse move/up for drag
+  const handleEdgeMouseDown = useCallback((e: React.MouseEvent, index: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragRef.current = {
+      type: "edge",
+      index,
+      startX: e.clientX,
+      startY: e.clientY,
+      origPoints: points.map((p) => ({ ...p })),
+    }
+  }, [points])
+
+  const handleMidpointClick = useCallback((e: React.MouseEvent, afterIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const mid = midpoints[afterIndex]
+    if (!mid) return
+    setPoints((prev) => {
+      const next = [...prev]
+      next.splice(afterIndex + 1, 0, { x: Math.round(mid.x), y: Math.round(mid.y) })
+      return next
+    })
+  }, [midpoints])
+
+  // Global mouse move/up for vertex dragging
   useEffect(() => {
     if (!imageNatural) return
     const iw = imageNatural.w
@@ -157,53 +143,35 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
       const drag = dragRef.current
       if (!drag) return
       const s = scaleRef.current
-
-      if (drag.type === "draw") {
-        const imgEl = imageRef.current
-        if (!imgEl) return
-        const imgRect = imgEl.getBoundingClientRect()
-        const startPx = Math.max(0, Math.min(iw, Math.round((drag.startX - imgRect.left) / s)))
-        const startPy = Math.max(0, Math.min(ih, Math.round((drag.startY - imgRect.top) / s)))
-        const curPx = Math.max(0, Math.min(iw, Math.round((e.clientX - imgRect.left) / s)))
-        const curPy = Math.max(0, Math.min(ih, Math.round((e.clientY - imgRect.top) / s)))
-        setRegion({
-          cropLeft: Math.min(startPx, curPx),
-          cropTop: Math.min(startPy, curPy),
-          cropRight: Math.max(startPx, curPx),
-          cropBottom: Math.max(startPy, curPy),
-        })
-        return
-      }
-
       const dx = (e.clientX - drag.startX) / s
       const dy = (e.clientY - drag.startY) / s
-      const orig = drag.origRegion
 
-      if (drag.type === "move") {
-        const w = orig.cropRight - orig.cropLeft
-        const h = orig.cropBottom - orig.cropTop
-        let newLeft = orig.cropLeft + dx
-        let newTop = orig.cropTop + dy
-        newLeft = Math.max(0, Math.min(iw - w, newLeft))
-        newTop = Math.max(0, Math.min(ih - h, newTop))
-        setRegion({
-          cropLeft: Math.round(newLeft),
-          cropTop: Math.round(newTop),
-          cropRight: Math.min(iw, Math.round(newLeft + w)),
-          cropBottom: Math.min(ih, Math.round(newTop + h)),
+      if (drag.type === "vertex") {
+        const orig = drag.origPoints[drag.index]
+        const newX = Math.max(0, Math.min(iw, Math.round(orig.x + dx)))
+        const newY = Math.max(0, Math.min(ih, Math.round(orig.y + dy)))
+        setPoints((prev) => {
+          const next = [...prev]
+          next[drag.index] = { x: newX, y: newY }
+          return next
         })
       } else {
-        const edge = drag.edge
-        let { cropLeft, cropTop, cropRight, cropBottom } = orig
-        if (edge.includes("w")) cropLeft = Math.max(0, Math.min(cropRight - 10, orig.cropLeft + dx))
-        if (edge.includes("e")) cropRight = Math.min(iw, Math.max(cropLeft + 10, orig.cropRight + dx))
-        if (edge.includes("n")) cropTop = Math.max(0, Math.min(cropBottom - 10, orig.cropTop + dy))
-        if (edge.includes("s")) cropBottom = Math.min(ih, Math.max(cropTop + 10, orig.cropBottom + dy))
-        setRegion({
-          cropLeft: Math.round(cropLeft),
-          cropTop: Math.round(cropTop),
-          cropRight: Math.min(iw, Math.round(cropRight)),
-          cropBottom: Math.min(ih, Math.round(cropBottom)),
+        // Edge drag: move both endpoints of the edge together
+        const i1 = drag.index
+        const i2 = (drag.index + 1) % drag.origPoints.length
+        const orig1 = drag.origPoints[i1]
+        const orig2 = drag.origPoints[i2]
+        setPoints((prev) => {
+          const next = [...prev]
+          next[i1] = {
+            x: Math.max(0, Math.min(iw, Math.round(orig1.x + dx))),
+            y: Math.max(0, Math.min(ih, Math.round(orig1.y + dy))),
+          }
+          next[i2] = {
+            x: Math.max(0, Math.min(iw, Math.round(orig2.x + dx))),
+            y: Math.max(0, Math.min(ih, Math.round(orig2.y + dy))),
+          }
+          return next
         })
       }
     }
@@ -221,23 +189,23 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
   }, [imageNatural])
 
   const handleApply = async () => {
-    if (!region || !loadedImageRef.current) return
-    const cropW = region.cropRight - region.cropLeft
-    const cropH = region.cropBottom - region.cropTop
-    if (cropW < 1 || cropH < 1) return
+    if (points.length < MIN_POINTS || !loadedImageRef.current) return
     setApplying(true)
     try {
-      const blob = await getCroppedImage(loadedImageRef.current, region)
+      const blob = await getCroppedImagePolygon(loadedImageRef.current, points)
       await onApply(blob)
-      // Don't setApplying(false) here — onApply closes the dialog (unmounts this component).
-      // Calling setState on an unmounting component causes React DOM reconciliation errors.
     } catch {
-      // On error the dialog stays open — reset so user can retry
       setApplying(false)
     }
   }
 
-  const hasValidRegion = region && (region.cropRight - region.cropLeft) > 0 && (region.cropBottom - region.cropTop) > 0
+  const hasValidRegion = points.length >= MIN_POINTS
+
+  // Build SVG polygon string for display coordinates
+  const svgPolygon = points.map((p) => `${p.x * scale},${p.y * scale}`).join(" ")
+
+  // Compute bounding box dimensions for info display
+  const bbox = hasValidRegion ? getBoundingBox(points) : null
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col">
@@ -265,14 +233,13 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
         </div>
       </div>
 
-      {/* Image + bounding box */}
+      {/* Image + polygon overlay */}
       <div ref={containerRef} className="flex-1 flex items-center justify-center overflow-hidden">
         {displaySize && (
           <div
             ref={imageRef}
             className="relative select-none"
-            style={{ width: displaySize.w, height: displaySize.h, cursor: "crosshair" }}
-            onMouseDown={handleImageMouseDown}
+            style={{ width: displaySize.w, height: displaySize.h }}
           >
             <img
               src={imageSrc}
@@ -281,52 +248,93 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
               className="w-full h-full block pointer-events-none"
               draggable={false}
             />
-            {/* Dimmed overlay outside crop region */}
-            {region && hasValidRegion && (
-              <>
-                <div
-                  className="absolute inset-0 bg-black/50 pointer-events-none"
-                  style={{
-                    clipPath: `polygon(
-                      0% 0%, 100% 0%, 100% 100%, 0% 100%,
-                      0% 0%,
-                      ${region.cropLeft * scale}px ${region.cropTop * scale}px,
-                      ${region.cropLeft * scale}px ${region.cropBottom * scale}px,
-                      ${region.cropRight * scale}px ${region.cropBottom * scale}px,
-                      ${region.cropRight * scale}px ${region.cropTop * scale}px,
-                      ${region.cropLeft * scale}px ${region.cropTop * scale}px,
+
+            {/* Dimmed overlay outside polygon */}
+            {hasValidRegion && (
+              <div
+                className="absolute inset-0 bg-black/50 pointer-events-none"
+                style={{
+                  clipPath: (() => {
+                    // Inner polygon must be CCW (reversed) to create a cutout
+                    // with the CW outer rectangle under nonzero fill rule
+                    const reversed = [...points].reverse()
+                    return `polygon(
+                      0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+                      ${reversed.map((p) => `${p.x * scale}px ${p.y * scale}px`).join(", ")},
+                      ${reversed[0].x * scale}px ${reversed[0].y * scale}px,
                       0% 0%
-                    )`,
-                  }}
+                    )`
+                  })(),
+                }}
+              />
+            )}
+
+            {/* SVG overlay for polygon edges, vertices, and midpoints */}
+            {hasValidRegion && (
+              <svg
+                className="absolute inset-0"
+                width={displaySize.w}
+                height={displaySize.h}
+                style={{ overflow: "visible" }}
+              >
+                {/* Polygon outline */}
+                <polygon
+                  points={svgPolygon}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
                 />
-                {/* Crop box */}
-                <div
-                  className="absolute"
-                  style={{
-                    left: region.cropLeft * scale,
-                    top: region.cropTop * scale,
-                    width: (region.cropRight - region.cropLeft) * scale,
-                    height: (region.cropBottom - region.cropTop) * scale,
-                    border: "2px solid #3b82f6",
-                    boxSizing: "border-box",
-                    cursor: dragRef.current?.type === "move" ? "grabbing" : "grab",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={handleBoxMouseDown}
-                  onMouseMove={(e) => {
-                    if (dragRef.current) return
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                    const edge = getEdge(e, rect)
-                    ;(e.currentTarget as HTMLElement).style.cursor = getCursor(edge)
-                  }}
-                >
-                  {/* Resize handles at corners */}
-                  <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-blue-500 border border-white rounded-sm cursor-nwse-resize" />
-                  <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-500 border border-white rounded-sm cursor-nesw-resize" />
-                  <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-blue-500 border border-white rounded-sm cursor-nesw-resize" />
-                  <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-blue-500 border border-white rounded-sm cursor-nwse-resize" />
-                </div>
-              </>
+
+                {/* Invisible wider edge hit areas for dragging */}
+                {points.map((p, i) => {
+                  const next = points[(i + 1) % points.length]
+                  return (
+                    <line
+                      key={`edge-${i}`}
+                      x1={p.x * scale}
+                      y1={p.y * scale}
+                      x2={next.x * scale}
+                      y2={next.y * scale}
+                      stroke="transparent"
+                      strokeWidth={12}
+                      style={{ cursor: "move" }}
+                      onMouseDown={(e) => handleEdgeMouseDown(e, i)}
+                    />
+                  )
+                })}
+
+                {/* Midpoint handles (add point) */}
+                {midpoints.map((mp, i) => (
+                  <circle
+                    key={`mid-${i}`}
+                    cx={mp.x * scale}
+                    cy={mp.y * scale}
+                    r={MIDPOINT_RADIUS}
+                    fill="#3b82f6"
+                    fillOpacity={0.4}
+                    stroke="#3b82f6"
+                    strokeWidth={1}
+                    style={{ cursor: "copy" }}
+                    onMouseDown={(e) => handleMidpointClick(e, i)}
+                  />
+                ))}
+
+                {/* Vertex handles */}
+                {points.map((p, i) => (
+                  <circle
+                    key={`v-${i}`}
+                    cx={p.x * scale}
+                    cy={p.y * scale}
+                    r={VERTEX_RADIUS}
+                    fill="#3b82f6"
+                    stroke="white"
+                    strokeWidth={1.5}
+                    style={{ cursor: "grab" }}
+                    onMouseDown={(e) => handleVertexMouseDown(e, i)}
+                    onContextMenu={(e) => handleVertexRightClick(e, i)}
+                  />
+                ))}
+              </svg>
             )}
           </div>
         )}
@@ -335,11 +343,11 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
       {/* Info bar */}
       <div className="bg-background border-t shrink-0 px-4 py-2 flex items-center gap-4 text-[10px] text-muted-foreground">
         <span>
-          <Trans>Drag to move the crop box, drag edges/corners to resize. Click and drag on the image to draw a new box.</Trans>
+          <Trans>Drag vertices to reshape. Click midpoints (+) to add points. Right-click a vertex to remove it.</Trans>
         </span>
-        {region && hasValidRegion && (
+        {bbox && (
           <span className="ml-auto font-mono">
-            {region.cropRight - region.cropLeft} × {region.cropBottom - region.cropTop}px
+            {t`${bbox.w} × ${bbox.h}px · ${points.length} points`}
           </span>
         )}
       </div>
@@ -347,25 +355,50 @@ export function ImageCropDialog({ imageSrc, onApply, onClose }: ImageCropDialogP
   )
 }
 
+function getBoundingBox(points: Point[]) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of points) {
+    if (p.x < minX) minX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.x > maxX) maxX = p.x
+    if (p.y > maxY) maxY = p.y
+  }
+  return {
+    left: Math.max(0, minX),
+    top: Math.max(0, minY),
+    right: maxX,
+    bottom: maxY,
+    w: maxX - Math.max(0, minX),
+    h: maxY - Math.max(0, minY),
+  }
+}
+
 /**
- * Crop an image using canvas and return as a Blob.
- * Uses the same Image element that was loaded for dimension detection,
- * guaranteeing coordinate consistency.
- * Output is scaled to the original image's full width so that
- * the cropped image maintains the same display size in the layout.
+ * Crop an image to a polygon region using canvas clipping.
+ * Output is the bounding box of the polygon, with transparent pixels outside.
+ * Scaled to the original image's full width to preserve display size in layouts.
  */
-function getCroppedImage(image: HTMLImageElement, crop: CropRegion): Promise<Blob> {
+function getCroppedImagePolygon(image: HTMLImageElement, points: Point[]): Promise<Blob> {
   const iw = image.naturalWidth
   const ih = image.naturalHeight
 
-  // Clamp coordinates to actual image bounds (defensive against rounding overshoot)
-  const left = Math.max(0, Math.min(iw, crop.cropLeft))
-  const top = Math.max(0, Math.min(ih, crop.cropTop))
-  const right = Math.max(left, Math.min(iw, crop.cropRight))
-  const bottom = Math.max(top, Math.min(ih, crop.cropBottom))
+  // Clamp points to image bounds
+  const clamped = points.map((p) => ({
+    x: Math.max(0, Math.min(iw, p.x)),
+    y: Math.max(0, Math.min(ih, p.y)),
+  }))
 
-  const cropW = right - left
-  const cropH = bottom - top
+  // Compute bounding box
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of clamped) {
+    if (p.x < minX) minX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.x > maxX) maxX = p.x
+    if (p.y > maxY) maxY = p.y
+  }
+
+  const cropW = maxX - minX
+  const cropH = maxY - minY
   if (cropW <= 0 || cropH <= 0) {
     return Promise.reject(new Error("Crop region is empty"))
   }
@@ -380,10 +413,22 @@ function getCroppedImage(image: HTMLImageElement, crop: CropRegion): Promise<Blo
   canvas.height = outputHeight
   const ctx = canvas.getContext("2d")!
 
+  // Draw clipping polygon (translated to canvas coordinates)
+  ctx.beginPath()
+  for (let i = 0; i < clamped.length; i++) {
+    const px = (clamped[i].x - minX) * scaleUp
+    const py = (clamped[i].y - minY) * scaleUp
+    if (i === 0) ctx.moveTo(px, py)
+    else ctx.lineTo(px, py)
+  }
+  ctx.closePath()
+  ctx.clip()
+
+  // Draw the image cropped to the bounding box
   ctx.drawImage(
     image,
-    left, top, cropW, cropH,
-    0, 0, outputWidth, outputHeight
+    minX, minY, cropW, cropH,
+    0, 0, outputWidth, outputHeight,
   )
 
   return new Promise((resolve, reject) => {
@@ -392,7 +437,7 @@ function getCroppedImage(image: HTMLImageElement, crop: CropRegion): Promise<Blo
         if (blob) resolve(blob)
         else reject(new Error("Canvas toBlob failed"))
       },
-      "image/png"
+      "image/png",
     )
   })
 }
