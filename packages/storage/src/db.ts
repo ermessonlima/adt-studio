@@ -57,6 +57,16 @@ CREATE TABLE IF NOT EXISTS step_runs (
   error TEXT,
   message TEXT
 );
+
+CREATE TABLE IF NOT EXISTS sign_language_videos (
+  video_id TEXT PRIMARY KEY,
+  section_id TEXT,
+  path TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);
 `
 
 export function openBookDb(dbPath: string): sqlite.Database {
@@ -125,6 +135,12 @@ function initSchema(db: sqlite.Database): void {
   if (version === 9) {
     migrateV9toV10(db)
     version = 10
+  }
+
+  // Migrate v10 → v11: add sign_language_videos table
+  if (version === 10) {
+    migrateV10toV11(db)
+    version = 11
   }
 
   if (version === SCHEMA_VERSION) {
@@ -303,6 +319,30 @@ function migrateV9toV10(db: sqlite.Database): void {
     db.exec(`
       ALTER TABLE images ADD COLUMN render_method TEXT
         CHECK (render_method IN ('vector', 'page-crop', 'raster') OR render_method IS NULL);
+    `)
+    db.exec("COMMIT")
+  } catch (err) {
+    db.exec("ROLLBACK")
+    throw err
+  }
+}
+
+/**
+ * Migrate v10 → v11: add sign_language_videos table.
+ */
+function migrateV10toV11(db: sqlite.Database): void {
+  db.exec("BEGIN IMMEDIATE")
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sign_language_videos (
+        video_id TEXT PRIMARY KEY,
+        section_id TEXT,
+        path TEXT NOT NULL,
+        original_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )
     `)
     db.exec("COMMIT")
   } catch (err) {

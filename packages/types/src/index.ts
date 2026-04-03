@@ -6,6 +6,7 @@ export {
   RenderMethod,
   PageRow,
   ImageRow,
+  SignLanguageVideoRow,
 } from "./db.js"
 
 export {

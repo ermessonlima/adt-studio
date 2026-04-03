@@ -35,6 +35,7 @@ describe("stage-config", () => {
       "glossary",
       "toc",
       "text-and-speech",
+      "sign-language",
       "validation",
       "preview",
       "export",

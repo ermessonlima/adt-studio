@@ -4,7 +4,7 @@ import type sqlite from "node-sqlite3-wasm"
 import type { ExtractedPage, ExtractedImage } from "@adt/pdf"
 import type { LlmLogEntry } from "@adt/llm"
 import { parseBookLabel } from "@adt/types"
-import type { Storage, PageData, ImageData, NodeDataRow, CroppedImageInput, SegmentedImageInput } from "./storage.js"
+import type { Storage, PageData, ImageData, NodeDataRow, CroppedImageInput, SegmentedImageInput, SignLanguageVideoData } from "./storage.js"
 import { openBookDb } from "./db.js"
 
 export interface BookPaths {
@@ -12,6 +12,7 @@ export interface BookPaths {
   dbPath: string
   imagesDir: string
   debugImagesDir: string
+  videosDir: string
 }
 
 export function resolveBookPaths(label: string, booksRoot: string): BookPaths {
@@ -26,6 +27,7 @@ export function resolveBookPaths(label: string, booksRoot: string): BookPaths {
     dbPath: path.join(bookDir, `${safeLabel}.db`),
     imagesDir: path.join(bookDir, "images"),
     debugImagesDir: path.join(bookDir, ".debug-images"),
+    videosDir: path.join(bookDir, "videos"),
   }
 }
 
@@ -35,6 +37,7 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
   fs.mkdirSync(paths.bookDir, { recursive: true })
   fs.mkdirSync(paths.imagesDir, { recursive: true })
   fs.mkdirSync(paths.debugImagesDir, { recursive: true })
+  fs.mkdirSync(paths.videosDir, { recursive: true })
 
   const db = openBookDb(paths.dbPath)
 
@@ -306,6 +309,72 @@ export function createBookStorage(label: string, booksRoot: string): Storage {
 
     clearDebugImages(): void {
       clearImageFiles(paths.debugImagesDir)
+    },
+
+    putSignLanguageVideo(videoId: string, buffer: Buffer, originalName: string, mimeType: string): void {
+      const ext = mimeType === "video/webm" ? ".webm" : ".mp4"
+      const filename = `${videoId}${ext}`
+      const filePath = path.join(paths.videosDir, filename)
+      fs.writeFileSync(filePath, buffer)
+      try {
+        db.run(
+          `INSERT INTO sign_language_videos (video_id, section_id, path, original_name, mime_type, size_bytes, created_at)
+           VALUES (?, NULL, ?, ?, ?, ?, ?)`,
+          [videoId, `videos/${filename}`, originalName, mimeType, buffer.length, new Date().toISOString()]
+        )
+      } catch (err) {
+        // Clean up the written file if DB insert fails
+        try { fs.unlinkSync(filePath) } catch { /* ignore */ }
+        throw err
+      }
+    },
+
+    getSignLanguageVideos(): SignLanguageVideoData[] {
+      const rows = db.all(
+        "SELECT video_id, section_id, original_name, mime_type, size_bytes, created_at FROM sign_language_videos ORDER BY created_at"
+      ) as Array<{ video_id: string; section_id: string | null; original_name: string; mime_type: string; size_bytes: number; created_at: string }>
+      return rows.map((r) => ({
+        videoId: r.video_id,
+        sectionId: r.section_id,
+        originalName: r.original_name,
+        mimeType: r.mime_type,
+        sizeBytes: r.size_bytes,
+        createdAt: r.created_at,
+      }))
+    },
+
+    assignSignLanguageVideo(videoId: string, sectionId: string | null): void {
+      db.run("UPDATE sign_language_videos SET section_id = ? WHERE video_id = ?", [sectionId, videoId])
+    },
+
+    deleteSignLanguageVideo(videoId: string): void {
+      const rows = db.all("SELECT path FROM sign_language_videos WHERE video_id = ?", [videoId]) as Array<{ path: string }>
+      if (rows.length > 0) {
+        const filePath = path.resolve(paths.bookDir, rows[0].path)
+        if (filePath.startsWith(paths.bookDir + path.sep)) {
+          try { fs.unlinkSync(filePath) } catch { /* file may already be gone */ }
+        }
+        db.run("DELETE FROM sign_language_videos WHERE video_id = ?", [videoId])
+      }
+    },
+
+    deleteAllSignLanguageVideos(): void {
+      const rows = db.all("SELECT path FROM sign_language_videos") as Array<{ path: string }>
+      for (const row of rows) {
+        const filePath = path.resolve(paths.bookDir, row.path)
+        if (filePath.startsWith(paths.bookDir + path.sep)) {
+          try { fs.unlinkSync(filePath) } catch { /* file may already be gone */ }
+        }
+      }
+      db.run("DELETE FROM sign_language_videos")
+    },
+
+    getSignLanguageVideoPath(videoId: string): string | null {
+      const rows = db.all("SELECT path FROM sign_language_videos WHERE video_id = ?", [videoId]) as Array<{ path: string }>
+      if (rows.length === 0) return null
+      const filePath = path.resolve(paths.bookDir, rows[0].path)
+      if (!filePath.startsWith(paths.bookDir + path.sep)) return null
+      return filePath
     },
 
     close(): void {

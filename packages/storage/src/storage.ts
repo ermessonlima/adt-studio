@@ -40,6 +40,15 @@ export interface SegmentedImageInput {
   height: number
 }
 
+export interface SignLanguageVideoData {
+  videoId: string
+  sectionId: string | null
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  createdAt: string
+}
+
 export interface Storage {
   clearExtractedData(): void
   clearNodesByType(nodes: string[]): void
@@ -84,6 +93,19 @@ export interface Storage {
   putDebugImage(hash: string, data: Buffer): void
   /** Clear all debug images (used when regenerating storyboard outputs). */
   clearDebugImages(): void
+
+  /** Add a sign language video to the book. */
+  putSignLanguageVideo(videoId: string, buffer: Buffer, originalName: string, mimeType: string): void
+  /** List all sign language videos. */
+  getSignLanguageVideos(): SignLanguageVideoData[]
+  /** Assign a sign language video to a section (or null to unassign). */
+  assignSignLanguageVideo(videoId: string, sectionId: string | null): void
+  /** Delete a sign language video. */
+  deleteSignLanguageVideo(videoId: string): void
+  /** Delete all sign language videos. */
+  deleteAllSignLanguageVideos(): void
+  /** Get the file path for a sign language video (for serving). */
+  getSignLanguageVideoPath(videoId: string): string | null
 
   close(): void
 }

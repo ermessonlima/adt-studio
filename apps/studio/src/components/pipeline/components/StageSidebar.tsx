@@ -175,7 +175,7 @@ export function StageSidebar({
     const iconFilled =
       step.slug === "book"
         ? true
-        : step.slug === "validation" || step.slug === "preview" || step.slug === "export"
+        : step.slug === "sign-language" || step.slug === "validation" || step.slug === "preview" || step.slug === "export"
           ? storyboardDone
           : stageCompleted
 

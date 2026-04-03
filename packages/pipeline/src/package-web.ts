@@ -102,6 +102,11 @@ export function computePackagingInputHash(options: ComputePackagingInputHashOpti
   const imageEntries = collectDirectoryFingerprint(imagesDir).sort((a, b) => a[0].localeCompare(b[0]))
   hash.update(JSON.stringify(imageEntries))
 
+  // 6. Videos directory fingerprint
+  const videosDir = path.join(options.bookDir, "videos")
+  const videoEntries = collectDirectoryFingerprint(videosDir).sort((a, b) => a[0].localeCompare(b[0]))
+  hash.update(JSON.stringify(videoEntries))
+
   return hash.digest("hex")
 }
 
@@ -186,6 +191,7 @@ export async function packageAdtWeb(
   let hasMath = false
   let hasActivitySections = false
   const copiedImages = new Set<string>()
+  const sectionIdToPageIndex = new Map<string, number>()
 
   // Build a map from afterPageId -> quizzes for interleaving
   const quizzesByAfterPageId = new Map<string, Quiz[]>()
@@ -277,6 +283,9 @@ export async function packageAdtWeb(
             entry.page_number = sectionMeta.pageNumber
           }
           pageList.push(entry)
+
+          // Track sectionId → pageIndex for sign language video mapping
+          sectionIdToPageIndex.set(sectionId, pageList.length) // pageIndex = pageList.length (1-based, already pushed)
 
           // Build TOC entry from first heading text in this section
           if (headingText) {
@@ -432,8 +441,30 @@ export async function packageAdtWeb(
     }
     writeJson(path.join(localeDir, "audios.json"), audioMap)
 
-    // videos.json (empty placeholder)
-    writeJson(path.join(localeDir, "videos.json"), {})
+    // videos.json — map "video-{pageIndex}" → video filename for assigned sign language videos
+    // The ADT JS runtime expects keys prefixed with "video-" and files in a "video/" directory.
+    // Each video is assigned to a sectionId which maps 1:1 to a pageIndex.
+    const allVideos = storage.getSignLanguageVideos()
+    const videosMap: Record<string, string> = {}
+    const videoDir = path.join(localeDir, "video")
+    if (allVideos.some((v) => v.sectionId)) {
+      fs.mkdirSync(videoDir, { recursive: true })
+      for (const video of allVideos) {
+        if (!video.sectionId) continue
+        const ext = video.mimeType === "video/webm" ? ".webm" : ".mp4"
+        // Use section-based naming (e.g. sl_pg001_sec001.mp4) matching audio file conventions
+        const filename = `sl_${video.sectionId}${ext}`
+        const srcPath = storage.getSignLanguageVideoPath(video.videoId)
+        if (srcPath && fs.existsSync(srcPath)) {
+          fs.copyFileSync(srcPath, path.join(videoDir, filename))
+          const idx = sectionIdToPageIndex.get(video.sectionId)
+          if (idx !== undefined) {
+            videosMap[`video-${idx}`] = filename
+          }
+        }
+      }
+    }
+    writeJson(path.join(localeDir, "videos.json"), videosMap)
 
     // glossary.json
     const glossaryJson = buildGlossaryJson(glossary, catalog, textsMap, baseLang === sourceLanguage)
@@ -455,6 +486,8 @@ export async function packageAdtWeb(
     },
   )
 
+  const hasSignLanguageVideos = storage.getSignLanguageVideos().some((v) => v.sectionId !== null)
+
   const configJson = {
     title,
     bundleVersion,
@@ -463,7 +496,7 @@ export async function packageAdtWeb(
       default: pickDefaultLanguage(language, outputLanguages),
     },
     features: {
-      signLanguage: false,
+      signLanguage: hasSignLanguageVideos,
       easyRead: false,
       glossary: hasGlossary,
       eli5: false,

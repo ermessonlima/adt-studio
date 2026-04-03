@@ -15,6 +15,7 @@ export const STAGE_LABEL_MESSAGES: Record<string, MessageDescriptor> = {
   glossary: msg`Glossary`,
   toc: msg`Table of Contents`,
   "text-and-speech": msg`Text & Speech`,
+  "sign-language": msg`Sign Language`,
   validation: msg`Validation`,
   preview: msg`Preview`,
   export: msg`Export`,
@@ -29,6 +30,7 @@ export const STAGE_RUNNING_LABEL_MESSAGES: Record<string, MessageDescriptor> = {
   glossary: msg`Generating Glossary...`,
   toc: msg`Generating TOC...`,
   "text-and-speech": msg`Generating Text & Speech...`,
+  "sign-language": msg`Sign Language`,
   validation: msg`Running Validation...`,
   preview: msg`Building Preview...`,
   export: msg`Exporting...`,
@@ -42,6 +44,7 @@ export const STAGE_DESCRIPTION_MESSAGES: Record<string, MessageDescriptor> = {
   glossary: msg`Build a glossary of key terms and definitions found in the text.`,
   toc: msg`Generate and customize the table of contents for the book navigation.`,
   "text-and-speech": msg`Translate the book content and generate audio narration.`,
+  "sign-language": msg`Upload and assign sign language videos to book pages.`,
   validation: msg`Run whole-book validation checks and configure accessibility assessment settings.`,
   preview: msg`Package and preview the final ADT web application.`,
 }

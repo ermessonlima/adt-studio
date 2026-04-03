@@ -113,9 +113,17 @@ msgstr "{0} items"
 msgid "{0} items need changes on this page"
 msgstr "{0} items need changes on this page"
 
+#. placeholder {0}: (bytes / 1024).toFixed(1)
+msgid "{0} KB"
+msgstr "{0} KB"
+
 #. placeholder {0}: String(outputLanguages.length)
 msgid "{0} languages"
 msgstr "{0} languages"
+
+#. placeholder {0}: (bytes / (1024 * 1024)).toFixed(1)
+msgid "{0} MB"
+msgstr "{0} MB"
 
 #~ msgid "{0} observations"
 #~ msgstr "{0} observations"
@@ -192,6 +200,9 @@ msgstr "{0}m ago"
 #. placeholder {0}: String(Math.floor(diff / 1000))
 msgid "{0}s ago"
 msgstr "{0}s ago"
+
+msgid "{bytes} B"
+msgstr "{bytes} B"
 
 msgid "{countSummary} this page"
 msgstr "{countSummary} this page"
@@ -278,6 +289,9 @@ msgstr "A separator page between sections."
 msgid "A sorting activity."
 msgstr "A sorting activity."
 
+msgid "A storyboard must be built before adding sign language videos."
+msgstr "A storyboard must be built before adding sign language videos."
+
 msgid "A storyboard must be built before exporting."
 msgstr "A storyboard must be built before exporting."
 
@@ -289,6 +303,10 @@ msgstr "A table-filling activity."
 
 msgid "A true or false activity."
 msgstr "A true or false activity."
+
+#. placeholder {0}: replaceConfirm?.file.name
+msgid "A video named \"{0}\" already exists. Do you want to replace it?"
+msgstr "A video named \"{0}\" already exists. Do you want to replace it?"
 
 #~ msgid "Accept merge"
 #~ msgstr "Accept merge"
@@ -419,6 +437,9 @@ msgstr "Add reviewer guidance."
 
 msgid "Add section"
 msgstr "Add section"
+
+msgid "Add Videos"
+msgstr "Add Videos"
 
 msgid "Add your first book"
 msgstr "Add your first book"
@@ -571,6 +592,12 @@ msgstr "Asking the AI to put on its creative hat..."
 
 #~ msgid "Aspect:"
 #~ msgstr "Aspect:"
+
+#~ msgid "Assign to page..."
+#~ msgstr "Assign to page..."
+
+msgid "Assign to section..."
+msgstr "Assign to section..."
 
 msgid "Audio Settings"
 msgstr "Audio Settings"
@@ -764,6 +791,9 @@ msgstr "Clear language"
 
 msgid "Clear model"
 msgstr "Clear model"
+
+msgid "Click \"Add Videos\" to upload MP4 or WebM files."
+msgstr "Click \"Add Videos\" to upload MP4 or WebM files."
 
 msgid "Click images to select"
 msgstr "Click images to select"
@@ -1030,6 +1060,9 @@ msgstr "Delete text entry"
 
 #~ msgid "Delete this section"
 #~ msgstr "Delete this section"
+
+msgid "Delete video"
+msgstr "Delete video"
 
 msgid "Deleting..."
 msgstr "Deleting..."
@@ -1926,6 +1959,9 @@ msgstr "mp3"
 msgid "N/A"
 msgstr "N/A"
 
+msgid "Name"
+msgstr "Name"
+
 msgid "Navigate within Preview to capture page-specific review notes"
 msgstr "Navigate within Preview to capture page-specific review notes"
 
@@ -2088,6 +2124,9 @@ msgstr "No sections on this page"
 msgid "No segmentation needed for this image"
 msgstr "No segmentation needed for this image"
 
+msgid "No sign language videos uploaded yet."
+msgstr "No sign language videos uploaded yet."
+
 msgid "No text extracted"
 msgstr "No text extracted"
 
@@ -2223,6 +2262,11 @@ msgstr "Page"
 msgid "Page {0}"
 msgstr "Page {0}"
 
+#. placeholder {0}: page.pageNumber
+#. placeholder {1}: i + 1
+msgid "Page {0} — Section {1}"
+msgstr "Page {0} — Section {1}"
+
 msgid "Page {pageId}"
 msgstr "Page {pageId}"
 
@@ -2302,6 +2346,9 @@ msgstr "Pipeline Stages"
 
 msgid "Pixel Art"
 msgstr "Pixel Art"
+
+msgid "Play video"
+msgstr "Play video"
 
 #~ msgid "points"
 #~ msgstr "points"
@@ -2451,6 +2498,9 @@ msgstr "Region"
 msgid "Remove"
 msgstr "Remove"
 
+msgid "Remove All"
+msgstr "Remove All"
+
 msgid "Remove checklist item"
 msgstr "Remove checklist item"
 
@@ -2486,6 +2536,9 @@ msgstr "Rendering this section..."
 
 msgid "Replace"
 msgstr "Replace"
+
+msgid "Replace Video?"
+msgstr "Replace Video?"
 
 msgid "Require comment on failure"
 msgstr "Require comment on failure"
@@ -2850,6 +2903,12 @@ msgstr "Show reviewer validation"
 msgid "Show:"
 msgstr "Show:"
 
+msgid "Sign Language"
+msgstr "Sign Language"
+
+msgid "Size"
+msgstr "Size"
+
 msgid "sk-..."
 msgstr "sk-..."
 
@@ -3199,6 +3258,9 @@ msgstr "Types used during text classification. Pruned types are excluded from re
 msgid "Unable to load reviewer checklist settings."
 msgstr "Unable to load reviewer checklist settings."
 
+msgid "Unassigned"
+msgstr "Unassigned"
+
 msgid "Unavailable"
 msgstr "Unavailable"
 
@@ -3253,11 +3315,20 @@ msgstr "Upload a new image file from your computer"
 msgid "Upload a PDF to get started"
 msgstr "Upload a PDF to get started"
 
+msgid "Upload and assign sign language videos to book pages."
+msgstr "Upload and assign sign language videos to book pages."
+
 msgid "Upload image"
 msgstr "Upload image"
 
 msgid "Upload Image"
 msgstr "Upload Image"
+
+#~ msgid "Upload sign language videos and assign them to pages."
+#~ msgstr "Upload sign language videos and assign them to pages."
+
+msgid "Upload sign language videos and assign them to sections."
+msgstr "Upload sign language videos and assign them to sections."
 
 msgid "Use an LLM to crop away stray text, artifacts, and excessive whitespace from image edges."
 msgstr "Use an LLM to crop away stray text, artifacts, and excessive whitespace from image edges."

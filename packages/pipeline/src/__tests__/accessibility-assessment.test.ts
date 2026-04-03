@@ -25,6 +25,8 @@ function createMockStorage(
     clearExtractedData: () => {},
     putExtractedPage: () => {},
     appendLlmLog: () => {},
+    getSignLanguageVideos: () => [],
+    getSignLanguageVideoPath: () => null,
     close: () => {},
   }
 }
