@@ -351,9 +351,9 @@ export function ExtractPageDetail({
         {/* Other extracted images (excluding the page image) */}
         {(() => {
           const pageImageId = `${pageId}_page`
-          const extractedImages = imageClassData?.images.filter(
+          const extractedImages = (imageClassData?.images.filter(
             (img) => img.imageId !== pageImageId
-          ) ?? []
+          ) ?? []).sort((a, b) => Number(a.isPruned) - Number(b.isPruned))
           if (extractedImages.length === 0) return null
           return (
             <div className="grid grid-cols-2 gap-2 items-start">
