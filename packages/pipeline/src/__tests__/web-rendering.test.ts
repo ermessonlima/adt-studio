@@ -50,7 +50,7 @@ describe("buildRenderStrategyResolver", () => {
       render_strategies: {
         llm: {
           render_type: "llm",
-          config: { prompt: "default_prompt", model: "openai:gpt-5.2" },
+          config: { prompt: "default_prompt", model: "openai:gpt-5.4" },
         },
         custom: {
           render_type: "llm",
@@ -71,7 +71,7 @@ describe("buildRenderStrategyResolver", () => {
 
     const textOnly = resolve("text_only")
     expect(textOnly.promptName).toBe("default_prompt")
-    expect(textOnly.modelId).toBe("openai:gpt-5.2")
+    expect(textOnly.modelId).toBe("openai:gpt-5.4")
   })
 
   it("falls back to hardcoded defaults when no config provided", () => {
@@ -84,7 +84,7 @@ describe("buildRenderStrategyResolver", () => {
     const config = resolve("anything")
     expect(config.renderType).toBe("llm")
     expect(config.promptName).toBe("web_generation_html")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
     expect(config.timeoutMs).toBe(180000)
     expect(config.templateName).toBe("")
@@ -98,7 +98,7 @@ describe("buildRenderStrategyResolver", () => {
       render_strategies: {
         llm_default: {
           render_type: "llm",
-          config: { prompt: "default_prompt", model: "openai:gpt-5.2" },
+          config: { prompt: "default_prompt", model: "openai:gpt-5.4" },
         },
       },
       section_render_strategies: {
@@ -111,7 +111,7 @@ describe("buildRenderStrategyResolver", () => {
 
     expect(config.renderType).toBe("llm")
     expect(config.promptName).toBe("default_prompt")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
   })
 
   it("resolves template strategy with render type and template name", () => {
@@ -122,7 +122,7 @@ describe("buildRenderStrategyResolver", () => {
       render_strategies: {
         llm: {
           render_type: "llm",
-          config: { prompt: "default_prompt", model: "openai:gpt-5.2" },
+          config: { prompt: "default_prompt", model: "openai:gpt-5.4" },
         },
         two_column: {
           render_type: "template",
@@ -782,7 +782,7 @@ describe("renderPage", () => {
     const activityResolveConfig = (): RenderConfig => ({
       renderType: "activity",
       promptName: "activity_multiple_choice",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "activity_multiple_choice_answers",
@@ -848,7 +848,7 @@ describe("renderPage", () => {
     const activityResolveConfig = (): RenderConfig => ({
       renderType: "activity",
       promptName: "activity_open_ended_answer",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "",
@@ -911,7 +911,7 @@ describe("renderPage", () => {
     const nonActivityConfig = (): RenderConfig => ({
       renderType: "llm",
       promptName: "web_generation_html",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 5,
       timeoutMs: 180000,
       answerPromptName: "activity_true_false_answers",
@@ -1027,7 +1027,7 @@ describe("buildRenderStrategyResolver — activity", () => {
           config: {
             prompt: "activity_multiple_choice",
             answer_prompt: "activity_multiple_choice_answers",
-            model: "openai:gpt-5.2",
+            model: "openai:gpt-5.4",
             max_retries: 5,
             timeout: 180,
           },
@@ -1044,7 +1044,7 @@ describe("buildRenderStrategyResolver — activity", () => {
     expect(config.renderType).toBe("activity")
     expect(config.promptName).toBe("activity_multiple_choice")
     expect(config.answerPromptName).toBe("activity_multiple_choice_answers")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
     expect(config.timeoutMs).toBe(180000)
   })
@@ -1058,7 +1058,7 @@ describe("buildRenderStrategyResolver — activity", () => {
           render_type: "activity",
           config: {
             prompt: "activity_open_ended_answer",
-            model: "openai:gpt-5.2",
+            model: "openai:gpt-5.4",
           },
         },
       },

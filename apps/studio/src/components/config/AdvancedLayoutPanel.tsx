@@ -295,7 +295,7 @@ function RenderStrategyEditor({
                   <Input
                     value={strategy.config.model ?? ""}
                     onChange={(e) => updateConfig("model", e.target.value)}
-                    placeholder="e.g., openai:gpt-5.2"
+                    placeholder="e.g., openai:gpt-5.4"
                     className="h-7 text-xs"
                   />
                 </div>

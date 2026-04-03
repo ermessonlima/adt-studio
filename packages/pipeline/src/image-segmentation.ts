@@ -19,7 +19,7 @@ export interface SegmentationConfig {
   minSide?: number
 }
 
-const DEFAULT_SEGMENTATION_MODEL = "openai:gpt-5.2"
+const DEFAULT_SEGMENTATION_MODEL = "openai:gpt-5.4"
 
 /**
  * Build segmentation config from AppConfig.

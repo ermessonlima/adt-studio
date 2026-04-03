@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { DEFAULT_LLM_MAX_RETRIES } from "@adt/types"
 import { api } from "@/api/client"
 import { Trans, useLingui } from "@lingui/react/macro"
+import { ModelSelect, LLM_MODEL_GROUPS, type ModelGroup } from "./ModelSelect"
 
 interface PromptViewerBaseProps {
   /** Prompt template name to fetch (e.g. "page_sectioning") */
@@ -23,6 +24,8 @@ interface PromptViewerBaseProps {
   onMaxRetriesChange?: (value: string) => void
   /** Placeholder for the model input */
   modelPlaceholder?: string
+  /** Model groups for the dropdown. Defaults to LLM_MODEL_GROUPS. */
+  modelGroups?: ModelGroup[]
   /** Whether to fetch the prompt (set false to defer loading) */
   enabled?: boolean
 }
@@ -57,7 +60,8 @@ export function PromptViewer({
   onContentChange,
   maxRetries,
   onMaxRetriesChange,
-  modelPlaceholder = "openai:gpt-5.2",
+  modelPlaceholder = "openai:gpt-5.4",
+  modelGroups = LLM_MODEL_GROUPS,
   enabled = true,
   hideModel = false,
 }: PromptViewerProps) {
@@ -113,11 +117,13 @@ export function PromptViewer({
         <div className="shrink-0 flex items-end gap-3">
           <div className="min-w-0 max-w-xs flex-1">
             <Label className="text-xs">{t`Model`}</Label>
-            <Input
+            <ModelSelect
               value={model ?? ""}
-              onChange={(e) => onModelChange?.(e.target.value)}
+              onChange={(v) => onModelChange?.(v)}
               placeholder={modelPlaceholder}
-              className="mt-1 text-xs"
+              groups={modelGroups}
+              className="mt-1"
+              inputClassName="text-xs"
             />
           </div>
           {onMaxRetriesChange && (

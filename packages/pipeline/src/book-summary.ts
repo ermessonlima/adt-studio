@@ -60,7 +60,7 @@ export async function generateBookSummary(
 export function buildBookSummaryConfig(appConfig: AppConfig): BookSummaryConfig {
   return {
     promptName: appConfig.book_summary?.prompt ?? "book_summary",
-    modelId: appConfig.book_summary?.model ?? "openai:gpt-5.2",
+    modelId: appConfig.book_summary?.model ?? "openai:gpt-5.4",
     maxRetries:
       appConfig.book_summary?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
     outputLanguage: normalizeLocale(appConfig.editing_language ?? "en"),

@@ -61,13 +61,13 @@ describe("buildGlossaryConfig", () => {
       text_group_types: { paragraph: "Para" },
       glossary: {
         prompt: "custom_glossary",
-        model: "openai:gpt-5.2",
+        model: "openai:gpt-5.4",
         max_retries: 5,
       },
     }
     const config = buildGlossaryConfig(appConfig, "French")
     expect(config.promptName).toBe("custom_glossary")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
     expect(config.language).toBe("French")
   })

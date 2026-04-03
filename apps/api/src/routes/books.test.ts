@@ -309,7 +309,7 @@ describe("PUT /books/:label/config", () => {
           },
           image_meaningfulness: {
             prompt: "image_meaningfulness",
-            model: "openai:gpt-5.2",
+            model: "openai:gpt-5.4",
           },
         },
       }),
@@ -324,7 +324,7 @@ describe("PUT /books/:label/config", () => {
     })
     expect(body.config.image_meaningfulness).toEqual({
       prompt: "image_meaningfulness",
-      model: "openai:gpt-5.2",
+      model: "openai:gpt-5.4",
     })
   })
 

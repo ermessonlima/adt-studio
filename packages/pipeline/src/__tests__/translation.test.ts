@@ -71,7 +71,7 @@ describe("translation", () => {
       text_group_types: { paragraph: "Paragraph" },
       editing_language: "fr",
       text_classification: { model: "openai:gpt-4.1-mini" },
-      translation: { prompt: "custom_translation", model: "openai:gpt-5.2" },
+      translation: { prompt: "custom_translation", model: "openai:gpt-5.4" },
     }
 
     const config = buildTranslationConfig(appConfig, "en")
@@ -79,7 +79,7 @@ describe("translation", () => {
       sourceLanguage: "en",
       targetLanguage: "fr",
       promptName: "custom_translation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 5,
     })
   })

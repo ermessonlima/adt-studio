@@ -15,7 +15,7 @@ interface ViewProps {
 export function BookView({ bookLabel }: ViewProps) {
   const overviewSteps = getBookOverviewStages()
   const { stageState, queueRun } = useBookRun()
-  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
+  const { apiKey, hasApiKey } = useApiKey()
   const { data: accessibilityAssessment } = useAccessibilityAssessment(bookLabel)
   const validationCompleted = Boolean(accessibilityAssessment?.assessment)
 
@@ -29,12 +29,8 @@ export function BookView({ bookLabel }: ViewProps) {
       fromStage: stage.slug,
       toStage: stage.slug,
       apiKey,
-      providerCredentials: {
-        azure: { key: azureKey, region: azureRegion },
-        geminiApiKey: geminiKey,
-      },
     })
-  }, [hasApiKey, stageState, queueRun, apiKey, azureKey, azureRegion, geminiKey])
+  }, [hasApiKey, stageState, queueRun, apiKey])
 
   return (
     <div className="flex max-w-xl flex-col items-start">

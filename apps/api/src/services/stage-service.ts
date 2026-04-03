@@ -41,6 +41,10 @@ export interface StageRunOptions {
   toStage: string
   /** When true, skip page-sectioning and only re-render from existing section data. */
   renderOnly?: boolean
+  anthropicApiKey?: string
+  googleApiKey?: string
+  customBaseUrl?: string
+  customApiKey?: string
   azureSpeechKey?: string
   azureSpeechRegion?: string
   geminiApiKey?: string

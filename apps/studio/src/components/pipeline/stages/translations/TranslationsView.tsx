@@ -172,12 +172,8 @@ export function TranslationsView({ bookLabel, selectedPageId, onSelectPage }: { 
       fromStage: "text-and-speech",
       toStage: "text-and-speech",
       apiKey,
-      providerCredentials: {
-        azure: { key: azureKey, region: azureRegion },
-        geminiApiKey: geminiKey,
-      },
     })
-  }, [hasApiKey, isRunning, apiKey, azureKey, azureRegion, geminiKey, queueRun])
+  }, [hasApiKey, isRunning, apiKey, queueRun])
 
   const { data: catalog, isLoading } = useQuery({
     queryKey: ["books", bookLabel, "text-catalog"],

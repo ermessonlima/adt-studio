@@ -247,7 +247,7 @@ describe("buildQuizGenerationConfig", () => {
       pagesPerQuiz: 3,
       quizSectionTypes: FALLBACK_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 5,
       timeoutMs: 90_000,
     })
@@ -314,7 +314,7 @@ describe("generateQuiz", () => {
       pagesPerQuiz: 2,
       quizSectionTypes: DEFAULT_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 2,
       timeoutMs: 90_000,
     }
@@ -354,7 +354,7 @@ describe("generateQuiz", () => {
       pagesPerQuiz: 1,
       quizSectionTypes: DEFAULT_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 0,
       timeoutMs: 90_000,
     }
@@ -393,7 +393,7 @@ describe("generateQuiz", () => {
       pagesPerQuiz: 1,
       quizSectionTypes: DEFAULT_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 0,
       timeoutMs: 90_000,
     }
@@ -426,7 +426,7 @@ describe("generateAllQuizzes", () => {
       pagesPerQuiz: 2,
       quizSectionTypes: DEFAULT_QUIZ_SECTION_TYPES,
       promptName: "quiz_generation",
-      modelId: "openai:gpt-5.2",
+      modelId: "openai:gpt-5.4",
       maxRetries: 2,
       timeoutMs: 90_000,
     }

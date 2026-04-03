@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Eye, EyeOff, Check } from "lucide-react"
 import {
   Dialog,
@@ -15,19 +15,25 @@ import { cn } from "@/lib/utils"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
 
-type TabKey = "openai" | "azure" | "gemini"
+type TabKey = "openai" | "anthropic" | "google" | "custom" | "azure"
 
 interface ApiKeyDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   apiKey: string
   onSaveApiKey: (key: string) => void
+  anthropicKey: string
+  onSaveAnthropicKey: (key: string) => void
+  googleKey: string
+  onSaveGoogleKey: (key: string) => void
+  customBaseUrl: string
+  onSaveCustomBaseUrl: (url: string) => void
+  customApiKey: string
+  onSaveCustomApiKey: (key: string) => void
   azureKey: string
   onSaveAzureKey: (key: string) => void
   azureRegion: string
   onSaveAzureRegion: (region: string) => void
-  geminiKey: string
-  onSaveGeminiKey: (key: string) => void
 }
 
 function isValidOpenAIKey(key: string): boolean {
@@ -39,66 +45,86 @@ export function ApiKeyDialog({
   onOpenChange,
   apiKey,
   onSaveApiKey,
+  anthropicKey,
+  onSaveAnthropicKey,
+  googleKey,
+  onSaveGoogleKey,
+  customBaseUrl,
+  onSaveCustomBaseUrl,
+  customApiKey,
+  onSaveCustomApiKey,
   azureKey,
   onSaveAzureKey,
   azureRegion,
   onSaveAzureRegion,
-  geminiKey,
-  onSaveGeminiKey,
 }: ApiKeyDialogProps) {
   const { t } = useLingui()
   const [tab, setTab] = useState<TabKey>("openai")
   const [openaiDraft, setOpenaiDraft] = useState(apiKey)
+  const [anthropicDraft, setAnthropicDraft] = useState(anthropicKey)
+  const [googleDraft, setGoogleDraft] = useState(googleKey)
+  const [customBaseUrlDraft, setCustomBaseUrlDraft] = useState(customBaseUrl)
+  const [customApiKeyDraft, setCustomApiKeyDraft] = useState(customApiKey)
   const [azureKeyDraft, setAzureKeyDraft] = useState(azureKey)
   const [azureRegionDraft, setAzureRegionDraft] = useState(azureRegion)
-  const [geminiKeyDraft, setGeminiKeyDraft] = useState(geminiKey)
   const [showKey, setShowKey] = useState(false)
+  const prevOpenRef = useRef(false)
 
   const tabs = [
     { key: "openai" as const, label: t`OpenAI` },
-    { key: "azure" as const, label: t`Azure Speech` },
-    { key: "gemini" as const, label: t`Gemini` },
+    { key: "anthropic" as const, label: t`Anthropic` },
+    { key: "google" as const, label: t`Google` },
+    { key: "custom" as const, label: t`Custom` },
+    { key: "azure" as const, label: t`Azure` },
   ]
 
+  // Reset drafts only when dialog opens (not on every prop change while open)
   useEffect(() => {
-    if (open) {
+    if (open && !prevOpenRef.current) {
       setOpenaiDraft(apiKey)
+      setAnthropicDraft(anthropicKey)
+      setGoogleDraft(googleKey)
+      setCustomBaseUrlDraft(customBaseUrl)
+      setCustomApiKeyDraft(customApiKey)
       setAzureKeyDraft(azureKey)
       setAzureRegionDraft(azureRegion)
-      setGeminiKeyDraft(geminiKey)
       setShowKey(false)
     }
-  }, [open, apiKey, azureKey, azureRegion, geminiKey])
+    prevOpenRef.current = open
+  }, [open, apiKey, anthropicKey, googleKey, customBaseUrl, customApiKey, azureKey, azureRegion])
 
   function handleSave() {
-    // Save the current tab's credentials
-    if (tab === "openai") {
-      const trimmed = openaiDraft.trim()
-      if (isValidOpenAIKey(trimmed)) {
-        onSaveApiKey(trimmed)
-      }
-    } else if (tab === "azure") {
-      const trimmedKey = azureKeyDraft.trim()
-      const trimmedRegion = azureRegionDraft.trim()
-      if (trimmedKey) onSaveAzureKey(trimmedKey)
-      if (trimmedRegion) onSaveAzureRegion(trimmedRegion)
-    } else {
-      const trimmedKey = geminiKeyDraft.trim()
-      if (trimmedKey) onSaveGeminiKey(trimmedKey)
-    }
+    // Save all tabs — not just the active one
+    const trimmedOpenai = openaiDraft.trim()
+    if (isValidOpenAIKey(trimmedOpenai) || trimmedOpenai === "") onSaveApiKey(trimmedOpenai)
+
+    onSaveAnthropicKey(anthropicDraft.trim())
+    onSaveGoogleKey(googleDraft.trim())
+    onSaveCustomBaseUrl(customBaseUrlDraft.trim())
+    onSaveCustomApiKey(customApiKeyDraft.trim())
+    onSaveAzureKey(azureKeyDraft.trim())
+    onSaveAzureRegion(azureRegionDraft.trim())
+
     onOpenChange(false)
   }
 
-  const canSave =
-    tab === "openai"
-      ? isValidOpenAIKey(openaiDraft)
-      : tab === "azure"
-        ? azureKeyDraft.trim().length > 0 && azureRegionDraft.trim().length > 0
-        : geminiKeyDraft.trim().length > 0
+  // Check if there are any meaningful changes to save
+  const hasChanges =
+    openaiDraft.trim() !== apiKey.trim() ||
+    anthropicDraft.trim() !== anthropicKey.trim() ||
+    googleDraft.trim() !== googleKey.trim() ||
+    customBaseUrlDraft.trim() !== customBaseUrl.trim() ||
+    customApiKeyDraft.trim() !== customApiKey.trim() ||
+    azureKeyDraft.trim() !== azureKey.trim() ||
+    azureRegionDraft.trim() !== azureRegion.trim()
+
+  // Validate the OpenAI key if it was changed to a non-empty value
+  const openaiValid = openaiDraft.trim() === "" || openaiDraft.trim() === apiKey.trim() || isValidOpenAIKey(openaiDraft)
+  const canSave = hasChanges && openaiValid
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle><Trans>API Keys</Trans></DialogTitle>
           <DialogDescription>
@@ -110,14 +136,16 @@ export function ApiKeyDialog({
           {tabs.map((item) => {
             const isSaved =
               item.key === "openai" ? apiKey.length > 0
-                : item.key === "azure" ? azureKey.length > 0
-                  : geminiKey.length > 0
+                : item.key === "anthropic" ? anthropicKey.length > 0
+                  : item.key === "google" ? googleKey.length > 0
+                    : item.key === "custom" ? customBaseUrl.length > 0
+                      : azureKey.length > 0
             return (
               <button
                 key={item.key}
                 onClick={() => { setTab(item.key); setShowKey(false) }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                  "flex items-center gap-1 px-2 py-1.5 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
                   tab === item.key
                     ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -142,7 +170,7 @@ export function ApiKeyDialog({
                 placeholder={t`sk-...`}
                 value={openaiDraft}
                 onChange={(e) => setOpenaiDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
+                onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
                 className="pr-10"
               />
               <Button
@@ -164,11 +192,127 @@ export function ApiKeyDialog({
           </div>
         )}
 
+        {tab === "anthropic" && (
+          <div className="space-y-2">
+            <Label htmlFor="anthropic-key-input">
+              <Trans>Anthropic API Key</Trans>
+            </Label>
+            <div className="relative">
+              <Input
+                id="anthropic-key-input"
+                type={showKey ? "text" : "password"}
+                placeholder={t`sk-ant-...`}
+                value={anthropicDraft}
+                onChange={(e) => setAnthropicDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-10 w-10"
+                onClick={() => setShowKey(!showKey)}
+                tabIndex={-1}
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Trans>
+                Used for Claude models (claude-opus-4-6, claude-sonnet-4-6, etc.)
+              </Trans>
+            </p>
+          </div>
+        )}
+
+        {tab === "google" && (
+          <div className="space-y-2">
+            <Label htmlFor="google-key-input">
+              <Trans>Google AI API Key</Trans>
+            </Label>
+            <div className="relative">
+              <Input
+                id="google-key-input"
+                type={showKey ? "text" : "password"}
+                placeholder={t`AIza...`}
+                value={googleDraft}
+                onChange={(e) => setGoogleDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-10 w-10"
+                onClick={() => setShowKey(!showKey)}
+                tabIndex={-1}
+              >
+                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Trans>
+                Used for Gemini models — both LLM (gemini-2.5-pro, etc.) and TTS (gemini-2.5-pro-preview-tts, etc.)
+              </Trans>
+            </p>
+          </div>
+        )}
+
+        {tab === "custom" && (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="custom-base-url-input">
+                <Trans>Base URL</Trans>
+              </Label>
+              <Input
+                id="custom-base-url-input"
+                placeholder={t`e.g. http://localhost:11434/v1`}
+                value={customBaseUrlDraft}
+                onChange={(e) => setCustomBaseUrlDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custom-api-key-input">
+                <Trans>API Key (optional)</Trans>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="custom-api-key-input"
+                  type={showKey ? "text" : "password"}
+                  placeholder={t`Leave empty if not required`}
+                  value={customApiKeyDraft}
+                  onChange={(e) => setCustomApiKeyDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-10 w-10"
+                  onClick={() => setShowKey(!showKey)}
+                  tabIndex={-1}
+                >
+                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Trans>
+                Any OpenAI-compatible endpoint (Ollama, vLLM, Together AI, etc.). Use the "custom:" prefix when selecting models, e.g. custom:llama3.
+              </Trans>
+            </p>
+          </div>
+        )}
+
         {tab === "azure" && (
           <div className="space-y-3">
             <div className="space-y-2">
               <Label htmlFor="azure-key-input">
-                <Trans>Subscription Key</Trans>
+                <Trans>Azure Speech Subscription Key</Trans>
               </Label>
               <div className="relative">
                 <Input
@@ -177,7 +321,7 @@ export function ApiKeyDialog({
                   placeholder={t`Azure Speech subscription key`}
                   value={azureKeyDraft}
                   onChange={(e) => setAzureKeyDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
                   className="pr-10"
                 />
                 <Button
@@ -201,42 +345,11 @@ export function ApiKeyDialog({
                 placeholder={t`e.g. eastus, westeurope`}
                 value={azureRegionDraft}
                 onChange={(e) => setAzureRegionDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
+                onKeyDown={(e) => { if (e.key === "Enter" && canSave) handleSave() }}
               />
-            </div>
-          </div>
-        )}
-
-        {tab === "gemini" && (
-          <div className="space-y-2">
-            <Label htmlFor="gemini-key-input">
-              <Trans>Gemini API Key</Trans>
-            </Label>
-            <div className="relative">
-              <Input
-                id="gemini-key-input"
-                type={showKey ? "text" : "password"}
-                placeholder={t`AIza...`}
-                value={geminiKeyDraft}
-                onChange={(e) => setGeminiKeyDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSave() }}
-                className="pr-10"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-10 w-10"
-                onClick={() => setShowKey(!showKey)}
-                tabIndex={-1}
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              <Trans>
-                Used for Gemini TTS providers such as gemini-2.5-pro-preview-tts.
-              </Trans>
+              <Trans>Used for Azure Speech TTS provider.</Trans>
             </p>
           </div>
         )}

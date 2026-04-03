@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, useCallback } from "react"
+import { useState, createContext, useContext, useCallback, useMemo } from "react"
 import { createRootRoute, Outlet } from "@tanstack/react-router"
 import { ApiKeyDialog } from "@/components/settings/ApiKeyDialog"
 import { useApiKey } from "@/hooks/use-api-key"
@@ -20,15 +20,24 @@ function RootLayout() {
     apiKey,
     setApiKey,
     hasApiKey,
+    anthropicKey,
+    setAnthropicKey,
+    googleKey,
+    setGoogleKey,
+    customBaseUrl,
+    setCustomBaseUrl,
+    customApiKey,
+    setCustomApiKey,
     azureKey,
     setAzureKey,
     azureRegion,
     setAzureRegion,
-    geminiKey,
     setGeminiKey,
   } = useApiKey()
   const [showKeyDialog, setShowKeyDialog] = useState(!hasApiKey)
   const openSettings = useCallback(() => setShowKeyDialog(true), [])
+  // Google and Gemini TTS use the same API key — save to both storage keys
+  const saveGoogleKey = useMemo(() => (key: string) => { setGoogleKey(key); setGeminiKey(key) }, [setGoogleKey, setGeminiKey])
 
   return (
     <SettingsContext value={{ openSettings }}>
@@ -42,12 +51,18 @@ function RootLayout() {
           onOpenChange={setShowKeyDialog}
           apiKey={apiKey}
           onSaveApiKey={setApiKey}
+          anthropicKey={anthropicKey}
+          onSaveAnthropicKey={setAnthropicKey}
+          googleKey={googleKey}
+          onSaveGoogleKey={saveGoogleKey}
+          customBaseUrl={customBaseUrl}
+          onSaveCustomBaseUrl={setCustomBaseUrl}
+          customApiKey={customApiKey}
+          onSaveCustomApiKey={setCustomApiKey}
           azureKey={azureKey}
           onSaveAzureKey={setAzureKey}
           azureRegion={azureRegion}
           onSaveAzureRegion={setAzureRegion}
-          geminiKey={geminiKey}
-          onSaveGeminiKey={setGeminiKey}
         />
       </div>
     </SettingsContext>

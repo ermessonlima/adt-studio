@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { generateObject, APICallError, NoObjectGeneratedError, type LanguageModel, type CoreMessage } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { createOpenAI, openai } from "@ai-sdk/openai"
+import { anthropic } from "@ai-sdk/anthropic"
+import { google } from "@ai-sdk/google"
 import type {
   LLMModel,
   GenerateObjectOptions,
@@ -15,7 +17,7 @@ import { sanitizeMessages, type LlmLogEntry } from "./log.js"
 import { createLogger, type LogLevel } from "./logger.js"
 
 export interface CreateLLMModelOptions {
-  modelId: string // "openai:gpt-5.2" format
+  modelId: string // "openai:gpt-5.4" format
   cacheDir?: string
   promptEngine?: PromptEngine
   onLog?: (entry: LlmLogEntry) => void
@@ -290,13 +292,24 @@ export function createLLMModel(options: CreateLLMModelOptions): LLMModel {
 }
 
 function resolveModel(modelId: string): LanguageModel {
-  const [provider, model] = modelId.includes(":")
-    ? modelId.split(":", 2)
-    : ["openai", modelId]
+  const colonIdx = modelId.indexOf(":")
+  const provider = colonIdx >= 0 ? modelId.slice(0, colonIdx) : "openai"
+  const model = colonIdx >= 0 ? modelId.slice(colonIdx + 1) : modelId
 
   switch (provider) {
     case "openai":
       return openai(model)
+    case "anthropic":
+      return anthropic(model)
+    case "google":
+      return google(model)
+    case "custom": {
+      const baseURL = process.env.CUSTOM_OPENAI_BASE_URL
+      const apiKey = process.env.CUSTOM_OPENAI_API_KEY
+      if (!baseURL) throw new Error("Custom provider requires CUSTOM_OPENAI_BASE_URL to be set (configure in Settings → Custom)")
+      const custom = createOpenAI({ baseURL, apiKey: apiKey || "dummy" })
+      return custom(model)
+    }
     default:
       throw new Error(`Unsupported LLM provider: ${provider}`)
   }

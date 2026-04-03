@@ -78,7 +78,7 @@ describe("buildSectioningConfig", () => {
 
     const config = buildSectioningConfig(appConfig)
     expect(config.promptName).toBe("page_sectioning")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
     expect(config.sectionTypes).toEqual([])
     expect(config.prunedSectionTypes).toEqual([])

@@ -13,6 +13,7 @@ import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
 import { bookTasksKey } from "./use-book-tasks"
 import { invalidateStoryboardDependents } from "./use-page-mutations"
+import { useApiKey } from "./use-api-key"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,6 +86,7 @@ const stepStatusKey = (label: string) => ["books", label, "step-status"] as cons
 
 export function useBookRunStatus(label: string): BookRunContextValue {
   const queryClient = useQueryClient()
+  const { anthropicKey, googleKey, customBaseUrl, customApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
 
   // Primary source of truth: enriched step-status from the server
   const { data } = useQuery<StepStatusResponse>({
@@ -301,7 +303,16 @@ export function useBookRunStatus(label: string): BookRunContextValue {
   // ------------------------------------------------------------------
   const queueRun = useCallback(
     (options: QueueRunOptions) => {
-      const { fromStage, toStage, apiKey, renderOnly, providerCredentials } = options
+      const { fromStage, toStage, apiKey, renderOnly } = options
+      const providerCredentials: StageRunProviderCredentials = {
+        anthropicApiKey: anthropicKey || undefined,
+        googleApiKey: googleKey || undefined,
+        customBaseUrl: customBaseUrl || undefined,
+        customApiKey: customApiKey || undefined,
+        azure: { key: azureKey, region: azureRegion },
+        geminiApiKey: geminiKey || undefined,
+        ...options.providerCredentials,
+      }
 
       // Optimistically mark target stage(s) as queued and clear downstream
       const stagesToClear = new Set(getStageClearOrder(fromStage as StageName))
@@ -351,7 +362,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
         }
       })
     },
-    [label, queryClient]
+    [label, queryClient, anthropicKey, googleKey, customBaseUrl, customApiKey, azureKey, azureRegion, geminiKey]
   )
 
   // ------------------------------------------------------------------

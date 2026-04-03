@@ -271,7 +271,7 @@ render_strategies:
     render_type: llm
     config:
       prompt: web_generation_html
-      model: openai:gpt-5.2
+      model: openai:gpt-5.4
       visual_refinement:
         enabled: true
         prompt: visual_review

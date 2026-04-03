@@ -105,10 +105,10 @@ describe("buildCaptionConfig", () => {
     const appConfig: AppConfig = {
       text_types: { section_text: "Main body text" },
       text_group_types: { paragraph: "Paragraph" },
-      text_classification: { model: "openai:gpt-5.2" },
+      text_classification: { model: "openai:gpt-5.4" },
     }
     const config = buildCaptionConfig(appConfig)
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
   })
 
@@ -118,13 +118,13 @@ describe("buildCaptionConfig", () => {
       text_group_types: { paragraph: "Paragraph" },
       image_captioning: {
         prompt: "custom_caption",
-        model: "openai:gpt-5.2",
+        model: "openai:gpt-5.4",
         max_retries: 12,
       },
     }
     const config = buildCaptionConfig(appConfig)
     expect(config.promptName).toBe("custom_caption")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(12)
   })
 })

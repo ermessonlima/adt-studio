@@ -22,7 +22,7 @@ export function buildStyleguideGenerationConfig(
 ): StyleguideGenerationConfig {
   return {
     promptName: stepConfig?.prompt ?? "styleguide_generation",
-    modelId: stepConfig?.model ?? "openai:gpt-5.2",
+    modelId: stepConfig?.model ?? "openai:gpt-5.4",
     maxRetries: stepConfig?.max_retries ?? 3,
     temperature: stepConfig?.temperature,
   }

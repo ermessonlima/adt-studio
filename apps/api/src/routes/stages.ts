@@ -102,6 +102,10 @@ export function createStageRoutes(
 
     const { fromStage, toStage, renderOnly } = parsed.data
 
+    const anthropicApiKey = c.req.header("X-Anthropic-API-Key") || undefined
+    const googleApiKey = c.req.header("X-Google-API-Key") || undefined
+    const customBaseUrl = c.req.header("X-Custom-Base-URL") || undefined
+    const customApiKey = c.req.header("X-Custom-API-Key") || undefined
     const azureSpeechKey = c.req.header("X-Azure-Speech-Key") || undefined
     const azureSpeechRegion = c.req.header("X-Azure-Speech-Region") || undefined
     const geminiApiKey = c.req.header("X-Gemini-API-Key") || undefined
@@ -113,6 +117,10 @@ export function createStageRoutes(
     const result = stageService.startStageRun(label, {
       booksDir,
       apiKey,
+      anthropicApiKey,
+      googleApiKey,
+      customBaseUrl,
+      customApiKey,
       promptsDir,
       webAssetsDir,
       configPath,

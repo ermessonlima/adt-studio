@@ -80,6 +80,10 @@ export interface AzureCredentials {
 }
 
 export interface StageRunProviderCredentials {
+  anthropicApiKey?: string
+  googleApiKey?: string
+  customBaseUrl?: string
+  customApiKey?: string
   azure?: AzureCredentials
   geminiApiKey?: string
 }
@@ -96,6 +100,18 @@ function buildApiHeaders(
   providerCredentials?: StageRunProviderCredentials
 ): Record<string, string> {
   const headers: Record<string, string> = { "X-OpenAI-Key": apiKey }
+  if (providerCredentials?.anthropicApiKey) {
+    headers["X-Anthropic-API-Key"] = providerCredentials.anthropicApiKey
+  }
+  if (providerCredentials?.googleApiKey) {
+    headers["X-Google-API-Key"] = providerCredentials.googleApiKey
+  }
+  if (providerCredentials?.customBaseUrl) {
+    headers["X-Custom-Base-URL"] = providerCredentials.customBaseUrl
+  }
+  if (providerCredentials?.customApiKey) {
+    headers["X-Custom-API-Key"] = providerCredentials.customApiKey
+  }
   if (providerCredentials?.azure?.key) {
     headers["X-Azure-Speech-Key"] = providerCredentials.azure.key
   }

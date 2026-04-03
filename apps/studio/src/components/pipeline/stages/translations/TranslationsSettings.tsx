@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { ModelSelect, OPENAI_TTS_MODELS, AZURE_TTS_MODELS, GEMINI_TTS_MODELS } from "@/components/pipeline/components/ModelSelect"
 import { useBookConfig, useUpdateBookConfig } from "@/hooks/use-book-config"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useApiKey } from "@/hooks/use-api-key"
@@ -31,7 +32,7 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
-  const { apiKey, hasApiKey, azureKey, azureRegion, geminiKey } = useApiKey()
+  const { apiKey, hasApiKey } = useApiKey()
   const { queueRun } = useBookRun()
   const navigate = useNavigate()
   const [showRerunDialog, setShowRerunDialog] = useState(false)
@@ -170,10 +171,6 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
             fromStage: "text-and-speech",
             toStage: "text-and-speech",
             apiKey,
-            providerCredentials: {
-              azure: { key: azureKey, region: azureRegion },
-              geminiApiKey: geminiKey,
-            },
           })
           navigate({ to: "/books/$label/$step", params: { label: bookLabel, step: "text-and-speech" } })
         },
@@ -233,11 +230,14 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
             <h3 className="text-xs font-semibold">{t`OpenAI`}</h3>
             <div className="space-y-1.5">
               <Label className="text-xs">{t`Model`}</Label>
-              <Input
+              <ModelSelect
                 value={openaiModel}
-                onChange={(e) => { setOpenaiModel(e.target.value); markDirty("speech") }}
+                onChange={(v) => { setOpenaiModel(v); markDirty("speech") }}
                 placeholder={t`e.g. gpt-4o-mini-tts`}
-                className="w-72 h-8 text-xs"
+                groups={OPENAI_TTS_MODELS}
+                prefixProvider={false}
+                className="w-72"
+                inputClassName="h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">
@@ -257,11 +257,14 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
             <h3 className="text-xs font-semibold">{t`Azure Speech`}</h3>
             <div className="space-y-1.5">
               <Label className="text-xs">{t`Model`}</Label>
-              <Input
+              <ModelSelect
                 value={azureModel}
-                onChange={(e) => { setAzureModel(e.target.value); markDirty("speech") }}
+                onChange={(v) => { setAzureModel(v); markDirty("speech") }}
                 placeholder={t`e.g. azure-tts`}
-                className="w-72 h-8 text-xs"
+                groups={AZURE_TTS_MODELS}
+                prefixProvider={false}
+                className="w-72"
+                inputClassName="h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">
@@ -281,11 +284,14 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
             <h3 className="text-xs font-semibold">{t`Gemini`}</h3>
             <div className="space-y-1.5">
               <Label className="text-xs">{t`Model`}</Label>
-              <Input
+              <ModelSelect
                 value={geminiModel}
-                onChange={(e) => { setGeminiModel(e.target.value); markDirty("speech") }}
+                onChange={(v) => { setGeminiModel(v); markDirty("speech") }}
                 placeholder={t`e.g. gemini-2.5-pro-preview-tts`}
-                className="w-72 h-8 text-xs"
+                groups={GEMINI_TTS_MODELS}
+                prefixProvider={false}
+                className="w-72"
+                inputClassName="h-8 text-xs"
               />
             </div>
             <div className="space-y-1.5">

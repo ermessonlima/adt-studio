@@ -57,7 +57,7 @@ export async function extractMetadata(
 export function buildMetadataConfig(appConfig: AppConfig): MetadataConfig {
   return {
     promptName: appConfig.metadata?.prompt ?? "metadata_extraction",
-    modelId: appConfig.metadata?.model ?? "openai:gpt-5.2",
+    modelId: appConfig.metadata?.model ?? "openai:gpt-5.4",
     maxRetries: appConfig.metadata?.max_retries ?? DEFAULT_LLM_MAX_RETRIES,
   }
 }

@@ -3,7 +3,7 @@ import type { LLMModel, Message, ContentPart } from "@adt/llm"
 import { buildScreenshotHtml } from "./screenshot-html.js"
 import { SCREENSHOT_VIEWPORTS, getViewportBreakpoints, type ScreenshotRenderer } from "./screenshot.js"
 
-export const DEFAULT_VISUAL_REVIEW_MODEL_ID = "openai:gpt-5.2"
+export const DEFAULT_VISUAL_REVIEW_MODEL_ID = "openai:gpt-5.4"
 
 export interface VisualReviewDeps {
   llmModel: LLMModel

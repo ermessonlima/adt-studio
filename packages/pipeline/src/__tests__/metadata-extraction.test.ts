@@ -131,7 +131,7 @@ describe("buildMetadataConfig", () => {
 
     const config = buildMetadataConfig(appConfig)
     expect(config.promptName).toBe("metadata_extraction")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
   })
 })

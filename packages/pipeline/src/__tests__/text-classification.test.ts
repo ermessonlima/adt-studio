@@ -28,7 +28,7 @@ describe("buildClassifyConfig", () => {
 
     const config = buildClassifyConfig(appConfig)
     expect(config.promptName).toBe("text_classification")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
   })
 })

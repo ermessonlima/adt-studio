@@ -109,7 +109,7 @@ describe("buildBookSummaryConfig", () => {
 
     const config = buildBookSummaryConfig(appConfig)
     expect(config.promptName).toBe("book_summary")
-    expect(config.modelId).toBe("openai:gpt-5.2")
+    expect(config.modelId).toBe("openai:gpt-5.4")
     expect(config.maxRetries).toBe(5)
     expect(config.outputLanguage).toBe("en")
   })
