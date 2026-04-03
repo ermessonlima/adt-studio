@@ -87,6 +87,9 @@ export function SectionActionsDropdown({
       </button>
       {open && (
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-md border bg-popover py-1 text-xs shadow-md">
+          {disabled && (
+            <p className="px-3 py-1.5 text-[10px] text-muted-foreground italic">{t`Actions disabled while storyboard is running`}</p>
+          )}
           <button
             type="button"
             onClick={() => handleAction(onTogglePrune)}

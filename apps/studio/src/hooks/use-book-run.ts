@@ -8,7 +8,7 @@ import {
   type TaskInfoResponse,
   type StageRunProviderCredentials,
 } from "@/api/client"
-import { STEP_TO_STAGE, PIPELINE, getStageClearOrder } from "@adt/types"
+import { STEP_TO_STAGE, PIPELINE, getStageClearOrder, PAGE_PROGRESS_STEPS } from "@adt/types"
 import type { StageName } from "@adt/types"
 import { isStageComplete } from "./run-state"
 import { bookTasksKey } from "./use-book-tasks"
@@ -99,6 +99,9 @@ export function useBookRunStatus(label: string): BookRunContextValue {
   const progressRef = useRef<Map<string, StepProgress>>(new Map())
   const [progressTick, setProgressTick] = useState(0)
 
+  // Throttle progressive page invalidations during storyboard runs
+  const lastPageInvalidateRef = useRef<number>(0)
+
   // Serialized run queue — chains API calls so they arrive in click order
   const runChainRef = useRef<Promise<void>>(Promise.resolve())
 
@@ -157,6 +160,16 @@ export function useBookRunStatus(label: string): BookRunContextValue {
             steps: { ...old.steps, [pipelineStep]: "running" },
           }
         })
+        // Progressively refresh page data during storyboard steps so the UI
+        // can show sections/renderings as they complete (throttled to ~2s).
+        // Invalidates both the page list (sidebar) and individual page details.
+        if ((PAGE_PROGRESS_STEPS as ReadonlySet<string>).has(pipelineStep)) {
+          const now = Date.now()
+          if (now - lastPageInvalidateRef.current > 2000) {
+            lastPageInvalidateRef.current = now
+            queryClient.invalidateQueries({ queryKey: ["books", label, "pages"] })
+          }
+        }
       } else if (d.type === "step-complete" || d.type === "step-skip") {
         // Mark step as done/skipped, recompute stage state
         const nextStepState: StepState = d.type === "step-skip" ? "skipped" : "done"
@@ -199,6 +212,7 @@ export function useBookRunStatus(label: string): BookRunContextValue {
     // A queued run has started executing — full refetch to reconcile
     es.addEventListener("queue-next", () => {
       progressRef.current.clear()
+      lastPageInvalidateRef.current = 0
       queryClient.invalidateQueries({ queryKey: stepStatusKey(label) })
     })
 

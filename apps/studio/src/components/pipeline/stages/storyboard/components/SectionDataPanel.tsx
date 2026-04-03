@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import type { PageSection } from "@adt/types"
 import { useLingui } from "@lingui/react/macro"
+import { cn } from "@/lib/utils"
 import { getSectionTypeLabel, getSectionTypeDescription } from "@/lib/section-constants"
 
 function getSectionTypeDisplayLabel(value: string): string {
@@ -77,6 +78,7 @@ interface SectionDataPanelProps {
   // Version picker
   versionPickerNode: ReactNode
   // Disabled states
+  pipelineRunning?: boolean
   merging: boolean
   cloning: boolean
   deleting: boolean
@@ -144,9 +146,11 @@ function ImageCard({
 function EditableText({
   value,
   onCommit,
+  disabled,
 }: {
   value: string
   onCommit: (newText: string) => void
+  disabled?: boolean
 }) {
   const { t } = useLingui()
   const [editing, setEditing] = useState(false)
@@ -177,11 +181,11 @@ function EditableText({
   if (!editing) {
     return (
       <span
-        className="leading-relaxed flex-1 min-w-0 text-xs cursor-text rounded px-0.5 -mx-0.5 hover:bg-accent/50 transition-colors"
+        className={cn("leading-relaxed flex-1 min-w-0 text-xs rounded px-0.5 -mx-0.5 transition-colors", disabled ? "cursor-default opacity-60" : "cursor-text hover:bg-accent/50")}
         onClick={() => {
-          setEditing(true)
+          if (!disabled) setEditing(true)
         }}
-        title={t`Click to edit`}
+        title={disabled ? undefined : t`Click to edit`}
       >
         {value}
       </span>
@@ -256,6 +260,7 @@ export function SectionDataPanel({
   onAddImage,
   onUpdateAnswer,
   versionPickerNode,
+  pipelineRunning,
   merging,
   cloning,
   deleting,
@@ -442,6 +447,7 @@ export function SectionDataPanel({
             <Select
               value={section.sectionType}
               onValueChange={onChangeSectionType}
+              disabled={pipelineRunning}
             >
               <SelectTrigger className="h-6 text-[10px] font-medium px-1.5 py-0 w-auto min-w-[80px] border-0 bg-muted/50">
                 <SelectValue>
@@ -467,15 +473,17 @@ export function SectionDataPanel({
             <button
               type="button"
               onClick={() => setRerenderOpen(!rerenderOpen)}
-              disabled={rerendering || dirty || saving || !hasApiKey}
+              disabled={rerendering || pipelineRunning || dirty || renderingDirty || saving || !hasApiKey}
               className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
               title={
-                !hasApiKey
-                  ? t`API key required to re-render`
-                  : dirty
-                    ? t`Save changes before re-rendering`
-                    : renderingDirty
-                      ? t`Re-render (your edits will be preserved)`
+                pipelineRunning
+                  ? t`Wait for storyboard to complete`
+                  : !hasApiKey
+                    ? t`API key required to re-render`
+                    : dirty
+                      ? t`Save changes before re-rendering`
+                      : renderingDirty
+                        ? t`Re-render (your edits will be preserved)`
                       : t`Re-render this section`
               }
             >
@@ -533,7 +541,7 @@ export function SectionDataPanel({
               onMergeCrossPage={onMergeCrossPage}
               onClone={onCloneSection}
               onDelete={onDeleteSection}
-              disabled={merging || cloning || deleting || dirty || renderingDirty || saving}
+              disabled={merging || cloning || deleting || dirty || renderingDirty || saving || !!pipelineRunning}
             />
             {versionPickerNode}
             <button
@@ -564,6 +572,14 @@ export function SectionDataPanel({
           </div>
         )}
       </div>
+
+      {/* Pipeline running banner */}
+      {pipelineRunning && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-violet-50 border-b text-xs text-violet-700">
+          <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+          {t`Editing is disabled while the storyboard is running`}
+        </div>
+      )}
 
       {/* Panel body — scrollable */}
       <div className="overflow-auto flex-1 px-4 py-3 space-y-5">
@@ -601,11 +617,11 @@ export function SectionDataPanel({
                     <div className="px-3 py-1.5 bg-muted/50 border-b flex items-center gap-1.5">
                       {/* Drag handle — visible on hover */}
                       <div
-                        draggable
-                        onDragStart={(e) => handleGroupDragStart(e, partIndex)}
+                        draggable={!pipelineRunning}
+                        onDragStart={(e) => { if (pipelineRunning) { e.preventDefault(); return } handleGroupDragStart(e, partIndex) }}
                         onDragEnd={handleGroupDragEnd}
-                        className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-accent transition-colors opacity-0 group-hover/card:opacity-100"
-                        title={t`Drag to reorder`}
+                        className={cn("p-0.5 -ml-1 rounded transition-colors opacity-0 group-hover/card:opacity-100", pipelineRunning ? "cursor-default opacity-30" : "cursor-grab active:cursor-grabbing hover:bg-accent")}
+                        title={pipelineRunning ? undefined : t`Drag to reorder`}
                       >
                         <GripVertical className="h-3 w-3 text-muted-foreground" />
                       </div>
@@ -613,6 +629,7 @@ export function SectionDataPanel({
                         <Select
                           value={p.groupType}
                           onValueChange={(val) => onChangeGroupType(partIndex, val)}
+                          disabled={pipelineRunning}
                         >
                           <SelectTrigger className="h-5 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0 w-auto min-w-[60px] border-0 bg-transparent text-muted-foreground">
                             <SelectValue>{p.groupType}</SelectValue>
@@ -635,7 +652,8 @@ export function SectionDataPanel({
                         <button
                           type="button"
                           onClick={() => onDuplicateGroup(partIndex)}
-                          className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                          disabled={pipelineRunning}
+                          className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                           title={t`Duplicate group`}
                         >
                           <Copy className="h-3 w-3 text-muted-foreground" />
@@ -644,7 +662,8 @@ export function SectionDataPanel({
                           <button
                             type="button"
                             onClick={() => onDeleteGroup(partIndex)}
-                            className="p-0.5 rounded hover:bg-red-100 transition-colors cursor-pointer"
+                            disabled={pipelineRunning}
+                            className="p-0.5 rounded hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                             title={t`Delete group`}
                           >
                             <Trash2 className="h-3 w-3 text-red-600" />
@@ -653,7 +672,8 @@ export function SectionDataPanel({
                         <button
                           type="button"
                           onClick={() => onTogglePartPruned(partIndex)}
-                          className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                          disabled={pipelineRunning}
+                          className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                           title={
                             p.isPruned
                               ? t`Include in render`
@@ -707,13 +727,11 @@ export function SectionDataPanel({
                           >
                             {/* Drag handle — visible on hover */}
                             <div
-                              draggable
-                              onDragStart={(e) =>
-                                handleTextDragStart(e, partIndex, ti)
-                              }
+                              draggable={!pipelineRunning}
+                              onDragStart={(e) => { if (pipelineRunning) { e.preventDefault(); return } handleTextDragStart(e, partIndex, ti) }}
                               onDragEnd={handleTextDragEnd}
-                              className="shrink-0 cursor-grab active:cursor-grabbing p-0.5 mt-0.5 rounded hover:bg-accent transition-colors opacity-0 group-hover/text:opacity-100"
-                              title={t`Drag to reorder or move to another group`}
+                              className={cn("shrink-0 p-0.5 mt-0.5 rounded transition-colors opacity-0 group-hover/text:opacity-100", pipelineRunning ? "cursor-default opacity-30" : "cursor-grab active:cursor-grabbing hover:bg-accent")}
+                              title={pipelineRunning ? undefined : t`Drag to reorder or move to another group`}
                             >
                               <GripVertical className="h-3 w-3 text-muted-foreground/50" />
                             </div>
@@ -723,6 +741,7 @@ export function SectionDataPanel({
                                 onValueChange={(val) =>
                                   onChangeTextType(partIndex, ti, val)
                                 }
+                                disabled={pipelineRunning}
                               >
                                 <SelectTrigger className="shrink-0 h-5 text-[10px] font-medium px-1.5 py-0 w-auto min-w-[60px] border-0 bg-muted/50">
                                   <SelectValue>{textEntry.textType}</SelectValue>
@@ -754,12 +773,14 @@ export function SectionDataPanel({
                               onCommit={(newText) =>
                                 onEditText(partIndex, ti, newText)
                               }
+                              disabled={pipelineRunning}
                             />
                             <div className="shrink-0 flex items-center gap-0.5 self-center opacity-0 group-hover/text:opacity-100 transition-opacity">
                               <button
                                 type="button"
                                 onClick={() => onDuplicateTextEntry(partIndex, ti)}
-                                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                                disabled={pipelineRunning}
+                                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                                 title={t`Duplicate text entry`}
                               >
                                 <Copy className="h-3 w-3 text-muted-foreground" />
@@ -768,7 +789,8 @@ export function SectionDataPanel({
                                 <button
                                   type="button"
                                   onClick={() => onDeleteTextEntry(partIndex, ti)}
-                                  className="p-0.5 rounded hover:bg-red-100 transition-colors cursor-pointer"
+                                  disabled={pipelineRunning}
+                                  className="p-0.5 rounded hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                                   title={t`Delete text entry`}
                                 >
                                   <Trash2 className="h-3 w-3 text-red-600" />
@@ -777,7 +799,8 @@ export function SectionDataPanel({
                               <button
                                 type="button"
                                 onClick={() => onToggleTextPruned(partIndex, ti)}
-                                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer"
+                                disabled={pipelineRunning}
+                                className="p-0.5 rounded hover:bg-accent transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-default"
                                 title={
                                   textEntry.isPruned
                                     ? t`Include in render`
@@ -825,7 +848,13 @@ export function SectionDataPanel({
           <button
             type="button"
             onClick={onAddGroup}
-            className="flex items-center justify-center gap-1.5 w-full rounded border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60 py-3 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer mt-3"
+            disabled={pipelineRunning}
+            className={cn(
+              "flex items-center justify-center gap-1.5 w-full rounded border border-dashed py-3 text-xs transition-colors mt-3",
+              pipelineRunning
+                ? "border-muted-foreground/20 text-muted-foreground/50 cursor-default"
+                : "border-muted-foreground/30 hover:border-muted-foreground/60 text-muted-foreground hover:text-foreground cursor-pointer"
+            )}
           >
             <Plus className="h-3.5 w-3.5" />
             {t`Add Group`}
@@ -854,7 +883,8 @@ export function SectionDataPanel({
                       type="text"
                       value={String(value)}
                       onChange={(e) => onUpdateAnswer(key, e.target.value)}
-                      className="flex-1 min-w-0 text-xs rounded border border-transparent bg-transparent px-1.5 py-1 hover:border-border hover:bg-white focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
+                      disabled={pipelineRunning}
+                      className="flex-1 min-w-0 text-xs rounded border border-transparent bg-transparent px-1.5 py-1 hover:border-border hover:bg-white focus:border-ring focus:bg-white focus:outline-none focus:ring-1 focus:ring-ring transition-colors disabled:opacity-50 disabled:cursor-default"
                     />
                   </div>
                 ))}
@@ -903,7 +933,8 @@ export function SectionDataPanel({
                     <button
                       type="button"
                       onClick={() => onTogglePartPruned(partIndex)}
-                      className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-accent transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      disabled={pipelineRunning}
+                      className="absolute top-1 right-1 p-1 rounded bg-background/80 hover:bg-accent transition-colors cursor-pointer opacity-0 group-hover:opacity-100 disabled:opacity-30 disabled:cursor-default"
                       title={
                         p.isPruned
                           ? t`Include in render`
@@ -924,7 +955,13 @@ export function SectionDataPanel({
           <button
             type="button"
             onClick={onAddImage}
-            className="flex items-center justify-center gap-1.5 w-full rounded border border-dashed border-muted-foreground/30 hover:border-muted-foreground/60 py-3 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            disabled={pipelineRunning}
+            className={cn(
+              "flex items-center justify-center gap-1.5 w-full rounded border border-dashed py-3 text-xs transition-colors",
+              pipelineRunning
+                ? "border-muted-foreground/20 text-muted-foreground/50 cursor-default"
+                : "border-muted-foreground/30 hover:border-muted-foreground/60 text-muted-foreground hover:text-foreground cursor-pointer"
+            )}
           >
             <ImagePlus className="h-3.5 w-3.5" />
             {t`Add Image`}

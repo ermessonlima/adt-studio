@@ -25,7 +25,8 @@ import {
 } from "../stage-config"
 import { useSettingsDialog } from "@/routes/__root"
 import type { TaskInfoResponse } from "@/api/client"
-import { getStageLabelI18n } from "../pipeline-i18n"
+import { getStageLabelI18n, getStepLabelI18n } from "../pipeline-i18n"
+import { PAGE_PROGRESS_STEPS } from "@adt/types"
 
 const SETTINGS_TAB_MESSAGE: Record<string, MessageDescriptor> = {
   general: msg`General`,
@@ -133,9 +134,10 @@ export function StageSidebar({
   const { data: accessibilityAssessment } = useAccessibilityAssessment(bookLabel)
   const { openSettings } = useSettingsDialog()
 
+  const currentState = stageState(activeStep)
   const effectivePagesOpen =
     hasStagePages(activeStep) &&
-    stageState(activeStep) === "done"
+    (currentState === "done" || currentState === "running" || currentState === "error")
 
   const isSettings = !!matchRoute({
     to: "/books/$label/$step/settings",
@@ -335,6 +337,7 @@ export function StageSidebar({
               onSelectPage={onSelectPage}
               sectionIndex={sectionIndex}
               onSelectSection={onSelectSection}
+              stageRunning={currentState === "running"}
             />
           </div>
         )}
@@ -349,13 +352,43 @@ export function StageSidebar({
 function TaskIndicator({ bookLabel }: { bookLabel: string }) {
   const { i18n } = useLingui()
   const { runningTasks, runningCount } = useBookTasks(bookLabel)
+  const { stepState, stepProgress } = useBookRun()
 
-  if (runningCount === 0) return null
+  // Build step-progress rows for running pipeline steps that have page-level progress
+  const stageProgressRows: { step: string; label: string; page: number; totalPages: number }[] = []
+  for (const step of PAGE_PROGRESS_STEPS) {
+    if (stepState(step) === "running") {
+      const prog = stepProgress(step)
+      if (prog?.totalPages) {
+        stageProgressRows.push({
+          step,
+          label: getStepLabelI18n(step),
+          page: prog.page ?? 0,
+          totalPages: prog.totalPages,
+        })
+      }
+    }
+  }
+
+  const totalCount = runningCount + stageProgressRows.length
+
+  if (totalCount === 0) return null
 
   return (
     <div className="border-t group/tasks">
       {/* Task list — visible on hover */}
       <div className="hidden group-hover/tasks:block px-2 pt-1.5 pb-0.5 flex-col gap-0.5">
+        {stageProgressRows.map((row) => (
+          <div key={row.step} className="flex items-center gap-2 px-1 py-1">
+            <Loader2 className="w-3 h-3 animate-spin text-violet-500 shrink-0" />
+            <p className="flex-1 min-w-0 text-xs font-medium truncate">
+              {row.label}
+            </p>
+            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+              {row.page}/{row.totalPages}
+            </span>
+          </div>
+        ))}
         {runningTasks.map((task) => (
           <TaskRow key={task.taskId} task={task} />
         ))}
@@ -365,12 +398,12 @@ function TaskIndicator({ bookLabel }: { bookLabel: string }) {
       <div className="flex items-center gap-2.5 px-2.5 py-2 overflow-hidden">
         <div className="relative shrink-0 flex items-center justify-center w-7 h-7">
           <div className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 text-white">
-            <span className="text-xs font-bold leading-none">{runningCount}</span>
+            <span className="text-xs font-bold leading-none">{totalCount}</span>
           </div>
           <StepProgressRing size={28} state="running" colorClass="bg-violet-600" />
         </div>
         <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-          {runningCount === 1 ? i18n._(msg`Task Running`) : i18n._(msg`Tasks Running`)}
+          {totalCount === 1 ? i18n._(msg`Task Running`) : i18n._(msg`Tasks Running`)}
         </span>
       </div>
     </div>
@@ -426,6 +459,7 @@ function PageIndex({
   onSelectPage,
   sectionIndex,
   onSelectSection,
+  stageRunning,
 }: {
   bookLabel: string
   activeStep: string
@@ -433,6 +467,7 @@ function PageIndex({
   onSelectPage?: (pageId: string) => void
   sectionIndex?: number
   onSelectSection?: (index: number) => void
+  stageRunning?: boolean
 }) {
   const { data: pages } = usePages(bookLabel)
   const activeStepDef = STAGES.find((s) => s.slug === activeStep)
@@ -497,6 +532,7 @@ function PageIndex({
                 onSelect={() => onSelectPage?.(page.pageId)}
                 sectionIndex={isActive ? sectionIndex : undefined}
                 onSelectSection={isActive ? onSelectSection : undefined}
+                stageRunning={stageRunning}
               />
             </div>
           )
@@ -516,14 +552,17 @@ function PageRow({
   onSelect,
   sectionIndex,
   onSelectSection,
+  stageRunning,
 }: {
   bookLabel: string
-  page: { pageId: string; textPreview: string; pageNumber: number; sectionCount: number; prunedSections?: number[] }
+  page: { pageId: string; textPreview: string; pageNumber: number; sectionCount: number; hasRendering?: boolean; prunedSections?: number[] }
   isActive: boolean
   activeStepDef?: (typeof STAGES)[number]
   onSelect: () => void
   sectionIndex?: number
   onSelectSection?: (index: number) => void
+  /** Whether the parent stage is currently running */
+  stageRunning?: boolean
 }) {
   const { i18n } = useLingui()
   const { data, isLoading } = usePageImage(bookLabel, page.pageId)
@@ -568,6 +607,9 @@ function PageRow({
 
   const imgSrc = data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null
 
+  // Page is still being processed during a storyboard run
+  const pageProcessing = stageRunning && !page.hasRendering
+
   const showSections = isActive && page.sectionCount > 1 && onSelectSection
 
   return (
@@ -583,17 +625,24 @@ function PageRow({
             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
         )}
       >
-        {isLoading || !imgSrc ? (
-          <div className="shrink-0 w-16 h-12 bg-muted rounded ring-1 ring-border" />
-        ) : (
-          <img
-            src={imgSrc}
-            alt=""
-            onMouseEnter={handleEnter}
-            onMouseLeave={handleLeave}
-            className="shrink-0 w-16 h-12 rounded object-cover object-center ring-1 ring-border"
-          />
-        )}
+        <div className="relative shrink-0 w-16 h-12">
+          {isLoading || !imgSrc ? (
+            <div className="w-full h-full bg-muted rounded ring-1 ring-border" />
+          ) : (
+            <img
+              src={imgSrc}
+              alt=""
+              onMouseEnter={handleEnter}
+              onMouseLeave={handleLeave}
+              className="w-full h-full rounded object-cover object-center ring-1 ring-border"
+            />
+          )}
+          {pageProcessing && (
+            <div className="absolute inset-0 flex items-center justify-center rounded bg-black/30">
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            </div>
+          )}
+        </div>
         <div className="flex flex-col gap-0.5 min-w-0 flex-1 pt-0.5">
           <span className="text-[11px] leading-snug line-clamp-2">
             {page.textPreview || i18n._(msg`Untitled`)}

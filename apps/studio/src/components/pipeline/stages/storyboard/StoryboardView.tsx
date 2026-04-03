@@ -23,7 +23,12 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
   const storyboardState = stageState("storyboard")
   const storyboardDone = storyboardState === "done"
   const storyboardRunning = storyboardState === "running" || storyboardState === "queued"
-  const showRunCard = !storyboardDone || storyboardRunning
+  // Show page content during a run (or after an error) once pages have data.
+  // Only show the run card when idle or no data exists yet.
+  const hasPageData = (pages ?? []).some((p) => p.sectionCount > 0)
+  const showRunCard = storyboardRunning || storyboardState === "error"
+    ? !hasPageData
+    : !storyboardDone
 
   const handleRunStoryboard = useCallback(() => {
     if (!hasApiKey || storyboardRunning) return
@@ -313,6 +318,14 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
   }
 
   if (!page.sectioning) {
+    if (storyboardRunning) {
+      return (
+        <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <Trans>Waiting for page to be processed...</Trans>
+        </div>
+      )
+    }
     return (
       <div className="p-4">
         <StageRunCard

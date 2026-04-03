@@ -17,6 +17,7 @@ import { SectionEditToolbar } from "./SectionEditToolbar"
 import { ImageCropDialog } from "./ImageCropDialog"
 import { AiImageDialog } from "./AiImageDialog"
 import { useApiKey } from "@/hooks/use-api-key"
+import { useBookRun } from "@/hooks/use-book-run"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
 import { cn } from "@/lib/utils"
@@ -33,6 +34,8 @@ interface SectioningOverviewProps {
 export function SectioningOverview({ bookLabel, pages, onNavigateToSection }: SectioningOverviewProps) {
   const { t } = useLingui()
   const queryClient = useQueryClient()
+  const { stageState } = useBookRun()
+  const storyboardRunning = stageState("storyboard") === "running" || stageState("storyboard") === "queued"
   const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null)
   const [visiblePanels, setVisiblePanels] = useState<Set<DetailPanel>>(() => new Set(ALL_PANELS))
   const [allExpanded, setAllExpanded] = useState(false)
@@ -120,7 +123,7 @@ export function SectioningOverview({ bookLabel, pages, onNavigateToSection }: Se
     onSuccess: (_data, vars) => invalidatePages(vars.pageId),
   })
 
-  const isMutating = mergeMutation.isPending || mergeCrossPageMutation.isPending || cloneMutation.isPending || deleteMutation.isPending || togglePruneMutation.isPending
+  const isMutating = storyboardRunning || mergeMutation.isPending || mergeCrossPageMutation.isPending || cloneMutation.isPending || deleteMutation.isPending || togglePruneMutation.isPending
 
   if (isLoading) {
     return (
@@ -680,6 +683,8 @@ function SectionDetail({
 }) {
   const { t } = useLingui()
   const { apiKey, hasApiKey } = useApiKey()
+  const { stageState: detailStageState } = useBookRun()
+  const storyboardRunning = detailStageState("storyboard") === "running" || detailStageState("storyboard") === "queued"
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replaceTargetRef = useRef<string | null>(null)
@@ -693,10 +698,11 @@ function SectionDetail({
   const [aiImageTarget, setAiImageTarget] = useState<string | null>(null)
 
   const handleImageClick = useCallback((e: React.MouseEvent, img: { imageId: string; isPruned: boolean }) => {
+    if (storyboardRunning) return
     e.stopPropagation()
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     setSelectedImage({ imageId: img.imageId, isPruned: img.isPruned, rect })
-  }, [])
+  }, [storyboardRunning])
 
   const handleCrop = useCallback((dataId: string) => {
     setSelectedImage(null)
@@ -978,16 +984,16 @@ function SectionDetail({
             isImage
             isPruned={selectedImage.isPruned}
             imageSrc={`${BASE_URL}/books/${bookLabel}/images/${selectedImage.imageId}`}
-            onCrop={handleCrop}
-            onReplace={handleReplace}
-            onAiImage={hasApiKey ? handleAiImage : undefined}
-            onDelete={(dataId) => {
+            onCrop={!storyboardRunning ? handleCrop : undefined}
+            onReplace={!storyboardRunning ? handleReplace : undefined}
+            onAiImage={hasApiKey && !storyboardRunning ? handleAiImage : undefined}
+            onDelete={!storyboardRunning ? (dataId) => {
               onConfirmAction({
                 message: t`Are you sure you want to delete this image? This action cannot be undone.`,
                 onConfirm: () => handleDelete(dataId),
               })
-            }}
-            onTogglePrune={handleTogglePrune}
+            } : undefined}
+            onTogglePrune={!storyboardRunning ? handleTogglePrune : undefined}
           />
         </>
       )}

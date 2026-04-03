@@ -60,7 +60,11 @@ vi.mock("@lingui/react/macro", () => ({
 }))
 
 vi.mock("@/hooks/use-book-run", () => ({
-  useBookRun: () => ({ stageState: stageStateMock }),
+  useBookRun: () => ({
+    stageState: stageStateMock,
+    stepState: vi.fn(() => "idle"),
+    stepProgress: vi.fn(() => null),
+  }),
 }))
 
 vi.mock("@/hooks/use-debug", () => ({

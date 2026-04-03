@@ -311,6 +311,9 @@ msgstr "Accessibility results are temporarily unavailable."
 msgid "Accessibility Summary"
 msgstr "Accessibility Summary"
 
+msgid "Actions disabled while storyboard is running"
+msgstr "Actions disabled while storyboard is running"
+
 msgid "active checklist items"
 msgstr "active checklist items"
 
@@ -1141,6 +1144,9 @@ msgstr "Edit this image"
 
 msgid "Editing"
 msgstr "Editing"
+
+msgid "Editing is disabled while the storyboard is running"
+msgstr "Editing is disabled while the storyboard is running"
 
 msgid "Editing Language"
 msgstr "Editing Language"
@@ -2421,6 +2427,9 @@ msgstr "rendering"
 msgid "Rendering Prompt"
 msgstr "Rendering Prompt"
 
+msgid "Rendering this section..."
+msgstr "Rendering this section..."
+
 msgid "Replace"
 msgstr "Replace"
 
@@ -2656,6 +2665,9 @@ msgstr "Section Text"
 
 msgid "Section Types"
 msgstr "Section Types"
+
+#~ msgid "Sectioning"
+#~ msgstr "Sectioning"
 
 msgid "Sectioning Mode"
 msgstr "Sectioning Mode"
@@ -3230,6 +3242,12 @@ msgstr "Voice Mappings"
 
 msgid "Voices"
 msgstr "Voices"
+
+msgid "Wait for storyboard to complete"
+msgstr "Wait for storyboard to complete"
+
+msgid "Waiting for page to be processed..."
+msgstr "Waiting for page to be processed..."
 
 msgid "Wall Clock"
 msgstr "Wall Clock"

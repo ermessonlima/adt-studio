@@ -5,6 +5,7 @@ import { usePage, usePageImage } from "@/hooks/use-pages"
 import { api, BASE_URL } from "@/api/client"
 import type { VersionEntry } from "@/api/client"
 import { useActiveConfig } from "@/hooks/use-debug"
+import { useBookRun } from "@/hooks/use-book-run"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
 import { getTextGroupLabel, getTextTypeLabel } from "@/lib/text-type-labels"
@@ -200,6 +201,8 @@ export function ExtractPageDetail({
     ? Object.keys((activeConfigData.merged as Record<string, unknown>).text_types as Record<string, string> ?? {})
     : []
   const [pageImageDims, setPageImageDims] = useState<{ w: number; h: number } | null>(null)
+  const { stageState } = useBookRun()
+  const storyboardRunning = stageState("storyboard") === "running" || stageState("storyboard") === "queued"
   const [savingText, setSavingText] = useState(false)
   const [savingImages, setSavingImages] = useState(false)
   const [pendingTextData, setPendingTextData] = useState<TextClassData | null>(null)
@@ -257,7 +260,7 @@ export function ExtractPageDetail({
   }
 
   const saveTextChanges = async () => {
-    if (!pendingTextData) return
+    if (!pendingTextData || storyboardRunning) return
     setSavingText(true)
     const minDelay = new Promise((r) => setTimeout(r, 400))
     await api.updateTextClassification(bookLabel, pageId, pendingTextData)
@@ -268,7 +271,7 @@ export function ExtractPageDetail({
   }
 
   const saveImageChanges = async () => {
-    if (!pendingImageData) return
+    if (!pendingImageData || storyboardRunning) return
     setSavingImages(true)
     const minDelay = new Promise((r) => setTimeout(r, 400))
     await api.updateImageClassification(bookLabel, pageId, pendingImageData)

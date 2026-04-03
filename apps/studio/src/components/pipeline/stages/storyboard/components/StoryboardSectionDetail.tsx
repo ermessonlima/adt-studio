@@ -8,6 +8,7 @@ import type { PageDetail, VersionEntry } from "@/api/client"
 import { useApiKey } from "@/hooks/use-api-key"
 import { useActiveConfig } from "@/hooks/use-debug"
 import { useBookTasks } from "@/hooks/use-book-tasks"
+import { useBookRun } from "@/hooks/use-book-run"
 import { invalidateStoryboardDependents } from "@/hooks/use-page-mutations"
 import { useStepHeader } from "../../../components/StepViewRouter"
 import { BookPreviewFrame, type BookPreviewFrameHandle } from "./BookPreviewFrame"
@@ -403,6 +404,8 @@ export function StoryboardSectionDetail({
   const queryClient = useQueryClient()
   const { apiKey, hasApiKey } = useApiKey()
   const { headerSlotEl } = useStepHeader()
+  const { stageState } = useBookRun()
+  const storyboardRunning = stageState("storyboard") === "running" || stageState("storyboard") === "queued"
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const applyBodyBackground = (activeConfigData?.merged as Record<string, unknown> | undefined)?.apply_body_background !== false
 
@@ -618,7 +621,7 @@ export function StoryboardSectionDetail({
 
   // Save / discard sectioning
   const saveSectioning = async () => {
-    if (!pendingSectioning) return
+    if (!pendingSectioning || storyboardRunning) return
     setSaving(true)
     setPanelOpen(false)
     const shouldRerender = needsRerenderRef.current
@@ -689,7 +692,7 @@ export function StoryboardSectionDetail({
 
   // Save rendering (including back-propagation to sectioning)
   const saveRendering = async () => {
-    if (!pendingRendering) return
+    if (!pendingRendering || storyboardRunning) return
     setSaving(true)
     setPanelOpen(false)
     try {
@@ -723,7 +726,7 @@ export function StoryboardSectionDetail({
 
   // Clone current section
   const handleCloneSection = async () => {
-    if (cloning || dirty || renderingDirty || saving) return
+    if (cloning || dirty || renderingDirty || saving || storyboardRunning) return
     setCloning(true)
     try {
       const result = await api.cloneSection(bookLabel, pageId, sectionIndex)
@@ -779,20 +782,20 @@ export function StoryboardSectionDetail({
 
   // Confirmation wrappers for merge actions
   const handleMergeSection = (direction: "next" | "prev") => {
-    if (merging || dirty || renderingDirty || saving) return
+    if (merging || dirty || renderingDirty || saving || storyboardRunning) return
     const label = direction === "prev" ? t`merge with previous` : t`merge with next`
     setConfirmMerge({ action: () => executeMergeSection(direction), label })
   }
 
   const handleMergeCrossPage = (direction: "next" | "prev") => {
-    if (merging || dirty || renderingDirty || saving) return
+    if (merging || dirty || renderingDirty || saving || storyboardRunning) return
     const label = direction === "prev" ? t`merge into previous page` : t`merge into next page`
     setConfirmMerge({ action: () => executeMergeCrossPage(direction), label })
   }
 
   // Delete current section
   const handleDeleteSection = () => {
-    if (deleting || dirty || renderingDirty || saving) return
+    if (deleting || dirty || renderingDirty || saving || storyboardRunning) return
     setConfirmDeleteSection(true)
   }
 
@@ -816,7 +819,7 @@ export function StoryboardSectionDetail({
   // If there are pending rendering edits, diff them against the saved version
   // and inject structured instructions so the LLM preserves the user's changes.
   const handleRerender = (prompt?: string) => {
-    if (hasActiveTask || dirty || saving || !hasApiKey) return
+    if (hasActiveTask || storyboardRunning || dirty || renderingDirty || saving || !hasApiKey) return
     setPanelOpen(false)
 
     // Build edit instructions from pending changes
@@ -1074,6 +1077,7 @@ export function StoryboardSectionDetail({
 
   // Toggle isPruned on the current section
   const toggleSectionPruned = () => {
+    if (storyboardRunning) return
     const base = pendingSectioning ?? page.sectioning
     if (!base) return
     // Unpruning requires re-render
@@ -2009,7 +2013,7 @@ export function StoryboardSectionDetail({
 
   // AI edit handler
   const handleAiEdit = async () => {
-    if (!aiInstruction.trim() || !hasApiKey || hasActiveTask) return
+    if (!aiInstruction.trim() || !hasApiKey || hasActiveTask || storyboardRunning) return
     setAiError(null)
 
     const currentHtml = renderedSection?.html
@@ -2190,8 +2194,8 @@ export function StoryboardSectionDetail({
                 handleAiEdit()
               }
             }}
-            placeholder={hasActiveTask ? t`Task running...` : t`Ask AI to edit...`}
-            disabled={hasActiveTask}
+            placeholder={hasActiveTask || storyboardRunning ? t`Task running...` : t`Ask AI to edit...`}
+            disabled={hasActiveTask || storyboardRunning}
             className={`pl-7 h-7 text-[11px] bg-white border-white/40 text-gray-900 placeholder:text-gray-400 focus-visible:ring-white/50 ${hasActiveTask ? "opacity-60" : ""}`}
           />
         </div>
@@ -2272,7 +2276,7 @@ export function StoryboardSectionDetail({
                   html={renderedSection.html}
                   bookLabel={bookLabel}
                   className="w-full rounded border"
-                  editable={!hasActiveTask}
+                  editable={!hasActiveTask && !storyboardRunning}
                   prunedDataIds={prunedDataIds}
                   changedElements={changedElements}
                   onSelectElement={handleSelectElement}
@@ -2281,6 +2285,11 @@ export function StoryboardSectionDetail({
                 />
             )}
           </>
+        ) : storyboardRunning && !section?.isPruned ? (
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin text-violet-400 mb-3" />
+            <p className="text-sm font-medium">{t`Rendering this section...`}</p>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <div className="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mb-3">
@@ -2528,14 +2537,14 @@ export function StoryboardSectionDetail({
           isPruned={selectedInfo.isPruned}
           textTypes={textTypes}
           imageSrc={selectedInfo.imageSrc}
-          onChangeTextType={selectedInfo.isContainer ? undefined : handleToolbarChangeTextType}
-          onTogglePrune={selectedInfo.isContainer ? undefined : handleToolbarPrune}
-          onCrop={selectedInfo.isImage ? (dataId) => setCropTarget(dataId) : undefined}
-          onReplace={selectedInfo.isImage ? handleImageReplace : undefined}
-          onAiImage={selectedInfo.isImage && hasApiKey ? handleAiImage : undefined}
-          onSegment={selectedInfo.isImage && hasApiKey ? handleSegment : undefined}
+          onChangeTextType={storyboardRunning || selectedInfo.isContainer ? undefined : handleToolbarChangeTextType}
+          onTogglePrune={storyboardRunning || selectedInfo.isContainer ? undefined : handleToolbarPrune}
+          onCrop={selectedInfo.isImage && !storyboardRunning ? (dataId) => setCropTarget(dataId) : undefined}
+          onReplace={selectedInfo.isImage && !storyboardRunning ? handleImageReplace : undefined}
+          onAiImage={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleAiImage : undefined}
+          onSegment={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleSegment : undefined}
           segmenting={segmenting}
-          onDelete={handleDeleteBlock}
+          onDelete={!storyboardRunning ? handleDeleteBlock : undefined}
           elementClasses={selectedElementClasses ?? undefined}
           onClassesChange={handleClassesChange}
         />
@@ -2600,6 +2609,7 @@ export function StoryboardSectionDetail({
         cloning={cloning}
         deleting={deleting}
         saving={saving}
+        pipelineRunning={storyboardRunning}
         rerendering={hasActiveTask}
         dirty={dirty}
         renderingDirty={renderingDirty}
