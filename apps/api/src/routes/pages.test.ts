@@ -61,6 +61,7 @@ describe("Page routes", () => {
             texts: [
               { textType: "paragraph", text: "Hello world", isPruned: false },
             ],
+            isPruned: false,
           },
         ],
       })
@@ -207,6 +208,7 @@ describe("Page routes", () => {
             texts: [
               { textType: "paragraph", text: "Updated text", isPruned: false },
             ],
+            isPruned: false,
           },
         ],
       }

@@ -23,6 +23,7 @@ const sampleClassification: TextClassificationOutput = {
         { textType: "section_text", text: "Hello world", isPruned: false },
         { textType: "instruction_text", text: "Read this aloud.", isPruned: false },
       ],
+      isPruned: false,
     },
   ],
 }
@@ -180,6 +181,7 @@ describe("translation", () => {
           groupId: "pg001_gp001",
           groupType: "paragraph",
           texts: [],
+          isPruned: false,
         },
       ],
     }

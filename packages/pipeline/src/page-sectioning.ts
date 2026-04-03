@@ -40,6 +40,7 @@ export function buildGroupSummaries(
 ): Array<{ groupId: string; groupType: string; text: string }> {
   return textClassification.groups
     .map((g) => {
+      if (g.isPruned) return null
       const unprunedTexts = g.texts.filter((t) => !t.isPruned)
       if (unprunedTexts.length === 0) return null
 
@@ -160,7 +161,7 @@ export async function sectionPage(
             text: t.text,
             isPruned: t.isPruned,
           })),
-          isPruned: false,
+          isPruned: group.isPruned,
         }
       }
 

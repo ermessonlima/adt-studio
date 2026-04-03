@@ -11,6 +11,7 @@ export const TextGroup = z.object({
   groupId: z.string(),
   groupType: z.string(),
   texts: z.array(TextEntry),
+  isPruned: z.boolean().default(false),
 })
 export type TextGroup = z.infer<typeof TextGroup>
 

@@ -2351,6 +2351,9 @@ msgstr "Eliminar"
 msgid "Prune element"
 msgstr "Eliminar elemento"
 
+msgid "Prune group"
+msgstr "Eliminar grupo"
+
 msgid "Prune image"
 msgstr "Eliminar imagen"
 
@@ -3222,6 +3225,9 @@ msgstr "Slug de etapa desconocido: {0}"
 
 msgid "Unknown step: {step}"
 msgstr "Paso desconocido: {0}"
+
+msgid "Unprune group"
+msgstr "Restaurar grupo"
 
 msgid "Unprune image"
 msgstr "Restaurar imagen"

@@ -82,6 +82,7 @@ export async function classifyPageText(
       text: t.text,
       isPruned: prunedSet.has(t.text_type),
     })),
+    isPruned: false,
   }))
 
   return {

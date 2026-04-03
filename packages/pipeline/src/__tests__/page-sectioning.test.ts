@@ -97,6 +97,7 @@ describe("buildGroupSummaries", () => {
             { textType: "section_text", text: "Hello world.", isPruned: false },
             { textType: "section_text", text: "More text.", isPruned: false },
           ],
+          isPruned: false,
         },
         {
           groupId: "pg001_gp002",
@@ -104,6 +105,7 @@ describe("buildGroupSummaries", () => {
           texts: [
             { textType: "section_heading", text: "Chapter 1", isPruned: false },
           ],
+          isPruned: false,
         },
       ],
     }
@@ -133,6 +135,7 @@ describe("buildGroupSummaries", () => {
           texts: [
             { textType: "header_text", text: "Header", isPruned: true },
           ],
+          isPruned: false,
         },
         {
           groupId: "pg001_gp002",
@@ -140,6 +143,7 @@ describe("buildGroupSummaries", () => {
           texts: [
             { textType: "section_text", text: "Body text", isPruned: false },
           ],
+          isPruned: false,
         },
       ],
     }
@@ -160,6 +164,7 @@ describe("buildGroupSummaries", () => {
             { textType: "page_number", text: "42", isPruned: true },
             { textType: "section_text", text: "Body text", isPruned: false },
           ],
+          isPruned: false,
         },
       ],
     }
@@ -244,6 +249,7 @@ describe("sectionPage", () => {
                   isPruned: false,
                 },
               ],
+              isPruned: false,
             },
             {
               groupId: "pg001_gp002",
@@ -255,6 +261,7 @@ describe("sectionPage", () => {
                   isPruned: false,
                 },
               ],
+              isPruned: false,
             },
           ],
         },
@@ -347,6 +354,7 @@ describe("sectionPage", () => {
                   isPruned: false,
                 },
               ],
+              isPruned: false,
             },
           ],
         },
@@ -409,6 +417,7 @@ describe("sectionPage", () => {
               texts: [
                 { textType: "section_text", text: "Body", isPruned: false },
               ],
+              isPruned: false,
             },
             {
               groupId: "pg001_gp002",
@@ -416,6 +425,7 @@ describe("sectionPage", () => {
               texts: [
                 { textType: "header_text", text: "Header", isPruned: true },
               ],
+              isPruned: false,
             },
           ],
         },
@@ -485,6 +495,7 @@ describe("sectionPage", () => {
                     isPruned: false,
                   },
                 ],
+                isPruned: false,
               },
             ],
           },

@@ -2351,6 +2351,9 @@ msgstr "Prune"
 msgid "Prune element"
 msgstr "Prune element"
 
+msgid "Prune group"
+msgstr "Prune group"
+
 msgid "Prune image"
 msgstr "Prune image"
 
@@ -3222,6 +3225,9 @@ msgstr "Unknown step slug: {step}"
 
 msgid "Unknown step: {step}"
 msgstr "Unknown step: {step}"
+
+msgid "Unprune group"
+msgstr "Unprune group"
 
 msgid "Unprune image"
 msgstr "Unprune image"

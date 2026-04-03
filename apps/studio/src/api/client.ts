@@ -166,6 +166,7 @@ export interface PageDetail {
       groupId: string
       groupType: string
       texts: Array<{ textType: string; text: string; isPruned: boolean }>
+      isPruned: boolean
     }>
   } | null
   imageClassification: {
