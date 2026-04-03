@@ -2219,14 +2219,14 @@ export function StoryboardSectionDetail({
         type="button"
         onClick={() => setPanelOpen((v) => !v)}
         className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors cursor-pointer shrink-0"
-        title={panelOpen ? t`Close section data` : t`Open section data`}
+        title={panelOpen ? t`Close edit panel` : t`Open edit panel`}
       >
         {panelOpen ? (
           <PanelRightClose className="h-3.5 w-3.5" />
         ) : (
           <PanelRightOpen className="h-3.5 w-3.5" />
         )}
-        <span className="text-[10px]">{t`Section Data`}</span>
+        <span className="text-[10px]">{t`Edit`}</span>
         {dirty && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title={t`Unsaved changes`} />}
       </button>
       {navigationArrows}

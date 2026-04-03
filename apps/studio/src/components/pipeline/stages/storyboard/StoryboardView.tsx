@@ -146,7 +146,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
         overviewMode ? "bg-white/30 text-white" : "bg-white/15 hover:bg-white/25 text-white/70"
       }`}
       onClick={() => setOverviewMode((v) => !v)}
-      title={t`Sectioning Overview`}
+      title={t`Overview`}
     >
       <Table2 className="h-3.5 w-3.5" />
     </button>
@@ -191,7 +191,7 @@ export function StoryboardView({ bookLabel, selectedPageId: selectedPageIdProp, 
       setExtra(
         <>
           <span className="text-white/40 text-sm">/</span>
-          <span className="text-sm font-medium">{t`Sectioning Overview`}</span>
+          <span className="text-sm font-medium">{t`Overview`}</span>
           <div className="ml-auto flex gap-1">
             {overviewToggle}
           </div>

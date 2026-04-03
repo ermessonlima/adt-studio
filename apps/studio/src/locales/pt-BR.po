@@ -786,8 +786,11 @@ msgstr "Clone failed"
 msgid "Close"
 msgstr "Close"
 
-msgid "Close section data"
-msgstr "Fechar dados da seção"
+msgid "Close edit panel"
+msgstr "Fechar painel de edição"
+
+#~ msgid "Close section data"
+#~ msgstr "Fechar dados da seção"
 
 msgid "Collapse accessibility summary"
 msgstr "Collapse accessibility summary"
@@ -1165,6 +1168,9 @@ msgstr "Edite o template Liquid/HTML abaixo. As alterações são salvas quando 
 
 msgid "Edit this image"
 msgstr "Editar esta imagem"
+
+msgid "Edit this section"
+msgstr "Editar esta seção"
 
 msgid "Editing"
 msgstr "Editando"
@@ -2130,14 +2136,17 @@ msgstr "Open a page to review"
 msgid "Open a page to see page-level findings"
 msgstr "Open a page to see page-level findings"
 
+msgid "Open edit panel"
+msgstr "Abrir painel de edição"
+
 msgid "Open page preview for {pageId}"
 msgstr "Abrir pré-visualização da página {0}"
 
 msgid "Open Preview"
 msgstr "Open Preview"
 
-msgid "Open section data"
-msgstr "Abrir dados da seção"
+#~ msgid "Open section data"
+#~ msgstr "Abrir dados da seção"
 
 msgid "Open Validation"
 msgstr "Open Validation"
@@ -2180,6 +2189,9 @@ msgstr "Tokens de saída"
 
 msgid "Overall page note"
 msgstr "Overall page note"
+
+msgid "Overview"
+msgstr "Visão geral"
 
 msgid "Package and preview the final ADT web application."
 msgstr "Empacota e pré-visualiza a aplicação web ADT final."
@@ -2678,8 +2690,8 @@ msgstr "Seção {0} — {1}"
 msgid "Section {0} (pruned)"
 msgstr "Seção {0} (removida)"
 
-msgid "Section Data"
-msgstr "Dados da seção"
+#~ msgid "Section Data"
+#~ msgstr "Dados da seção"
 
 msgid "Section Heading"
 msgstr "Cabeçalho da seção"
@@ -2711,8 +2723,8 @@ msgstr "Tipos de seção"
 msgid "Sectioning Mode"
 msgstr "Modo de seção"
 
-msgid "Sectioning Overview"
-msgstr "Visão geral das seções"
+#~ msgid "Sectioning Overview"
+#~ msgstr "Visão geral das seções"
 
 msgid "Sectioning Reasoning"
 msgstr "Raciocínio de seção"

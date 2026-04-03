@@ -835,7 +835,12 @@ function SectionDetail({
             <h4 className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
               <Trans>Preview</Trans>
             </h4>
-            <div className="w-[200px] h-[260px] border rounded overflow-hidden bg-white relative">
+            <button
+              type="button"
+              className="w-[200px] h-[260px] border rounded overflow-hidden bg-white relative cursor-pointer hover:ring-2 hover:ring-violet-400 transition-shadow"
+              onClick={() => onNavigate?.()}
+              title={t`Edit this section`}
+            >
               <iframe
                 src={previewSrc}
                 title={t`Section preview`}
@@ -848,7 +853,7 @@ function SectionDetail({
                 }}
                 sandbox="allow-same-origin"
               />
-            </div>
+            </button>
           </div>
         )}
 
