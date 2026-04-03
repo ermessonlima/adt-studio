@@ -27,7 +27,11 @@ import {
 import { LanguagePicker } from "@/components/LanguagePicker"
 import { useSettingsDialog } from "@/routes/__root"
 import { useBooks, useCreateBook } from "@/hooks/use-books"
-import { isLabelFormatValid, isLabelDuplicate } from "@/lib/label-validation"
+import {
+  isLabelFormatValid,
+  isLabelDuplicate,
+  deduplicateLabel,
+} from "@/lib/label-validation"
 import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { usePreset, useGlobalConfig, useStyleguides, useStyleguidePreview } from "@/hooks/use-presets"
@@ -343,7 +347,10 @@ function AddBookPage() {
   const handleFileSelect = (selected: File) => {
     setFile(selected)
     if (!label) {
-      setLabel(suggestLabel(selected.name))
+      const suggested = suggestLabel(selected.name)
+      setLabel(
+        deduplicateLabel(suggested, existingBooks?.map((b) => b.label))
+      )
     }
   }
 

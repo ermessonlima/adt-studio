@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { isLabelFormatValid, isLabelDuplicate } from "./label-validation"
+import {
+  isLabelFormatValid,
+  isLabelDuplicate,
+  deduplicateLabel,
+} from "./label-validation"
 
 describe("isLabelFormatValid", () => {
   it("accepts valid labels", () => {
@@ -48,5 +52,31 @@ describe("isLabelDuplicate", () => {
 
   it("returns false for empty existing list", () => {
     expect(isLabelDuplicate("anything", [])).toBe(false)
+  })
+})
+
+describe("deduplicateLabel", () => {
+  it("returns original label when no duplicates", () => {
+    expect(deduplicateLabel("my-book", ["other-book"])).toBe("my-book")
+  })
+
+  it("returns original label when existing is undefined", () => {
+    expect(deduplicateLabel("my-book", undefined)).toBe("my-book")
+  })
+
+  it("appends -2 for first duplicate", () => {
+    expect(deduplicateLabel("my-book", ["my-book"])).toBe("my-book-2")
+  })
+
+  it("increments suffix when earlier suffixes are taken", () => {
+    expect(
+      deduplicateLabel("my-book", ["my-book", "my-book-2", "my-book-3"])
+    ).toBe("my-book-4")
+  })
+
+  it("finds first available gap", () => {
+    expect(deduplicateLabel("my-book", ["my-book", "my-book-2"])).toBe(
+      "my-book-3"
+    )
   })
 })
