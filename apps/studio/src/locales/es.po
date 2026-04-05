@@ -1342,6 +1342,9 @@ msgstr "Error al cargar libros: {0}"
 #~ msgid "Failed to load config:"
 #~ msgstr "Error al cargar config:"
 
+msgid "Failed to load page image"
+msgstr "Error al cargar la imagen de la página"
+
 #. placeholder {0}: anyRecordQueryError.message
 msgid "Failed to load reviewer page results: {0}"
 msgstr "Failed to load reviewer page results: {0}"
@@ -2485,6 +2488,9 @@ msgstr "Reorganizando los átomos de HTML..."
 
 msgid "Record reviewer findings for the current page and save them to the active validation session."
 msgstr "Record reviewer findings for the current page and save them to the active validation session."
+
+msgid "Recrop from Page"
+msgstr "Recortar desde la página"
 
 msgid "Refresh validation"
 msgstr "Refresh validation"

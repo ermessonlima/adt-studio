@@ -695,6 +695,7 @@ function SectionDetail({
     rect: DOMRect
   } | null>(null)
   const [cropTarget, setCropTarget] = useState<string | null>(null)
+  const [recropPageSrc, setRecropPageSrc] = useState<string | null>(null)
   const [aiImageTarget, setAiImageTarget] = useState<string | null>(null)
 
   const handleImageClick = useCallback((e: React.MouseEvent, img: { imageId: string; isPruned: boolean }) => {
@@ -730,8 +731,20 @@ function SectionDetail({
       await api.updateSectioning(bookLabel, pageId, updated)
     }
     setCropTarget(null)
+    setRecropPageSrc(null)
     onInvalidatePages(pageId)
   }, [cropTarget, bookLabel, pageId, sectionIndex, queryClient, onInvalidatePages])
+
+  const handleRecropFromPage = useCallback(async (dataId: string) => {
+    setSelectedImage(null)
+    try {
+      const { imageBase64 } = await api.getPageImage(bookLabel, pageId)
+      setCropTarget(dataId)
+      setRecropPageSrc(`data:image/png;base64,${imageBase64}`)
+    } catch (err) {
+      console.error(t`Failed to load page image`, err)
+    }
+  }, [bookLabel, pageId, t])
 
   const handleReplace = useCallback((dataId: string) => {
     setSelectedImage(null)
@@ -990,6 +1003,7 @@ function SectionDetail({
             isPruned={selectedImage.isPruned}
             imageSrc={`${BASE_URL}/books/${bookLabel}/images/${selectedImage.imageId}`}
             onCrop={!storyboardRunning ? handleCrop : undefined}
+            onRecropFromPage={!storyboardRunning ? handleRecropFromPage : undefined}
             onReplace={!storyboardRunning ? handleReplace : undefined}
             onAiImage={hasApiKey && !storyboardRunning ? handleAiImage : undefined}
             onDelete={!storyboardRunning ? (dataId) => {
@@ -1015,9 +1029,9 @@ function SectionDetail({
       {/* Crop dialog */}
       {cropTarget && (
         <ImageCropDialog
-          imageSrc={`${BASE_URL}/books/${bookLabel}/images/${cropTarget}`}
+          imageSrc={recropPageSrc ?? `${BASE_URL}/books/${bookLabel}/images/${cropTarget}`}
           onApply={handleCropApply}
-          onClose={() => setCropTarget(null)}
+          onClose={() => { setCropTarget(null); setRecropPageSrc(null) }}
         />
       )}
 

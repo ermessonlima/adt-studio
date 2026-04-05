@@ -460,6 +460,7 @@ export function StoryboardSectionDetail({
 
   // Image crop state
   const [cropTarget, setCropTarget] = useState<string | null>(null)
+  const [recropPageSrc, setRecropPageSrc] = useState<string | null>(null)
 
   // Image replace / AI image state — tracked via unified task system
   const [aiImageDialogTarget, setAiImageDialogTarget] = useState<string | null>(null)
@@ -1627,10 +1628,23 @@ export function StoryboardSectionDetail({
       }
 
       setCropTarget(null)
+      setRecropPageSrc(null)
       setSelectedElement(null)
     },
     [cropTarget, bookLabel, pageId, pendingSectioning, page.sectioning, pendingRendering, page.rendering, sectionIndex]
   )
+
+  // Recrop from page: fetch the full page image and open crop dialog with it
+  const handleRecropFromPage = useCallback(async (dataId: string) => {
+    setSelectedElement(null)
+    try {
+      const { imageBase64 } = await api.getPageImage(bookLabel, pageId)
+      setCropTarget(dataId)
+      setRecropPageSrc(`data:image/png;base64,${imageBase64}`)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : t`Failed to load page image`)
+    }
+  }, [bookLabel, pageId, t])
 
   // Image replace: open native file picker
   const handleImageReplace = useCallback((dataId: string) => {
@@ -2540,6 +2554,7 @@ export function StoryboardSectionDetail({
           onChangeTextType={storyboardRunning || selectedInfo.isContainer ? undefined : handleToolbarChangeTextType}
           onTogglePrune={storyboardRunning || selectedInfo.isContainer ? undefined : handleToolbarPrune}
           onCrop={selectedInfo.isImage && !storyboardRunning ? (dataId) => setCropTarget(dataId) : undefined}
+          onRecropFromPage={selectedInfo.isImage && !storyboardRunning ? handleRecropFromPage : undefined}
           onReplace={selectedInfo.isImage && !storyboardRunning ? handleImageReplace : undefined}
           onAiImage={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleAiImage : undefined}
           onSegment={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleSegment : undefined}
@@ -2637,9 +2652,9 @@ export function StoryboardSectionDetail({
     {/* Image crop dialog */}
     {cropTarget && (
       <ImageCropDialog
-        imageSrc={`${BASE_URL}/books/${bookLabel}/images/${cropTarget}`}
+        imageSrc={recropPageSrc ?? `${BASE_URL}/books/${bookLabel}/images/${cropTarget}`}
         onApply={handleCropApply}
-        onClose={() => setCropTarget(null)}
+        onClose={() => { setCropTarget(null); setRecropPageSrc(null) }}
       />
     )}
 
