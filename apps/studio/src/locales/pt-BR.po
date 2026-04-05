@@ -744,8 +744,8 @@ msgstr "Prompt de legenda"
 msgid "Captioning Images..."
 msgstr "Legendando imagens..."
 
-msgid "Captions"
-msgstr "Legendas"
+#~ msgid "Captions"
+#~ msgstr "Legendas"
 
 msgid "Cartoon"
 msgstr "Cartum"
@@ -1563,6 +1563,9 @@ msgstr "Texto associado à imagem"
 
 msgid "Image Captioning"
 msgstr "Legendagem de imagens"
+
+msgid "Image Captions"
+msgstr "Legendas de Imagens"
 
 msgid "Image Cropping"
 msgstr "Recorte de imagens"

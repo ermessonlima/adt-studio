@@ -744,8 +744,8 @@ msgstr "Prompt de leyenda"
 msgid "Captioning Images..."
 msgstr "Subtitulando imágenes..."
 
-msgid "Captions"
-msgstr "Subtítulos"
+#~ msgid "Captions"
+#~ msgstr "Subtítulos"
 
 msgid "Cartoon"
 msgstr "Dibujo animado"
@@ -1563,6 +1563,9 @@ msgstr "Texto asociado a la imagen"
 
 msgid "Image Captioning"
 msgstr "Subtitulado de imágenes"
+
+msgid "Image Captions"
+msgstr "Leyendas de Imágenes"
 
 msgid "Image Cropping"
 msgstr "Recorte de imágenes"

@@ -11,7 +11,7 @@ export const STAGE_LABEL_MESSAGES: Record<string, MessageDescriptor> = {
   extract: msg`Extract`,
   storyboard: msg`Storyboard`,
   quizzes: msg`Quizzes`,
-  captions: msg`Captions`,
+  captions: msg`Image Captions`,
   glossary: msg`Glossary`,
   toc: msg`Table of Contents`,
   "text-and-speech": msg`Text & Speech`,

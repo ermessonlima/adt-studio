@@ -744,8 +744,8 @@ msgstr "Caption Prompt"
 msgid "Captioning Images..."
 msgstr "Captioning Images..."
 
-msgid "Captions"
-msgstr "Captions"
+#~ msgid "Captions"
+#~ msgstr "Captions"
 
 msgid "Cartoon"
 msgstr "Cartoon"
@@ -1563,6 +1563,9 @@ msgstr "Image Associated Text"
 
 msgid "Image Captioning"
 msgstr "Image Captioning"
+
+msgid "Image Captions"
+msgstr "Image Captions"
 
 msgid "Image Cropping"
 msgstr "Image Cropping"

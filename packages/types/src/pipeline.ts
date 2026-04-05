@@ -95,7 +95,7 @@ export const PIPELINE: StageDef[] = [
   },
   {
     name: "captions",
-    label: "Captions",
+    label: "Image Captions",
     dependsOn: ["storyboard"],
     steps: [
       { name: "image-captioning", label: "Image Captioning" },
