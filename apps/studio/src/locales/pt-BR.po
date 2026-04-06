@@ -801,6 +801,9 @@ msgstr "Limpar modelo"
 msgid "Click \"Add Videos\" to upload MP4 or WebM files."
 msgstr "Clique em \"Adicionar Vídeos\" para enviar arquivos MP4 ou WebM."
 
+msgid "Click an image to select"
+msgstr "Clique em uma imagem para selecionar"
+
 msgid "Click images to select"
 msgstr "Clique nas imagens para selecionar"
 
@@ -2097,6 +2100,9 @@ msgstr "Nenhuma seção correspondente"
 msgid "No metadata yet — run the pipeline to extract book details"
 msgstr "Ainda não há metadados — execute o pipeline para extrair os detalhes do livro"
 
+msgid "No other images in this book"
+msgstr "Nenhuma outra imagem neste livro"
+
 msgid "No page linked"
 msgstr "Nenhuma página vinculada"
 
@@ -2554,6 +2560,9 @@ msgstr "Renderizando esta seção..."
 
 msgid "Replace"
 msgstr "Substituir"
+
+msgid "Replace from Book"
+msgstr "Substituir do livro"
 
 msgid "Replace Video?"
 msgstr "Substituir Vídeo?"
@@ -3335,6 +3344,9 @@ msgstr "Envie um PDF para começar"
 
 msgid "Upload and assign sign language videos to book pages."
 msgstr "Envie e atribua vídeos de língua de sinais às páginas do livro."
+
+msgid "Upload from Disk"
+msgstr "Enviar do disco"
 
 msgid "Upload image"
 msgstr "Enviar imagem"

@@ -16,6 +16,7 @@ import { SectionEditToolbar } from "./SectionEditToolbar"
 import { ImageCropDialog } from "./ImageCropDialog"
 import { AiImageDialog } from "./AiImageDialog"
 import { AddImageDialog } from "./AddImageDialog"
+import { ReplaceFromBookDialog } from "./ReplaceFromBookDialog"
 import { SegmentPreviewDialog, type SegmentRegion } from "./SegmentPreviewDialog"
 import { Input } from "@/components/ui/input"
 import { useLingui } from "@lingui/react/macro"
@@ -508,6 +509,7 @@ export function StoryboardSectionDetail({
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replaceTargetRef = useRef<string | null>(null)
+  const [replaceFromBookTarget, setReplaceFromBookTarget] = useState<string | null>(null)
 
   // Image segmentation state
   const [segmenting, setSegmenting] = useState(false)
@@ -1712,6 +1714,61 @@ export function StoryboardSectionDetail({
     [bookLabel, pageId, pendingSectioning, page.sectioning, pendingRendering, page.rendering, sectionIndex]
   )
 
+  // Replace from book: open picker dialog
+  const handleReplaceFromBook = useCallback((dataId: string) => {
+    setReplaceFromBookTarget(dataId)
+    setSelectedElement(null)
+  }, [])
+
+  // Process replace-from-book selection: swap image in sectioning + rendering
+  const handleReplaceFromBookSelect = useCallback(
+    (newImageId: string) => {
+      const targetId = replaceFromBookTarget
+      if (!targetId) return
+      setReplaceFromBookTarget(null)
+
+      // Update sectioning
+      const sBase = pendingSectioning ?? page.sectioning
+      if (sBase) {
+        const updatedSectioning: SectioningData = {
+          ...sBase,
+          sections: sBase.sections.map((s, si) => {
+            if (si !== sectionIndex) return s
+            return {
+              ...s,
+              parts: s.parts.map((p) => {
+                if (p.type === "image" && p.imageId === targetId) {
+                  return { ...p, imageId: newImageId }
+                }
+                return p
+              }),
+            }
+          }),
+        }
+        setPendingSectioning(updatedSectioning)
+      }
+
+      // Update rendering HTML
+      const rBase = pendingRendering ?? page.rendering
+      if (rBase) {
+        const oldSrc = `${BASE_URL}/books/${bookLabel}/images/${targetId}`
+        const newSrc = `${BASE_URL}/books/${bookLabel}/images/${newImageId}`
+        const updatedRendering: RenderingData = {
+          ...rBase,
+          sections: rBase.sections.map((s) => {
+            if (s.sectionIndex !== sectionIndex) return s
+            let html = s.html
+            html = html.replace(new RegExp(`data-id="${escapeRegex(targetId)}"`, "g"), `data-id="${newImageId}"`)
+            html = html.replace(new RegExp(escapeRegex(oldSrc), "g"), newSrc)
+            return { ...s, html }
+          }),
+        }
+        setPendingRendering(updatedRendering)
+      }
+    },
+    [bookLabel, replaceFromBookTarget, pendingSectioning, page.sectioning, pendingRendering, page.rendering, sectionIndex]
+  )
+
   // Open AI image dialog for a specific image
   const handleAiImage = useCallback((dataId: string) => {
     setAiImageDialogTarget(dataId)
@@ -2556,6 +2613,7 @@ export function StoryboardSectionDetail({
           onCrop={selectedInfo.isImage && !storyboardRunning ? (dataId) => setCropTarget(dataId) : undefined}
           onRecropFromPage={selectedInfo.isImage && !storyboardRunning ? handleRecropFromPage : undefined}
           onReplace={selectedInfo.isImage && !storyboardRunning ? handleImageReplace : undefined}
+          onReplaceFromBook={selectedInfo.isImage && !storyboardRunning ? handleReplaceFromBook : undefined}
           onAiImage={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleAiImage : undefined}
           onSegment={selectedInfo.isImage && hasApiKey && !storyboardRunning ? handleSegment : undefined}
           segmenting={segmenting}
@@ -2655,6 +2713,16 @@ export function StoryboardSectionDetail({
         imageSrc={recropPageSrc ?? `${BASE_URL}/books/${bookLabel}/images/${cropTarget}`}
         onApply={handleCropApply}
         onClose={() => { setCropTarget(null); setRecropPageSrc(null) }}
+      />
+    )}
+
+    {/* Replace from book dialog */}
+    {replaceFromBookTarget && (
+      <ReplaceFromBookDialog
+        bookLabel={bookLabel}
+        currentImageId={replaceFromBookTarget}
+        onSelect={handleReplaceFromBookSelect}
+        onClose={() => setReplaceFromBookTarget(null)}
       />
     )}
 

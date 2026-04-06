@@ -801,6 +801,9 @@ msgstr "Clear model"
 msgid "Click \"Add Videos\" to upload MP4 or WebM files."
 msgstr "Click \"Add Videos\" to upload MP4 or WebM files."
 
+msgid "Click an image to select"
+msgstr "Click an image to select"
+
 msgid "Click images to select"
 msgstr "Click images to select"
 
@@ -2097,6 +2100,9 @@ msgstr "No matching sections"
 msgid "No metadata yet — run the pipeline to extract book details"
 msgstr "No metadata yet — run the pipeline to extract book details"
 
+msgid "No other images in this book"
+msgstr "No other images in this book"
+
 msgid "No page linked"
 msgstr "No page linked"
 
@@ -2554,6 +2560,9 @@ msgstr "Rendering this section..."
 
 msgid "Replace"
 msgstr "Replace"
+
+msgid "Replace from Book"
+msgstr "Replace from Book"
 
 msgid "Replace Video?"
 msgstr "Replace Video?"
@@ -3335,6 +3344,9 @@ msgstr "Upload a PDF to get started"
 
 msgid "Upload and assign sign language videos to book pages."
 msgstr "Upload and assign sign language videos to book pages."
+
+msgid "Upload from Disk"
+msgstr "Upload from Disk"
 
 msgid "Upload image"
 msgstr "Upload image"
