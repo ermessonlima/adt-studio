@@ -2507,6 +2507,9 @@ msgstr "Reorganizando los átomos de HTML..."
 msgid "Record reviewer findings for the current page and save them to the active validation session."
 msgstr "Record reviewer findings for the current page and save them to the active validation session."
 
+msgid "Recrop from page"
+msgstr "Recortar desde la página"
+
 msgid "Recrop from Page"
 msgstr "Recortar desde la página"
 
@@ -2995,6 +2998,9 @@ msgstr "Step run failed"
 
 msgid "Storyboard"
 msgstr "Storyboard"
+
+msgid "Storyboard has already been run. Changes made here will not take effect until storyboard is re-run."
+msgstr "El storyboard ya se ejecutó. Los cambios realizados aquí no tendrán efecto hasta que se vuelva a ejecutar el storyboard."
 
 msgid "Structure"
 msgstr "Estructura"

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react"
-import { Check, Eye, EyeOff, FileText, Image, ImageOff, Layers, Loader2, ChevronDown, X } from "lucide-react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { AlertTriangle, Check, Crop, Eye, EyeOff, FileText, Image, ImageOff, Layers, Loader2, ChevronDown, X } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { usePage, usePageImage } from "@/hooks/use-pages"
 import { api, BASE_URL } from "@/api/client"
@@ -9,6 +9,7 @@ import { useBookRun } from "@/hooks/use-book-run"
 import { Trans } from "@lingui/react/macro"
 import { useLingui } from "@lingui/react/macro"
 import { getTextGroupLabel, getTextTypeLabel } from "@/lib/text-type-labels"
+import { ImageCropDialog } from "@/components/pipeline/stages/storyboard/components/ImageCropDialog"
 
 function VersionPicker({
   currentVersion,
@@ -129,32 +130,46 @@ function VersionPicker({
   )
 }
 
-function ImageCard({ imageId, bookLabel, isPruned, reason, onTogglePrune }: { imageId: string; bookLabel: string; isPruned?: boolean; reason?: string; onTogglePrune?: () => void }) {
+function ImageCard({ imageId, bookLabel, isPruned, reason, onTogglePrune, onRecrop, cacheBust }: { imageId: string; bookLabel: string; isPruned?: boolean; reason?: string; onTogglePrune?: () => void; onRecrop?: () => void; cacheBust?: number }) {
   const { t } = useLingui()
   const [dimensions, setDimensions] = useState<{ w: number; h: number } | null>(null)
+  // eslint-disable-next-line lingui/no-unlocalized-strings
+  const imgSrc = `${BASE_URL}/books/${bookLabel}/images/${imageId}${cacheBust ? `?v=${cacheBust}` : ""}`
 
   return (
     <div
       className={`relative rounded border overflow-hidden bg-card flex flex-col items-center min-h-[80px] ${isPruned ? "opacity-40" : ""}`}
       title={isPruned && reason ? t`Pruned: ${reason}` : undefined}
     >
-      <button
-        type="button"
-        onClick={onTogglePrune}
-        className={`absolute top-1 right-1 z-10 flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors ${
-          isPruned
-            ? "bg-destructive hover:bg-destructive/80"
-            : "bg-black/30 opacity-0 group-hover:opacity-100 hover:bg-black/50"
-        }`}
-        title={isPruned ? t`Unprune image` : t`Prune image`}
-      >
-        {isPruned
-          ? <EyeOff className="h-3 w-3 text-white" />
-          : <Eye className="h-3 w-3 text-white" />
-        }
-      </button>
+      <div className="absolute top-1 right-1 z-10 flex items-center gap-1">
+        {onRecrop && (
+          <button
+            type="button"
+            onClick={onRecrop}
+            className="flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors bg-black/30 opacity-0 group-hover:opacity-100 hover:bg-black/50"
+            title={t`Recrop from page`}
+          >
+            <Crop className="h-3 w-3 text-white" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onTogglePrune}
+          className={`flex items-center justify-center w-5 h-5 rounded-full cursor-pointer transition-colors ${
+            isPruned
+              ? "bg-destructive hover:bg-destructive/80"
+              : "bg-black/30 opacity-0 group-hover:opacity-100 hover:bg-black/50"
+          }`}
+          title={isPruned ? t`Unprune image` : t`Prune image`}
+        >
+          {isPruned
+            ? <EyeOff className="h-3 w-3 text-white" />
+            : <Eye className="h-3 w-3 text-white" />
+          }
+        </button>
+      </div>
       <img
-        src={`${BASE_URL}/books/${bookLabel}/images/${imageId}`}
+        src={imgSrc}
         alt={imageId}
         className={`max-w-full h-auto block my-auto ${isPruned ? "grayscale" : ""}`}
         onLoad={(e) => {
@@ -203,6 +218,7 @@ export function ExtractPageDetail({
   const [pageImageDims, setPageImageDims] = useState<{ w: number; h: number } | null>(null)
   const { stageState, stepState } = useBookRun()
   const storyboardRunning = stageState("storyboard") === "running" || stageState("storyboard") === "queued"
+  const storyboardDone = stageState("storyboard") === "done"
   const metadataRunning = stepState("metadata") === "running"
   const textClassRunning = stepState("text-classification") === "running"
   const imageFilterRunning = stepState("image-filtering") === "running"
@@ -210,13 +226,52 @@ export function ExtractPageDetail({
   const [savingImages, setSavingImages] = useState(false)
   const [pendingTextData, setPendingTextData] = useState<TextClassData | null>(null)
   const [pendingImageData, setPendingImageData] = useState<ImageClassData | null>(null)
+  const [cropTarget, setCropTarget] = useState<string | null>(null)
+  const [cropPageSrc, setCropPageSrc] = useState<string | null>(null)
+  const [cacheBust, setCacheBust] = useState(0)
   const queryClient = useQueryClient()
 
   // Clear pending state when page changes
   useEffect(() => {
     setPendingTextData(null)
     setPendingImageData(null)
+    setCropTarget(null)
+    setCropPageSrc(null)
   }, [pageId])
+
+  const handleRecropFromPage = useCallback(async (imageId: string) => {
+    try {
+      const { imageBase64 } = await api.getPageImage(bookLabel, pageId)
+      setCropTarget(imageId)
+      setCropPageSrc(`data:image/png;base64,${imageBase64}`)
+    } catch {
+      // silently fail — page image may not be available
+    }
+  }, [bookLabel, pageId])
+
+  const handleCropApply = useCallback(async (blob: Blob) => {
+    if (!cropTarget) return
+    try {
+      const result = await api.uploadCroppedImage(bookLabel, pageId, cropTarget, blob)
+      // Swap old imageId → new imageId in imageClassification and save
+      const base = pendingImageData ?? page?.imageClassification
+      if (base) {
+        const updated = {
+          ...base,
+          images: base.images.map((img) =>
+            img.imageId === cropTarget ? { ...img, imageId: result.imageId } : img
+          ),
+        }
+        await api.updateImageClassification(bookLabel, pageId, updated)
+      }
+      await queryClient.invalidateQueries({ queryKey: ["books", bookLabel, "pages", pageId] })
+      setPendingImageData(null)
+      setCacheBust((n) => n + 1)
+    } finally {
+      setCropTarget(null)
+      setCropPageSrc(null)
+    }
+  }, [cropTarget, bookLabel, pageId, queryClient, pendingImageData, page?.imageClassification])
 
   // Effective data: pending if dirty, otherwise server
   const textClassData = pendingTextData ?? page?.textClassification ?? null
@@ -302,7 +357,14 @@ export function ExtractPageDetail({
   if (!page) return null
 
   return (
-    <div className="flex gap-6 p-4">
+    <div className="space-y-2 p-4">
+      {storyboardDone && (
+        <div className="flex items-center gap-2 rounded border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <Trans>Storyboard has already been run. Changes made here will not take effect until storyboard is re-run.</Trans>
+        </div>
+      )}
+      <div className="flex gap-6">
       {/* Left: Page image + extracted images */}
       <div className="w-[45%] shrink-0 space-y-4">
         {/* Extracted images header */}
@@ -386,7 +448,15 @@ export function ExtractPageDetail({
             <div className="grid grid-cols-2 gap-2 items-start">
               {extractedImages.map((img) => (
                 <div key={img.imageId} className="group">
-                  <ImageCard imageId={img.imageId} bookLabel={bookLabel} isPruned={img.isPruned} reason={img.reason} onTogglePrune={() => toggleImagePrune(img.imageId)} />
+                  <ImageCard
+                    imageId={img.imageId}
+                    bookLabel={bookLabel}
+                    isPruned={img.isPruned}
+                    reason={img.reason}
+                    onTogglePrune={() => toggleImagePrune(img.imageId)}
+                    onRecrop={!storyboardRunning ? () => handleRecropFromPage(img.imageId) : undefined}
+                    cacheBust={cacheBust}
+                  />
                 </div>
               ))}
             </div>
@@ -532,6 +602,14 @@ export function ExtractPageDetail({
           </div>
         )}
       </div>
+      </div>
+      {cropTarget && cropPageSrc && (
+        <ImageCropDialog
+          imageSrc={cropPageSrc}
+          onApply={handleCropApply}
+          onClose={() => { setCropTarget(null); setCropPageSrc(null) }}
+        />
+      )}
     </div>
   )
 }
