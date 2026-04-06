@@ -26,7 +26,7 @@ import {
 import { useSettingsDialog } from "@/routes/__root"
 import type { TaskInfoResponse } from "@/api/client"
 import { getStageLabelI18n, getStepLabelI18n } from "../pipeline-i18n"
-import { PAGE_PROGRESS_STEPS } from "@adt/types"
+import { ALL_STEP_NAMES, PAGE_PROGRESS_STEPS } from "@adt/types"
 
 const SETTINGS_TAB_MESSAGE: Record<string, MessageDescriptor> = {
   general: msg`General`,
@@ -370,7 +370,15 @@ function TaskIndicator({ bookLabel }: { bookLabel: string }) {
     }
   }
 
-  const totalCount = runningCount + stageProgressRows.length
+  // Non-page-progress steps that are currently running (e.g. metadata, book-summary)
+  const activeSteps: { step: string; label: string }[] = []
+  for (const step of ALL_STEP_NAMES) {
+    if (!PAGE_PROGRESS_STEPS.has(step) && stepState(step) === "running") {
+      activeSteps.push({ step, label: getStepLabelI18n(step) })
+    }
+  }
+
+  const totalCount = runningCount + stageProgressRows.length + activeSteps.length
 
   if (totalCount === 0) return null
 
@@ -387,6 +395,14 @@ function TaskIndicator({ bookLabel }: { bookLabel: string }) {
             <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
               {row.page}/{row.totalPages}
             </span>
+          </div>
+        ))}
+        {activeSteps.map((row) => (
+          <div key={row.step} className="flex items-center gap-2 px-1 py-1">
+            <Loader2 className="w-3 h-3 animate-spin text-violet-500 shrink-0" />
+            <p className="flex-1 min-w-0 text-xs font-medium truncate">
+              {row.label}
+            </p>
           </div>
         ))}
         {runningTasks.map((task) => (

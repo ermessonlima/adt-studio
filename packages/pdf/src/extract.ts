@@ -225,6 +225,8 @@ export function extractPdfStream(
 
           onProgress?.({ page: g + 1, totalPages: totalLogical });
           yield page;
+          // Yield to the macrotask queue so SSE progress events can flush
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
       } else {
         const rangeSize = end - start;
@@ -233,6 +235,8 @@ export function extractPdfStream(
 
           onProgress?.({ page: i - start + 1, totalPages: rangeSize });
           yield page;
+          // Yield to the macrotask queue so SSE progress events can flush
+          await new Promise((resolve) => setTimeout(resolve, 0));
         }
       }
     } finally {

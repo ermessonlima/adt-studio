@@ -105,7 +105,7 @@ function PageCard({
 }
 
 
-function BookBanner({ bookLabel, pages }: { bookLabel: string; pages: PageSummaryItem[] | undefined }) {
+function BookBanner({ bookLabel, pages, metadataRunning }: { bookLabel: string; pages: PageSummaryItem[] | undefined; metadataRunning?: boolean }) {
   const { t } = useLingui()
   const { data: book } = useBook(bookLabel)
   const coverPageNumber = book?.metadata?.cover_page_number ?? 1
@@ -170,6 +170,12 @@ function BookBanner({ bookLabel, pages }: { bookLabel: string; pages: PageSummar
             {book.bookSummary.summary}
           </p>
         )}
+        {metadataRunning && !book.metadata && (
+          <div className="flex items-center gap-2 rounded border border-dashed p-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            <Trans>Processing metadata…</Trans>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -178,7 +184,7 @@ function BookBanner({ bookLabel, pages }: { bookLabel: string; pages: PageSummar
 export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onSelectPage }: { bookLabel: string; selectedPageId?: string; onSelectPage?: (pageId: string | null) => void }) {
   const { t } = useLingui()
   const { data: pages, isLoading } = usePages(bookLabel)
-  const { stageState, queueRun } = useBookRun()
+  const { stageState, stepState, queueRun } = useBookRun()
   const { apiKey, hasApiKey } = useApiKey()
   const selectedPageId = selectedPageIdProp ?? null
   const setSelectedPageId = onSelectPage ?? (() => {})
@@ -187,7 +193,16 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
   const extractDone = extractState === "done"
   const extractRunning = extractState === "running" || extractState === "queued"
   const extractError = extractState === "error"
-  const showRunCard = !extractDone || extractRunning
+  const metadataRunning = stepState("metadata") === "running"
+  // Show pages progressively: once pages appear in the DB (during or after
+  // the PDF extraction step), display the grid. Only show the run card when
+  // no pages exist yet — remaining steps run in the background TaskIndicator.
+  const hasPages = (pages ?? []).length > 0
+  const showRunCard = extractError
+    ? true
+    : extractRunning
+      ? !hasPages
+      : !extractDone
 
   const handleRetryExtract = useCallback(() => {
     if (!hasApiKey || extractRunning) return
@@ -237,7 +252,7 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
           </div>
         </>
       )
-    } else if (extractDone && pageList.length > 0 && !showRunCard) {
+    } else if (pageList.length > 0 && !showRunCard) {
       setOnLabelClick(null)
       setExtra(
         <span className="ml-auto text-[11px] font-medium bg-white/20 rounded-full px-2.5 py-0.5">
@@ -252,7 +267,7 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
       setExtra(null)
       setOnLabelClick(null)
     }
-  }, [selectedPageId, selectedPage?.pageNumber, pageList.length, prevPageId, nextPageId, extractDone, showRunCard, setExtra, setOnLabelClick, setSelectedPageId])
+  }, [selectedPageId, selectedPage?.pageNumber, pageList.length, prevPageId, nextPageId, showRunCard, setExtra, setOnLabelClick, setSelectedPageId])
 
   // Keyboard arrow navigation
   useEffect(() => {
@@ -277,8 +292,8 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
     )
   }
 
-  // Page detail view (only when extract run is not active)
-  if (extractDone && selectedPageId && pages && !showRunCard) {
+  // Page detail view — available once pages exist (even while later steps run)
+  if (!showRunCard && selectedPageId && pages) {
     return (
       <ExtractPageDetail
         bookLabel={bookLabel}
@@ -290,7 +305,7 @@ export function ExtractView({ bookLabel, selectedPageId: selectedPageIdProp, onS
   // Page grid view
   return (
     <div>
-      {!showRunCard && pageList.length > 0 && <BookBanner bookLabel={bookLabel} pages={pages} />}
+      {!showRunCard && pageList.length > 0 && <BookBanner bookLabel={bookLabel} pages={pages} metadataRunning={metadataRunning} />}
       <div className="p-4">
       {showRunCard ? (
         <StageRunCard

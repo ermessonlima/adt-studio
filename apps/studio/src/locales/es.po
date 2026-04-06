@@ -783,6 +783,12 @@ msgstr "Libro infantil clásico"
 msgid "Classified Text"
 msgstr "Texto clasificado"
 
+msgid "Classifying images…"
+msgstr "Clasificando imágenes…"
+
+msgid "Classifying text…"
+msgstr "Clasificando texto…"
+
 msgid "Clear all"
 msgstr "Clear all"
 
@@ -2382,6 +2388,9 @@ msgstr "Vista previa de la página vinculada"
 
 msgid "Preview of the HTML/CSS patterns used for LLM-generated pages."
 msgstr "Vista previa de los patrones HTML/CSS usados para páginas generadas por LLM."
+
+msgid "Processing metadata…"
+msgstr "Procesando metadatos…"
 
 msgid "Prompt"
 msgstr "Prompt"

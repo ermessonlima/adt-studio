@@ -783,6 +783,12 @@ msgstr "Classic Storybook"
 msgid "Classified Text"
 msgstr "Classified Text"
 
+msgid "Classifying images…"
+msgstr "Classifying images…"
+
+msgid "Classifying text…"
+msgstr "Classifying text…"
+
 msgid "Clear all"
 msgstr "Clear all"
 
@@ -2382,6 +2388,9 @@ msgstr "Preview linked page"
 
 msgid "Preview of the HTML/CSS patterns used for LLM-generated pages."
 msgstr "Preview of the HTML/CSS patterns used for LLM-generated pages."
+
+msgid "Processing metadata…"
+msgstr "Processing metadata…"
 
 msgid "Prompt"
 msgstr "Prompt"

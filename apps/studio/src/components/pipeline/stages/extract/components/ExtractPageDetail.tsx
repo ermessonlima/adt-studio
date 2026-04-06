@@ -201,8 +201,11 @@ export function ExtractPageDetail({
     ? Object.keys((activeConfigData.merged as Record<string, unknown>).text_types as Record<string, string> ?? {})
     : []
   const [pageImageDims, setPageImageDims] = useState<{ w: number; h: number } | null>(null)
-  const { stageState } = useBookRun()
+  const { stageState, stepState } = useBookRun()
   const storyboardRunning = stageState("storyboard") === "running" || stageState("storyboard") === "queued"
+  const metadataRunning = stepState("metadata") === "running"
+  const textClassRunning = stepState("text-classification") === "running"
+  const imageFilterRunning = stepState("image-filtering") === "running"
   const [savingText, setSavingText] = useState(false)
   const [savingImages, setSavingImages] = useState(false)
   const [pendingTextData, setPendingTextData] = useState<TextClassData | null>(null)
@@ -368,7 +371,17 @@ export function ExtractPageDetail({
           const extractedImages = (imageClassData?.images.filter(
             (img) => img.imageId !== pageImageId
           ) ?? []).sort((a, b) => Number(a.isPruned) - Number(b.isPruned))
-          if (extractedImages.length === 0) return null
+          if (extractedImages.length === 0) {
+            if (imageFilterRunning && !imageClassData) {
+              return (
+                <div className="flex items-center gap-2 rounded border border-dashed p-3 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                  <Trans>Classifying images…</Trans>
+                </div>
+              )
+            }
+            return null
+          }
           return (
             <div className="grid grid-cols-2 gap-2 items-start">
               {extractedImages.map((img) => (
@@ -383,6 +396,14 @@ export function ExtractPageDetail({
 
       {/* Right: Raw text */}
       <div className="flex-1 min-w-0">
+        {/* Metadata — processing indicator */}
+        {metadataRunning && (
+          <div className="mb-4 flex items-center gap-2 rounded border border-dashed p-3 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            <Trans>Processing metadata…</Trans>
+          </div>
+        )}
+
         {page.text ? (
           <div>
             <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
@@ -396,6 +417,14 @@ export function ExtractPageDetail({
         ) : (
           <div className="text-sm text-muted-foreground py-8 text-center">
             <Trans>No extracted text yet. Run the pipeline first.</Trans>
+          </div>
+        )}
+
+        {/* Classified text — processing indicator */}
+        {!textClassData && textClassRunning && (
+          <div className="mt-4 flex items-center gap-2 rounded border border-dashed p-3 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            <Trans>Classifying text…</Trans>
           </div>
         )}
 
