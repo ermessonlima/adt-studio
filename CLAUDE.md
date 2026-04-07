@@ -65,6 +65,48 @@ The `PIPELINE` constant in `@adt/types` defines all stages, their steps, labels,
 
 **Never hardcode stage/step ordering, names, or groupings outside of `PIPELINE`.** If you need a new derived lookup, add it to `packages/types/src/pipeline.ts` alongside the existing ones (`STAGE_ORDER`, `STEP_TO_STAGE`, `STAGE_BY_NAME`, `ALL_STEP_NAMES`).
 
+## Docker
+
+Three build targets in `Dockerfile`:
+
+| Target | Description | Used by |
+|--------|-------------|---------|
+| `api` | Node.js API server only | `docker-compose.yml` (multi-container) |
+| `studio` | nginx serving the built SPA | `docker-compose.yml` (multi-container) |
+| `app` | Combined single-image (API + nginx) | Release CI → `ghcr.io/unicef/adt-studio` |
+
+```bash
+# Multi-container — local testing (two separate services)
+docker compose up --build
+
+# Single-image — same image end users download
+docker build --target app -t adt-studio .
+docker run -p 8080:80 -v ./books:/app/books adt-studio
+```
+
+**Runtime env vars and volumes:**
+
+| Env var | Default | Override |
+|---------|---------|--------|
+| `BOOKS_DIR` | `/app/books` | `-v ./books:/app/books` |
+| `PROMPTS_DIR` | `/app/prompts` | `-v ./prompts:/app/prompts` |
+| `CONFIG_PATH` | `/app/config.yaml` | `-v ./config.yaml:/app/config.yaml:ro` |
+| `PORT` | `3001` | Internal only — nginx proxies to this |
+
+**`TEMPLATES_DIR` trap:** The Dockerfile and `docker-compose.yml` set `TEMPLATES_DIR=/app/templates` but the application **never reads this env var**. Templates dir is always derived from `path.join(path.dirname(PROMPTS_DIR), "templates")`. To use a custom templates directory, mount it as a sibling of `prompts/` — i.e. override `PROMPTS_DIR` and keep `templates/` next to it.
+
+**Release pipeline:** pushing a `v*` tag triggers `.github/workflows/release.yml` which builds the `app` target and pushes to `ghcr.io/unicef/adt-studio:latest` and `ghcr.io/unicef/adt-studio:<tag>`. A ready-to-use `docker-compose.yml` (generated from `docker/compose-release.yml.template`) is uploaded as a release asset.
+
+**Key Docker files:**
+- `Dockerfile` — multi-stage build (base → deps → build → api / studio / app)
+- `docker-compose.yml` — local dev/testing (multi-container)
+- `docker/nginx.conf` — nginx config for the `studio` stage (proxies to `http://api:3001`)
+- `docker/nginx-single.conf` — nginx config for the `app` stage (proxies to `http://127.0.0.1:3001`)
+- `docker/entrypoint.sh` — starts API + nginx in the `app` stage, health-checks API before nginx starts
+- `docker/compose-release.yml.template` — template for the release asset
+
+**External packages in Docker:** `jsdom`, `esbuild`, `tailwindcss`, `postcss`, and `playwright` cannot be bundled by esbuild because they read data files relative to their own `__dirname`. They are installed into `apps/api/dist/node_modules/` by the Dockerfile build stage via npm. If a new package exhibits the same pattern (ENOENT error pointing to a path under `/app/apps/`), add it to both the `external` array in `apps/api/scripts/bundle-server.mjs` and the npm install step in the Dockerfile.
+
 ## Commands
 
 ```bash
