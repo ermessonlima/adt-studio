@@ -30,7 +30,7 @@ await build({
   // bundle time. All four are installed into dist/node_modules/ by the Dockerfile
   // build stage. npm handles esbuild's platform binary (@esbuild/linux-x64)
   // as an optional dependency automatically.
-  external: ["esbuild", "tailwindcss", "postcss", "playwright", "playwright-core"],
+  external: ["esbuild", "tailwindcss", "postcss", "playwright", "playwright-core", "jsdom"],
   banner: {
     js: [
       // Polyfill __dirname, __filename, and require for ESM

@@ -22,6 +22,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker api target
+        run: docker build --target api .
+
   i18n:
     runs-on: ubuntu-latest
     steps:
