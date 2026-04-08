@@ -93,7 +93,7 @@ app.route("/api", createQuizRoutes(booksDir))
 app.route("/api", createPackageRoutes(booksDir, webAssetsDir, configPath, taskService))
 app.route("/api", createPromptRoutes(promptsDir, booksDir))
 app.route("/api", createTextCatalogRoutes(booksDir))
-app.route("/api", createTTSRoutes(booksDir, configPath))
+app.route("/api", createTTSRoutes(booksDir, configPath, taskService))
 app.route(
   "/api",
   createStageRoutes(stageService, eventBus, booksDir, promptsDir, webAssetsDir, configPath)

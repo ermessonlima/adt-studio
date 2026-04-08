@@ -59,6 +59,7 @@ const TASK_KIND_LABELS: Record<string, MessageDescriptor> = {
   "re-render": msg`Re-render`,
   "ai-edit": msg`AI Edit`,
   "prepare-export": msg`Export`,
+  "transcribe-timestamps": msg`Timestamps`,
 }
 
 function getSettingsTabs(
@@ -97,10 +98,12 @@ function getSettingsTabs(
     captions: [
       { key: "general", label: i18n._(SETTINGS_TAB_MESSAGE["caption-prompt"]) },
     ],
-    "text-and-speech": [
+    translate: [
       { key: "general", label: i18n._(SETTINGS_TAB_MESSAGE.languages) },
       { key: "prompt", label: i18n._(SETTINGS_TAB_MESSAGE["translation-prompt"]) },
-      { key: "speech", label: i18n._(SETTINGS_TAB_MESSAGE.speech) },
+    ],
+    speech: [
+      { key: "general", label: i18n._(SETTINGS_TAB_MESSAGE.speech) },
       { key: "speech-prompts", label: i18n._(SETTINGS_TAB_MESSAGE["speech-prompts"]) },
       { key: "voices", label: i18n._(SETTINGS_TAB_MESSAGE.voices) },
     ],
@@ -447,6 +450,9 @@ function TaskRow({ task }: { task: TaskInfoResponse }) {
       <p className="flex-1 min-w-0 text-xs font-medium truncate">
         {kindLabel ? i18n._(kindLabel) : task.kind}
       </p>
+      {task.progressMessage && (
+        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{task.progressMessage}</span>
+      )}
       <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{elapsedStr}</span>
     </>
   )

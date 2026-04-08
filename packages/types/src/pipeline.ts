@@ -35,7 +35,8 @@ export const StageName = z.enum([
   "captions",
   "glossary",
   "toc",
-  "text-and-speech",
+  "translate",
+  "speech",
   "package",
 ])
 export type StageName = z.infer<typeof StageName>
@@ -118,19 +119,26 @@ export const PIPELINE: StageDef[] = [
     ],
   },
   {
-    name: "text-and-speech",
-    label: "Text & Speech",
+    name: "translate",
+    label: "Translate",
     dependsOn: ["quizzes", "captions", "glossary", "toc"],
     steps: [
       { name: "text-catalog", label: "Text Catalog" },
       { name: "catalog-translation", label: "Catalog Translation", dependsOn: ["text-catalog"] },
-      { name: "tts", label: "Speech Generation", dependsOn: ["catalog-translation"] },
+    ],
+  },
+  {
+    name: "speech",
+    label: "Speech",
+    dependsOn: ["translate"],
+    steps: [
+      { name: "tts", label: "Speech Generation" },
     ],
   },
   {
     name: "package",
     label: "Package",
-    dependsOn: ["text-and-speech"],
+    dependsOn: ["speech"],
     steps: [
       { name: "package-web", label: "Web Package" },
       {

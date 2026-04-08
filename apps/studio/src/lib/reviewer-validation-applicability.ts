@@ -12,7 +12,8 @@ export type ReviewerValidationApplicabilityContext = {
   explicitStatus?: ReviewerValidationStatus
   glossaryAvailable: boolean
   glossaryPending: boolean
-  textAndSpeechStageDone: boolean
+  translateStageDone: boolean
+  speechStageDone: boolean
   ttsAvailable: boolean
   ttsPending: boolean
   sessionLanguage: string | null
@@ -52,7 +53,8 @@ export function resolveReviewerValidationCriterionStatus({
   explicitStatus,
   glossaryAvailable,
   glossaryPending,
-  textAndSpeechStageDone,
+  translateStageDone,
+  speechStageDone,
   ttsAvailable,
   ttsPending,
   sessionLanguage,
@@ -117,11 +119,11 @@ export function resolveReviewerValidationCriterionStatus({
   }
 
   if (sectionId === "audio-voice-over") {
-    if (!textAndSpeechStageDone) {
+    if (!speechStageDone) {
       return {
         status: "not-applicable",
         isDerived: true,
-        reason: createReviewerValidationDefaultReason("text-and-speech-unavailable"),
+        reason: createReviewerValidationDefaultReason("speech-unavailable"),
       }
     }
     if (ttsPending) {
@@ -131,13 +133,13 @@ export function resolveReviewerValidationCriterionStatus({
       return {
         status: "not-applicable",
         isDerived: true,
-        reason: createReviewerValidationDefaultReason("text-and-speech-language-unavailable", { language: sessionLanguage }),
+        reason: createReviewerValidationDefaultReason("speech-language-unavailable", { language: sessionLanguage }),
       }
     }
   }
 
   if (sectionId === "translation") {
-    if (!textAndSpeechStageDone) {
+    if (!translateStageDone) {
       return {
         status: "not-applicable",
         isDerived: true,

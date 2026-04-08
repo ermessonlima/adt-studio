@@ -66,7 +66,7 @@ export function LanguagePicker({
   // Build dropdown items based on phase
   const items: DropdownItem[] = useMemo(() => {
     if (lockedLang) {
-      // Phase 2: show base language first, then suggested countries, then all others
+      // Phase 2: show base language first, then suggested countries (typing filters all countries)
       const q = search.toLowerCase()
       const { suggested, all } = getCountriesForLanguage(lockedLang.code)
       const result: DropdownItem[] = [
@@ -82,8 +82,11 @@ export function LanguagePicker({
           })
         }
       }
+      // Show only suggested countries when browsing; if the user is searching, also check all countries
       for (const c of suggested) addCountry(c)
-      for (const c of all) addCountry(c)
+      if (q) {
+        for (const c of all) addCountry(c)
+      }
       return result
     }
     // Phase 1: show languages

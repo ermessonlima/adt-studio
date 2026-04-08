@@ -337,8 +337,9 @@ describe("runPipelineDAG", () => {
     expect(completed).toContain("image-captioning")
     expect(completed).toContain("glossary")
 
-    // text-and-speech depends on all three → skipped because quizzes failed
-    expect(result.stages.statuses.get("text-and-speech")).toBe("skipped")
+    // translate depends on all three → skipped because quizzes failed
+    expect(result.stages.statuses.get("translate")).toBe("skipped")
+    expect(result.stages.statuses.get("speech")).toBe("skipped")
     expect(result.stages.statuses.get("package")).toBe("skipped")
   })
 

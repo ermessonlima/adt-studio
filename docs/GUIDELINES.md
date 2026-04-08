@@ -685,7 +685,7 @@ db.close()
 
 The pipeline is organized as a **two-level DAG** defined in `packages/types/src/pipeline.ts`:
 
-- **Stages** — High-level groupings visible in the UI (Extract, Storyboard, Quizzes, Captions, Glossary, Text & Speech, Package). Stages have inter-stage dependencies.
+- **Stages** — High-level groupings visible in the UI (Extract, Storyboard, Quizzes, Captions, Glossary, Translate, Speech, Package). Stages have inter-stage dependencies.
 - **Steps** — Atomic processing operations within a stage (e.g., `image-filtering`, `page-sectioning`). Steps have intra-stage dependencies and can run in parallel when dependencies are met.
 
 The `PIPELINE` constant is the **single source of truth**. All ordering, groupings, labels, and dependency graphs are derived from it. Never hardcode step/stage ordering elsewhere.

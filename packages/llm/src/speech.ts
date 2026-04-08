@@ -10,6 +10,75 @@ export interface TTSSynthesizer {
   synthesize(options: SynthesizeSpeechOptions): Promise<Uint8Array>
 }
 
+export interface WhisperWordTimestamp {
+  word: string
+  start: number
+  end: number
+}
+
+export interface WhisperTranscriptionResult {
+  text: string
+  words: WhisperWordTimestamp[]
+  duration: number
+}
+
+/**
+ * Transcribe an audio file using OpenAI Whisper with word-level timestamps.
+ */
+export async function transcribeWithWhisper(
+  audioBuffer: Buffer,
+  fileName: string,
+  apiKey: string,
+  language?: string,
+  prompt?: string,
+): Promise<WhisperTranscriptionResult> {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "mp3"
+  const mimeType =
+    ext === "wav" ? "audio/wav"
+      : ext === "ogg" ? "audio/ogg"
+        : "audio/mpeg"
+
+  const blob = new Blob([audioBuffer], { type: mimeType })
+  const form = new FormData()
+  form.append("file", blob, fileName)
+  form.append("model", "whisper-1")
+  form.append("response_format", "verbose_json")
+  form.append("timestamp_granularities[]", "word")
+  if (language) form.append("language", language)
+  if (prompt) form.append("prompt", prompt)
+
+  const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(
+      `Whisper transcription failed (${response.status}): ${message || response.statusText}`
+    )
+  }
+
+  const data = await response.json() as {
+    text?: string
+    duration?: number
+    words?: Array<{ word: string; start: number; end: number }>
+  }
+
+  return {
+    text: data.text ?? "",
+    words: (data.words ?? []).map((w) => ({
+      word: w.word,
+      start: w.start,
+      end: w.end,
+    })),
+    duration: data.duration ?? 0,
+  }
+}
+
 /**
  * Create a minimal TTS client using OpenAI's speech endpoint.
  * API key defaults to OPENAI_API_KEY if omitted.

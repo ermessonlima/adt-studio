@@ -36,7 +36,7 @@
   },
   "src/components/pipeline/stage-config.ts": {
     "lingui/no-unlocalized-strings": {
-      "count": 32
+      "count": 25
     }
   },
   "src/components/pipeline/stages/PreviewValidationCard.tsx": {
@@ -86,7 +86,7 @@
   },
   "src/routes/books.new.tsx": {
     "lingui/no-unlocalized-strings": {
-      "count": 54
+      "count": 49
     }
   },
   "src/vite-env.d.ts": {

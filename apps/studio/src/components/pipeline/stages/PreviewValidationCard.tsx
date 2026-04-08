@@ -369,11 +369,12 @@ export function PreviewValidationCard({
   const sessionLanguage = activeSession?.session.language?.trim() || null
   const glossaryAvailable = (glossary.data?.items.length ?? 0) > 0
   const glossaryPending = stageState("glossary") === "done" && glossary.isLoading
-  const textAndSpeechStageDone = stageState("text-and-speech") === "done"
+  const translateStageDone = stageState("translate") === "done"
+  const speechStageDone = stageState("speech") === "done"
   const ttsAvailable = hasLanguageEntries(tts.data?.languages, sessionLanguage)
-  const ttsPending = textAndSpeechStageDone && tts.isLoading
+  const ttsPending = speechStageDone && tts.isLoading
   const translationAvailable = hasLanguageEntries(textCatalog.data?.translations, sessionLanguage)
-  const translationPending = textAndSpeechStageDone && textCatalog.isLoading
+  const translationPending = translateStageDone && textCatalog.isLoading
   const easyReadAvailable = false
 
   const resolvedResults = useMemo(() => {
@@ -387,7 +388,8 @@ export function PreviewValidationCard({
             explicitStatus: draftResults[criterion.id]?.status,
             glossaryAvailable,
             glossaryPending,
-            textAndSpeechStageDone,
+            translateStageDone,
+            speechStageDone,
             ttsAvailable,
             ttsPending,
             sessionLanguage,
@@ -408,7 +410,8 @@ export function PreviewValidationCard({
     glossaryAvailable,
     glossaryPending,
     sessionLanguage,
-    textAndSpeechStageDone,
+    translateStageDone,
+    speechStageDone,
     currentPage.hasActivity,
     currentPage.hasImages,
     currentPage.signLanguageEnabled,

@@ -1,3 +1,4 @@
+import { type ReactNode } from "react"
 import { Check, Loader2, Minus, Play, RotateCcw, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
@@ -35,6 +36,7 @@ interface StageRunCardProps {
   showRunButton?: boolean
   onRun: () => void
   disabled: boolean
+  children?: ReactNode
 }
 
 const HOVER_BG_BY_COLOR: Record<string, string> = {
@@ -45,6 +47,7 @@ const HOVER_BG_BY_COLOR: Record<string, string> = {
   "bg-teal-600": "hover:bg-teal-600",
   "bg-lime-600": "hover:bg-lime-600",
   "bg-pink-600": "hover:bg-pink-600",
+  "bg-rose-600": "hover:bg-rose-600",
   "bg-amber-600": "hover:bg-amber-600",
 }
 
@@ -55,6 +58,7 @@ export function StageRunCard({
   showRunButton = true,
   onRun,
   disabled,
+  children,
 }: StageRunCardProps) {
   const { t } = useLingui()
   const stage = STAGES.find((s) => s.slug === stageSlug) ?? STAGES[0]
@@ -200,6 +204,13 @@ export function StageRunCard({
           </p>
         )}
       </CardContent>
+
+      {/* Injected config content */}
+      {children && (
+        <CardContent className="px-5 pb-4 pt-3 mt-0 border-t border-border/50 bg-muted/30">
+          {children}
+        </CardContent>
+      )}
 
       {/* Error footer */}
       {hasError && (

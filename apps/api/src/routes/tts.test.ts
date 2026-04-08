@@ -344,3 +344,57 @@ describe("POST /books/:label/tts/generate-one", () => {
     )
   })
 })
+
+describe("DELETE /books/:label/tts", () => {
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adt-tts-route-"))
+    configPath = path.join(tmpDir, "config.yaml")
+    writeConfig()
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+    tmpDir = ""
+    configPath = ""
+  })
+
+  it("clears both tts and tts-timestamps data", async () => {
+    const label = "delete-tts"
+    seedBook(label)
+
+    // Seed TTS and tts-timestamps data
+    const storage = createBookStorage(label, tmpDir)
+    try {
+      storage.putNodeData("tts", "en", {
+        entries: [{ textId: "pg001_t001", fileName: "pg001_t001.wav" }],
+        generatedAt: new Date().toISOString(),
+      })
+      storage.putNodeData("tts-timestamps", "en", {
+        entries: {
+          pg001_t001: {
+            textId: "pg001_t001",
+            language: "en",
+            words: [{ word: "Hello", start: 0, end: 0.5 }],
+            duration: 0.5,
+          },
+        },
+        generatedAt: new Date().toISOString(),
+      })
+    } finally {
+      storage.close()
+    }
+
+    const app = createTTSRoutes(tmpDir, configPath)
+    const res = await app.request(`/books/${label}/tts`, { method: "DELETE" })
+
+    expect(res.status).toBe(200)
+
+    const after = createBookStorage(label, tmpDir)
+    try {
+      expect(after.getLatestNodeData("tts", "en")).toBeNull()
+      expect(after.getLatestNodeData("tts-timestamps", "en")).toBeNull()
+    } finally {
+      after.close()
+    }
+  })
+})

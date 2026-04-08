@@ -200,7 +200,7 @@ export async function reRenderPage(
     if (visualRefinement) {
       await visualRefinement.screenshotRenderer.close()
     }
-    storage.clearNodesByType(["image-captioning", "text-catalog", "text-catalog-translation", "tts"])
+    storage.clearNodesByType(["image-captioning", "text-catalog", "text-catalog-translation", "tts", "tts-timestamps"])
     storage.clearStepRuns(["image-captioning", "text-catalog", "catalog-translation", "tts"])
     storage.close()
     // Restore previous key

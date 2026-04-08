@@ -120,12 +120,14 @@ captions  ───────────────────────�
 glossary  ─────────────────────────────────────────────────────────┘ (after: storyboard)
   (all three run in parallel)
                             │
-text-and-speech ────────────┘  (after: quizzes, captions, glossary)
+translate ──────────────────┘  (after: quizzes, captions, glossary)
   ├── text-catalog
-  ├── catalog-translation    (after: text-catalog)
-  └── tts                    (after: catalog-translation)
+  └── catalog-translation    (after: text-catalog)
                             │
-package ────────────────────┘  (after: text-and-speech)
+speech ────────────────────┘  (after: translate)
+  └── tts
+                            │
+package ────────────────────┘  (after: speech)
   └── package-web
 ```
 

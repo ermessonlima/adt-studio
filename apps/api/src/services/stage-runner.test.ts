@@ -351,7 +351,7 @@ describe("createStageRunner storyboard render-only", () => {
   })
 })
 
-describe("createStageRunner text-and-speech Gemini partial failures", () => {
+describe("createStageRunner speech Gemini partial failures", () => {
   let tmpDir = ""
 
   beforeEach(() => {
@@ -402,8 +402,8 @@ speech:
         geminiApiKey: "gm-test",
         promptsDir,
         configPath,
-        fromStage: "text-and-speech",
-        toStage: "text-and-speech",
+        fromStage: "translate",
+        toStage: "speech",
       },
       { emit: (event) => events.push(event) }
     )
@@ -472,8 +472,8 @@ speech:
         geminiApiKey: "gm-test",
         promptsDir,
         configPath,
-        fromStage: "text-and-speech",
-        toStage: "text-and-speech",
+        fromStage: "translate",
+        toStage: "speech",
       },
       { emit: (event) => events.push(event) }
     )

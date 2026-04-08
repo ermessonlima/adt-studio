@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useNavigate } from "@tanstack/react-router"
-import { Play } from "lucide-react"
+import { Play, Lock } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,15 +22,24 @@ import { useApiKey } from "@/hooks/use-api-key"
 import { api } from "@/api/client"
 import { PromptViewer } from "@/components/pipeline/components/PromptViewer"
 import { LanguagePicker } from "@/components/LanguagePicker"
+import { useBook } from "@/hooks/use-books"
 import { useBookRun } from "@/hooks/use-book-run"
 import { useStepConfig } from "@/hooks/use-step-config"
 import { normalizeLocale } from "@/lib/languages"
+import { resolveSpeechProviderForLanguage } from "@/lib/speech-routing"
 import { SpeechPromptsEditor } from "./components/SpeechPromptsEditor"
 import { VoiceMappingsEditor } from "./components/VoiceMappingsEditor"
 import { useLingui } from "@lingui/react/macro"
 
-export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string }) {
+const langNames = new Intl.DisplayNames(["en"], { type: "language" })
+function displayLang(code: string): string {
+  try { return langNames.of(code) ?? code } catch { return code }
+}
+
+export function TranslationsSettings({ bookLabel, headerTarget, tab = "general", stageSlug = "translate" }: { bookLabel: string; headerTarget?: HTMLDivElement | null; tab?: string; stageSlug?: string }) {
+  const isSpeechStage = stageSlug === "speech"
   const { t } = useLingui()
+  const { data: book } = useBook(bookLabel)
   const { data: bookConfigData } = useBookConfig(bookLabel)
   const { data: activeConfigData } = useActiveConfig(bookLabel)
   const updateConfig = useUpdateBookConfig()
@@ -58,6 +69,10 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
 
   const merged = activeConfigData?.merged as Record<string, unknown> | undefined
   const translation = useStepConfig(merged, "translation", markDirty)
+
+  const configuredEditingLanguage = merged?.editing_language as string | undefined
+  const bookLanguage = book?.languageCode ?? book?.metadata?.language_code ?? null
+  const baseLanguage = normalizeLocale(configuredEditingLanguage ?? bookLanguage ?? "en")
 
   useEffect(() => {
     if (!activeConfigData) return
@@ -145,6 +160,8 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
 
   const toggleLanguage = (code: string) => {
     const normalizedCode = normalizeLocale(code)
+    // Don't add the base language — it's always included implicitly
+    if (normalizedCode === baseLanguage) return
     setOutputLanguages((prev) => {
       const next = new Set(prev)
       if (next.has(normalizedCode)) next.delete(normalizedCode)
@@ -168,11 +185,11 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           setPromptDraft(null)
           setShowRerunDialog(false)
           queueRun({
-            fromStage: "text-and-speech",
-            toStage: "text-and-speech",
+            fromStage: stageSlug as "translate" | "speech",
+            toStage: stageSlug as "translate" | "speech",
             apiKey,
           })
-          navigate({ to: "/books/$label/$step", params: { label: bookLabel, step: "text-and-speech" } })
+          navigate({ to: "/books/$label/$step", params: { label: bookLabel, step: stageSlug } })
         },
       }
     )
@@ -180,14 +197,29 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
 
   return (
     <div className={tab === "prompt" ? "h-full max-w-4xl" : "p-4 max-w-2xl space-y-6"}>
-      {tab === "general" && (
-        <LanguagePicker
-          selected={outputLanguages}
-          onSelect={toggleLanguage}
-          multiple
-          label={t`Output Languages`}
-          hint={t`Leave empty to output only in the book language.`}
-        />
+      {tab === "general" && !isSpeechStage && (
+        <div className="space-y-4">
+          {/* Base language (non-removable) */}
+          <div>
+            <Label className="text-xs">{t`Base Language`}</Label>
+            <div className="mt-1.5">
+              <Badge variant="secondary" className="gap-1.5 text-xs font-normal">
+                <Lock className="h-3 w-3 text-muted-foreground" />
+                {displayLang(baseLanguage)}
+                <span className="text-muted-foreground">({baseLanguage})</span>
+              </Badge>
+            </div>
+          </div>
+
+          {/* Additional output languages */}
+          <LanguagePicker
+            selected={outputLanguages}
+            onSelect={toggleLanguage}
+            multiple
+            label={t`Additional Languages`}
+            hint={t`Add languages to translate the book content into.`}
+          />
+        </div>
       )}
 
       {tab === "prompt" && (
@@ -205,144 +237,24 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
         />
       )}
 
-      {tab === "speech" && (
-        <div className="space-y-6">
-          {/* Provider Routing */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Provider Routing`}</h3>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Default Provider`}</Label>
-              <select
-                value={defaultProvider}
-                onChange={(e) => { setDefaultProvider(e.target.value); markDirty("speech") }}
-                className="flex h-8 w-48 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
-              >
-                <option value="openai">{t`OpenAI`}</option>
-                <option value="azure">{t`Azure`}</option>
-                <option value="gemini">{t`Gemini`}</option>
-              </select>
-              <p className="text-xs text-muted-foreground">{t`Provider used for languages not assigned to a specific provider.`}</p>
-            </div>
-          </div>
-
-          {/* OpenAI Provider */}
-          <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">{t`OpenAI`}</h3>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Model`}</Label>
-              <ModelSelect
-                value={openaiModel}
-                onChange={(v) => { setOpenaiModel(v); markDirty("speech") }}
-                placeholder={t`e.g. gpt-4o-mini-tts`}
-                groups={OPENAI_TTS_MODELS}
-                prefixProvider={false}
-                className="w-72"
-                inputClassName="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Languages`}</Label>
-              <Input
-                value={openaiLanguages}
-                onChange={(e) => { setOpenaiLanguages(e.target.value); markDirty("speech") }}
-                placeholder={t`e.g. en, fr`}
-                className="w-72 h-8 text-xs"
-              />
-              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to OpenAI.`}</p>
-            </div>
-          </div>
-
-          {/* Azure Provider */}
-          <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">{t`Azure Speech`}</h3>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Model`}</Label>
-              <ModelSelect
-                value={azureModel}
-                onChange={(v) => { setAzureModel(v); markDirty("speech") }}
-                placeholder={t`e.g. azure-tts`}
-                groups={AZURE_TTS_MODELS}
-                prefixProvider={false}
-                className="w-72"
-                inputClassName="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Languages`}</Label>
-              <Input
-                value={azureLanguages}
-                onChange={(e) => { setAzureLanguages(e.target.value); markDirty("speech") }}
-                placeholder={t`e.g. es, ta, si, sw`}
-                className="w-72 h-8 text-xs"
-              />
-              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to Azure.`}</p>
-            </div>
-          </div>
-
-          {/* Gemini Provider */}
-          <div className="space-y-3 rounded-md border p-3">
-            <h3 className="text-xs font-semibold">{t`Gemini`}</h3>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Model`}</Label>
-              <ModelSelect
-                value={geminiModel}
-                onChange={(v) => { setGeminiModel(v); markDirty("speech") }}
-                placeholder={t`e.g. gemini-2.5-pro-preview-tts`}
-                groups={GEMINI_TTS_MODELS}
-                prefixProvider={false}
-                className="w-72"
-                inputClassName="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t`Languages`}</Label>
-              <Input
-                value={geminiLanguages}
-                onChange={(e) => { setGeminiLanguages(e.target.value); markDirty("speech") }}
-                placeholder={t`e.g. en, hi, ta`}
-                className="w-72 h-8 text-xs"
-              />
-              <p className="text-xs text-muted-foreground">{t`Comma-separated language codes routed to Gemini.`}</p>
-            </div>
-          </div>
-
-          {/* Audio Settings */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Audio Settings`}</h3>
-            <div className="flex gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t`Format`}</Label>
-                <Input
-                  value={format}
-                  onChange={(e) => { setFormat(e.target.value); markDirty("speech") }}
-                  placeholder={t`mp3`}
-                  className="w-32 h-8 text-xs"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t`Bit Rate`}</Label>
-                <Input
-                  value={bitRate}
-                  onChange={(e) => { setBitRate(e.target.value); markDirty("speech") }}
-                  placeholder={t`64k`}
-                  className="w-32 h-8 text-xs"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">{t`Sample Rate`}</Label>
-                <Input
-                  value={sampleRate}
-                  onChange={(e) => { setSampleRate(e.target.value); markDirty("speech") }}
-                  placeholder={t`24000`}
-                  className="w-32 h-8 text-xs"
-                />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t`Gemini TTS outputs WAV audio in this integration; other providers continue using the configured format.`}
-            </p>
-          </div>
-        </div>
+      {(tab === "speech" || (isSpeechStage && tab === "general")) && (
+        <SpeechLanguageCards
+          bookLabel={bookLabel}
+          baseLanguage={baseLanguage}
+          outputLanguages={outputLanguages}
+          speechModel={speechModel} setSpeechModel={setSpeechModel}
+          format={format} setFormat={setFormat}
+          defaultProvider={defaultProvider} setDefaultProvider={setDefaultProvider}
+          openaiModel={openaiModel} setOpenaiModel={setOpenaiModel}
+          openaiLanguages={openaiLanguages} setOpenaiLanguages={setOpenaiLanguages}
+          azureModel={azureModel} setAzureModel={setAzureModel}
+          azureLanguages={azureLanguages} setAzureLanguages={setAzureLanguages}
+          geminiModel={geminiModel} setGeminiModel={setGeminiModel}
+          geminiLanguages={geminiLanguages} setGeminiLanguages={setGeminiLanguages}
+          bitRate={bitRate} setBitRate={setBitRate}
+          sampleRate={sampleRate} setSampleRate={setSampleRate}
+          markDirty={markDirty}
+        />
       )}
 
       {tab === "speech-prompts" && (
@@ -369,9 +281,11 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
       <Dialog open={showRerunDialog} onOpenChange={setShowRerunDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t`Save & Rerun Translations + Audio`}</DialogTitle>
+            <DialogTitle>{isSpeechStage ? t`Save & Rerun Speech` : t`Save & Rerun Translations`}</DialogTitle>
             <DialogDescription>
-              {t`This will save your settings and re-run translations and audio generation, rebuilding the text catalog, translating to output languages, and generating speech.`}
+              {isSpeechStage
+                ? t`This will save your settings and re-run speech generation.`
+                : t`This will save your settings and re-run translations, rebuilding the text catalog and translating to output languages.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -384,6 +298,284 @@ export function TranslationsSettings({ bookLabel, headerTarget, tab = "general" 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+/* ---------- Speech per-language cards ---------- */
+
+// eslint-disable-next-line lingui/no-unlocalized-strings -- brand names
+const PROVIDER_LABELS: Record<string, string> = { openai: "OpenAI", azure: "Azure", gemini: "Gemini" }
+
+const MODEL_GROUPS_BY_PROVIDER: Record<string, typeof OPENAI_TTS_MODELS> = {
+  openai: OPENAI_TTS_MODELS,
+  azure: AZURE_TTS_MODELS,
+  gemini: GEMINI_TTS_MODELS,
+}
+
+function SpeechLanguageCards({
+  bookLabel,
+  baseLanguage,
+  outputLanguages,
+  speechModel, setSpeechModel,
+  format, setFormat,
+  defaultProvider, setDefaultProvider,
+  openaiModel, setOpenaiModel,
+  openaiLanguages, setOpenaiLanguages,
+  azureModel, setAzureModel,
+  azureLanguages, setAzureLanguages,
+  geminiModel, setGeminiModel,
+  geminiLanguages, setGeminiLanguages,
+  bitRate, setBitRate,
+  sampleRate, setSampleRate,
+  markDirty,
+}: {
+  bookLabel: string
+  baseLanguage: string
+  outputLanguages: Set<string>
+  speechModel: string; setSpeechModel: (v: string) => void
+  format: string; setFormat: (v: string) => void
+  defaultProvider: string; setDefaultProvider: (v: string) => void
+  openaiModel: string; setOpenaiModel: (v: string) => void
+  openaiLanguages: string; setOpenaiLanguages: (v: string) => void
+  azureModel: string; setAzureModel: (v: string) => void
+  azureLanguages: string; setAzureLanguages: (v: string) => void
+  geminiModel: string; setGeminiModel: (v: string) => void
+  geminiLanguages: string; setGeminiLanguages: (v: string) => void
+  bitRate: string; setBitRate: (v: string) => void
+  sampleRate: string; setSampleRate: (v: string) => void
+  markDirty: (field: string) => void
+}) {
+  const { t } = useLingui()
+
+  // Load voice mappings + speech instructions
+  const { data: voiceMappings } = useQuery({
+    queryKey: ["voice-mappings"],
+    queryFn: () => api.getVoiceMappings(),
+  })
+  const { data: speechInstructions } = useQuery({
+    queryKey: ["speech-instructions"],
+    queryFn: () => api.getSpeechInstructions(),
+  })
+
+  // Build a live speech config object to resolve providers
+  const speechConfig = {
+    model: speechModel || undefined,
+    default_provider: defaultProvider || undefined,
+    providers: {
+      ...(openaiModel || openaiLanguages ? {
+        openai: {
+          model: openaiModel || undefined,
+          languages: openaiLanguages.split(",").map((s) => s.trim()).filter(Boolean),
+        },
+      } : {}),
+      ...(azureModel || azureLanguages ? {
+        azure: {
+          model: azureModel || undefined,
+          languages: azureLanguages.split(",").map((s) => s.trim()).filter(Boolean),
+        },
+      } : {}),
+      ...(geminiModel || geminiLanguages ? {
+        gemini: {
+          model: geminiModel || undefined,
+          languages: geminiLanguages.split(",").map((s) => s.trim()).filter(Boolean),
+        },
+      } : {}),
+    },
+  }
+
+  const allLanguages = [baseLanguage, ...Array.from(outputLanguages).filter((l) => l !== baseLanguage)]
+
+  const getProviderModel = (provider: string): string => {
+    if (provider === "openai") return openaiModel
+    if (provider === "azure") return azureModel
+    if (provider === "gemini") return geminiModel
+    return ""
+  }
+
+  const setProviderModel = (provider: string, value: string) => {
+    if (provider === "openai") setOpenaiModel(value)
+    else if (provider === "azure") setAzureModel(value)
+    else if (provider === "gemini") setGeminiModel(value)
+    markDirty("speech")
+  }
+
+  const getProviderLanguages = (provider: string): string => {
+    if (provider === "openai") return openaiLanguages
+    if (provider === "azure") return azureLanguages
+    if (provider === "gemini") return geminiLanguages
+    return ""
+  }
+
+  const setProviderLanguages = (provider: string, value: string) => {
+    if (provider === "openai") setOpenaiLanguages(value)
+    else if (provider === "azure") setAzureLanguages(value)
+    else if (provider === "gemini") setGeminiLanguages(value)
+    markDirty("speech")
+  }
+
+  const resolveVoice = (lang: string, provider: string): string => {
+    if (!voiceMappings) return ""
+    const providerMap = voiceMappings[provider] as Record<string, string> | undefined
+    return providerMap?.[lang] ?? providerMap?.["default"] ?? ""
+  }
+
+  const resolveInstruction = (lang: string): string => {
+    if (!speechInstructions) return ""
+    return speechInstructions[lang] ?? speechInstructions["default"] ?? ""
+  }
+
+  // Route a language to a different provider
+  const routeLanguageTo = (lang: string, newProvider: string) => {
+    // Remove from all providers' language lists
+    for (const p of ["openai", "azure", "gemini"]) {
+      const current = getProviderLanguages(p)
+      const langs = current.split(",").map((s) => s.trim()).filter(Boolean)
+      const filtered = langs.filter((l) => normalizeLocale(l) !== normalizeLocale(lang))
+      if (filtered.length !== langs.length) {
+        setProviderLanguages(p, filtered.join(", "))
+      }
+    }
+    // If the new provider isn't the default, add to its language list
+    if (newProvider !== defaultProvider) {
+      const current = getProviderLanguages(newProvider)
+      const langs = current.split(",").map((s) => s.trim()).filter(Boolean)
+      if (!langs.some((l) => normalizeLocale(l) === normalizeLocale(lang))) {
+        langs.push(lang)
+        setProviderLanguages(newProvider, langs.join(", "))
+      }
+    }
+    markDirty("speech")
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Global defaults */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Defaults`}</h3>
+        <div className="flex gap-4 flex-wrap">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t`Default Provider`}</Label>
+            <select
+              value={defaultProvider}
+              onChange={(e) => { setDefaultProvider(e.target.value); markDirty("speech") }}
+              className="flex h-8 w-40 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm"
+            >
+              <option value="openai">{t`OpenAI`}</option>
+              <option value="azure">{t`Azure`}</option>
+              <option value="gemini">{t`Gemini`}</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t`Format`}</Label>
+            <Input
+              value={format}
+              onChange={(e) => { setFormat(e.target.value); markDirty("speech") }}
+              placeholder="mp3"
+              className="w-24 h-8 text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t`Bit Rate`}</Label>
+            <Input
+              value={bitRate}
+              onChange={(e) => { setBitRate(e.target.value); markDirty("speech") }}
+              placeholder="64k"
+              className="w-24 h-8 text-xs"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t`Sample Rate`}</Label>
+            <Input
+              value={sampleRate}
+              onChange={(e) => { setSampleRate(e.target.value); markDirty("speech") }}
+              placeholder="24000"
+              className="w-24 h-8 text-xs"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Per-language cards */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t`Languages`}</h3>
+        {allLanguages.map((lang) => {
+          const provider = resolveSpeechProviderForLanguage(lang, speechConfig)
+          const model = getProviderModel(provider)
+          const voice = resolveVoice(lang, provider)
+          const instruction = resolveInstruction(lang)
+          const isBase = lang === baseLanguage
+
+          return (
+            <div key={lang} className="rounded-lg border p-4 space-y-3">
+              {/* Language header */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">{displayLang(lang)}</span>
+                <span className="text-xs text-muted-foreground">{lang}</span>
+                {isBase && (
+                  <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal">
+                    {t`base`}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Provider + Model row */}
+              <div className="flex gap-3 flex-wrap">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t`Provider`}</Label>
+                  <select
+                    value={provider}
+                    onChange={(e) => routeLanguageTo(lang, e.target.value)}
+                    className="flex h-8 w-36 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm"
+                  >
+                    {["openai", "azure", "gemini"].map((p) => (
+                      <option key={p} value={p}>
+                        {PROVIDER_LABELS[p]}{p === defaultProvider ? ` (${t`default`})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1 flex-1 min-w-[200px]">
+                  <Label className="text-[10px] text-muted-foreground">{t`Model`}</Label>
+                  <ModelSelect
+                    value={model}
+                    onChange={(v) => setProviderModel(provider, v)}
+                    placeholder={t`Default model`}
+                    groups={MODEL_GROUPS_BY_PROVIDER[provider] ?? OPENAI_TTS_MODELS}
+                    prefixProvider={false}
+                    className="w-full"
+                    inputClassName="h-8 text-xs"
+                  />
+                </div>
+                {voice && (
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">{t`Voice`}</Label>
+                    <div className="flex items-center h-8 px-2 rounded-md border border-input bg-muted/30 text-xs text-muted-foreground">
+                      {voice}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Accent / instruction prompt */}
+              {instruction && (
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">{t`Accent Prompt`}</Label>
+                  <p className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2 whitespace-pre-wrap">
+                    {instruction}
+                  </p>
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {allLanguages.length === 0 && (
+          <p className="text-xs text-muted-foreground italic">
+            {t`No languages configured. Add languages in the Language settings.`}
+          </p>
+        )}
+      </div>
     </div>
   )
 }

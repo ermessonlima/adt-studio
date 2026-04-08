@@ -529,8 +529,8 @@ describe("POST /books/:label/stages/run", () => {
         "X-Gemini-API-Key": "gm-test",
       },
       body: JSON.stringify({
-        fromStage: "text-and-speech",
-        toStage: "text-and-speech",
+        fromStage: "translate",
+        toStage: "speech",
       }),
     })
 

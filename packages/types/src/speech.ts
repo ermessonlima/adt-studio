@@ -35,3 +35,24 @@ export const TTSOutput = z.object({
   generatedAt: z.string(),
 })
 export type TTSOutput = z.infer<typeof TTSOutput>
+
+export const WordTimestamp = z.object({
+  word: z.string(),
+  start: z.number(),
+  end: z.number(),
+})
+export type WordTimestamp = z.infer<typeof WordTimestamp>
+
+export const WordTimestampEntry = z.object({
+  textId: z.string(),
+  language: z.string(),
+  words: z.array(WordTimestamp),
+  duration: z.number(),
+})
+export type WordTimestampEntry = z.infer<typeof WordTimestampEntry>
+
+export const WordTimestampOutput = z.object({
+  entries: z.record(z.string(), WordTimestampEntry),
+  generatedAt: z.string(),
+})
+export type WordTimestampOutput = z.infer<typeof WordTimestampOutput>

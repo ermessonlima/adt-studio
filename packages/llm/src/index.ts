@@ -39,9 +39,12 @@ export {
   createTTSSynthesizer,
   createAzureTTSSynthesizer,
   createGeminiTTSSynthesizer,
+  transcribeWithWhisper,
   type TTSSynthesizer,
   type SynthesizeSpeechOptions,
   type AzureTTSConfig,
   type AzureAudioOptions,
   type GeminiTTSConfig,
+  type WhisperWordTimestamp,
+  type WhisperTranscriptionResult,
 } from "./speech.js"

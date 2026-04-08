@@ -6,6 +6,7 @@ export const TaskKind = z.enum([
   "ai-edit",
   "package-adt",
   "prepare-export",
+  "transcribe-timestamps",
 ])
 export type TaskKind = z.infer<typeof TaskKind>
 

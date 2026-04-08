@@ -327,9 +327,9 @@ async function executeAiImageGeneration(params: AiImageGenParams): Promise<{
   }
 }
 
-/** Clear caption + downstream text-and-speech data when images change. */
+/** Clear caption + downstream translate/speech data when images change. */
 function clearCaptionData(storage: Storage): void {
-  storage.clearNodesByType(["image-captioning", "text-catalog", "text-catalog-translation", "tts"])
+  storage.clearNodesByType(["image-captioning", "text-catalog", "text-catalog-translation", "tts", "tts-timestamps"])
   storage.clearStepRuns(["image-captioning", "text-catalog", "catalog-translation", "tts"])
 }
 
@@ -736,7 +736,7 @@ export function createPageRoutes(
 
       const version = storage.putNodeData("image-captioning", pageId, parsed.data)
       // Caption change cascades to text-catalog/translations/TTS
-      storage.clearNodesByType(["text-catalog", "text-catalog-translation", "tts"])
+      storage.clearNodesByType(["text-catalog", "text-catalog-translation", "tts", "tts-timestamps"])
       storage.clearStepRuns(["text-catalog", "catalog-translation", "tts"])
       return c.json({ version })
     } finally {

@@ -20,7 +20,8 @@ describe("stage-config", () => {
       "captions",
       "glossary",
       "toc",
-      "text-and-speech",
+      "translate",
+      "speech",
       "preview",
     ])
   })
@@ -34,7 +35,8 @@ describe("stage-config", () => {
       "captions",
       "glossary",
       "toc",
-      "text-and-speech",
+      "translate",
+      "speech",
       "sign-language",
       "validation",
       "preview",

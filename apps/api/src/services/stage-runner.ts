@@ -169,7 +169,8 @@ const STAGE_RUNNERS: Record<StageName, RunFn> = {
   "captions": runCaptionsStep,
   "glossary": runGlossaryStep,
   "toc": runTocStep,
-  "text-and-speech": runTextAndSpeechStep,
+  "translate": runTranslateStep,
+  "speech": runSpeechStep,
   "package": async () => { /* packaging handled separately */ },
 }
 
@@ -1343,10 +1344,10 @@ async function runTocStep(
 }
 
 // ---------------------------------------------------------------------------
-// Text & Speech stage (text catalog + catalog translation + TTS)
+// Translate stage (text catalog + catalog translation)
 // ---------------------------------------------------------------------------
 
-async function runTextAndSpeechStep(
+async function runTranslateStep(
   label: string,
   options: StageRunOptions,
   progress: StageRunProgress
@@ -1360,15 +1361,11 @@ async function runTextAndSpeechStep(
   try {
     const config = loadBookConfig(label, booksDir, configPath)
     const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
-    const bookDir = path.join(path.resolve(booksDir), label)
     const bookPromptsDir = path.join(path.resolve(booksDir), label, "prompts")
     const promptEngine = createPromptEngine([bookPromptsDir, promptsDir])
     const rateLimiter = config.rate_limit
       ? createRateLimiter(config.rate_limit.requests_per_minute)
       : undefined
-    const configDir = configPath
-      ? path.join(path.dirname(configPath), "config")
-      : path.resolve(process.cwd(), "config")
 
     // Get book language from metadata
     const metadataRow = storage.getLatestNodeData("metadata", "book")
@@ -1510,8 +1507,55 @@ async function runTextAndSpeechStep(
       console.log(`[stage-run] ${label}: catalog translation complete`)
     }
 
-    // ── Step 3: Generate TTS ────────────────────────────────────────
-    if (catalog.entries.length === 0) {
+    console.log(`[stage-run] ${label}: translate stage complete`)
+  } finally {
+    storage.close()
+    restoreEnvKeys()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Speech stage (TTS generation)
+// ---------------------------------------------------------------------------
+
+async function runSpeechStep(
+  label: string,
+  options: StageRunOptions,
+  progress: StageRunProgress
+): Promise<void> {
+  const { booksDir, configPath } = options
+
+  const restoreEnvKeys = setProviderEnvKeys(options)
+
+  const storage = createBookStorage(label, booksDir)
+
+  try {
+    const config = loadBookConfig(label, booksDir, configPath)
+    const cacheDir = path.join(path.resolve(booksDir), label, ".cache")
+    const bookDir = path.join(path.resolve(booksDir), label)
+    const configDir = configPath
+      ? path.join(path.dirname(configPath), "config")
+      : path.resolve(process.cwd(), "config")
+
+    // Get book language from metadata
+    const metadataRow = storage.getLatestNodeData("metadata", "book")
+    const metadata = metadataRow?.data as { language_code?: string | null } | null
+    const language = normalizeLocale(config.editing_language ?? metadata?.language_code ?? "en")
+
+    const effectiveConcurrency = config.concurrency ?? 32
+
+    // Output languages — always include the base language so TTS is generated for it too
+    const outputLanguages = Array.from(
+      new Set(
+        [language, ...(config.output_languages ?? [])].map((code) => normalizeLocale(code))
+      )
+    )
+
+    // Load text catalog from storage (produced by translate stage)
+    const catalogRow = storage.getLatestNodeData("text-catalog", "book")
+    const catalog = catalogRow?.data as TextCatalogOutput | null
+
+    if (!catalog || catalog.entries.length === 0) {
       progress.emit({ type: "step-skip", step: "tts" })
       console.log(`[stage-run] ${label}: TTS skipped (empty catalog)`)
       return
@@ -1800,18 +1844,18 @@ async function runTextAndSpeechStep(
     }
 
     if (geminiFailedItems.length > 0) {
-      const summary = `${geminiFailedItems.length} Gemini TTS item(s) failed. Missing Gemini audio can be generated one by one from the Text & Speech view.`
+      const summary = `${geminiFailedItems.length} Gemini TTS item(s) failed. Missing Gemini audio can be generated one by one from the Speech view.`
       progress.emit({
         type: "step-error",
         step: "tts",
         error: summary,
       })
-      console.log(`[stage-run] ${label}: text & speech completed with Gemini TTS gaps`)
+      console.log(`[stage-run] ${label}: speech completed with Gemini TTS gaps`)
       return
     }
 
     progress.emit({ type: "step-complete", step: "tts" })
-    console.log(`[stage-run] ${label}: text & speech complete`)
+    console.log(`[stage-run] ${label}: speech complete`)
   } finally {
     storage.close()
     restoreEnvKeys()

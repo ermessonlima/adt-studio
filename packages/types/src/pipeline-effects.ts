@@ -22,7 +22,7 @@ export type PipelineCacheResource =
   | "debug"
 
 const EXTRA_STAGE_OUTPUT_NODES: Partial<Record<StageName, readonly PipelineNodeName[]>> = {
-  "text-and-speech": ["text-catalog-translation"],
+  "translate": ["text-catalog-translation"],
 }
 
 /** All node_data node names written by each stage. */
@@ -33,7 +33,8 @@ export const STAGE_OUTPUT_NODES: Record<StageName, readonly PipelineNodeName[]> 
   "captions": [],
   "glossary": [],
   "toc": [],
-  "text-and-speech": [],
+  "translate": [],
+  "speech": [],
   "package": [],
 }
 
@@ -44,7 +45,8 @@ const STAGE_DIRECT_DEPENDENTS: Record<StageName, StageName[]> = {
   "captions": [],
   "glossary": [],
   "toc": [],
-  "text-and-speech": [],
+  "translate": [],
+  "speech": [],
   "package": [],
 }
 

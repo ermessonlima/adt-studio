@@ -11,12 +11,15 @@ import {
   type TTSProviderConfig,
   type TextCatalogEntry,
   type TextCatalogOutput,
+  type WordTimestampEntry,
+  type WordTimestampOutput,
 } from "@adt/types"
 import { openBookDb, createBookStorage } from "@adt/storage"
 import {
   createAzureTTSSynthesizer,
   createGeminiTTSSynthesizer,
   createTTSSynthesizer,
+  transcribeWithWhisper,
   type LlmLogEntry,
 } from "@adt/llm"
 import {
@@ -275,7 +278,7 @@ function appendSingleTtsLog(
   storage.appendLlmLog(logEntry)
 }
 
-export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
+export function createTTSRoutes(booksDir: string, configPath?: string, taskService?: import("../services/task-service.js").TaskService): Hono {
   const app = new Hono()
 
   // GET /books/:label/tts — Get all TTS data grouped by language
@@ -326,6 +329,34 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
       return c.json({ languages })
     } finally {
       db.close()
+    }
+  })
+
+  // DELETE /books/:label/tts — Clear all TTS data and audio files
+  app.delete("/books/:label/tts", (c) => {
+    const { label } = c.req.param()
+    const safeLabel = safeParseLabel(label)
+    const dbPath = getBookDbPath(booksDir, safeLabel)
+
+    if (!fs.existsSync(dbPath)) {
+      throw new HTTPException(404, { message: `Book not found: ${safeLabel}` })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      storage.clearNodesByType(["tts", "tts-timestamps"])
+      storage.clearStepRuns(["tts"])
+
+      // Remove audio files on disk
+      const bookDir = path.join(path.resolve(booksDir), safeLabel)
+      const audioDir = path.join(bookDir, "audio")
+      if (fs.existsSync(audioDir)) {
+        fs.rmSync(audioDir, { recursive: true, force: true })
+      }
+
+      return c.json({ ok: true })
+    } finally {
+      storage.close()
     }
   })
 
@@ -651,6 +682,333 @@ export function createTTSRoutes(booksDir: string, configPath?: string): Hono {
     } finally {
       storage.close()
     }
+  })
+
+  // GET /books/:label/tts/timestamps/:language — Get word timestamps for a language
+  app.get("/books/:label/tts/timestamps/:language", (c) => {
+    const { label, language } = c.req.param()
+    const safeLabel = safeParseLabel(label)
+    const dbPath = getBookDbPath(booksDir, safeLabel)
+
+    if (!fs.existsSync(dbPath)) {
+      throw new HTTPException(404, { message: `Book not found: ${safeLabel}` })
+    }
+
+    const storage = createBookStorage(safeLabel, booksDir)
+    try {
+      const normalizedLanguage = normalizeLocale(language)
+      const row = storage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+      if (!row) {
+        return c.json({ entries: {}, generatedAt: null })
+      }
+      const data = row.data as WordTimestampOutput
+      return c.json(data)
+    } finally {
+      storage.close()
+    }
+  })
+
+  // PUT /books/:label/tts/timestamps/:language/:textId — Save edited word timestamps
+  app.put("/books/:label/tts/timestamps/:language/:textId", async (c) => {
+    const { label, language, textId } = c.req.param()
+    const safeLabel = safeParseLabel(label)
+    const dbPath = getBookDbPath(booksDir, safeLabel)
+
+    if (!fs.existsSync(dbPath)) {
+      throw new HTTPException(404, { message: `Book not found: ${safeLabel}` })
+    }
+
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      throw new HTTPException(400, { message: "Invalid JSON body" })
+    }
+
+    const schema = z.object({
+      words: z.array(z.object({
+        word: z.string(),
+        start: z.number(),
+        end: z.number(),
+      })),
+      duration: z.number(),
+    }).strict()
+
+    const parsed = schema.safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid request: ${parsed.error.message}`,
+      })
+    }
+
+    const normalizedLanguage = normalizeLocale(language)
+    const storage = createBookStorage(safeLabel, booksDir)
+
+    try {
+      const existingRow = storage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+      const existing = existingRow
+        ? (existingRow.data as WordTimestampOutput).entries
+        : {}
+
+      const updatedEntry: WordTimestampEntry = {
+        textId,
+        language: normalizedLanguage,
+        words: parsed.data.words,
+        duration: parsed.data.duration,
+      }
+
+      const merged: Record<string, WordTimestampEntry> = {
+        ...existing,
+        [textId]: updatedEntry,
+      }
+
+      storage.putNodeData("tts-timestamps", normalizedLanguage, {
+        entries: merged,
+        generatedAt: new Date().toISOString(),
+      } satisfies WordTimestampOutput)
+
+      return c.json({ ok: true })
+    } finally {
+      storage.close()
+    }
+  })
+
+  // POST /books/:label/tts/transcribe-one — Generate word timestamps for a single entry
+  app.post("/books/:label/tts/transcribe-one", async (c) => {
+    const { label } = c.req.param()
+    const safeLabel = safeParseLabel(label)
+    const dbPath = getBookDbPath(booksDir, safeLabel)
+
+    if (!fs.existsSync(dbPath)) {
+      throw new HTTPException(404, { message: `Book not found: ${safeLabel}` })
+    }
+
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      throw new HTTPException(400, { message: "Invalid JSON body" })
+    }
+
+    const parsed = GenerateSingleTTSBody.safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid request: ${parsed.error.message}`,
+      })
+    }
+
+    const openaiApiKey = c.req.header("X-OpenAI-Key")?.trim()
+    if (!openaiApiKey) {
+      throw new HTTPException(400, {
+        message: "OpenAI API key required for Whisper transcription. Set X-OpenAI-Key header.",
+      })
+    }
+
+    const normalizedLanguage = normalizeLocale(parsed.data.language)
+    const storage = createBookStorage(safeLabel, booksDir)
+
+    try {
+      // Find the audio file for this entry
+      const ttsEntries = getLatestTtsEntries(storage, normalizedLanguage)
+      const ttsEntry = ttsEntries.find((e) => e.textId === parsed.data.textId)
+      if (!ttsEntry) {
+        throw new HTTPException(404, {
+          message: `No audio found for ${parsed.data.textId} in ${normalizedLanguage}`,
+        })
+      }
+
+      const bookDir = path.join(path.resolve(booksDir), safeLabel)
+      const audioPath = path.resolve(bookDir, "audio", normalizedLanguage, ttsEntry.fileName)
+      if (!fs.existsSync(audioPath)) {
+        throw new HTTPException(404, {
+          message: `Audio file not found: ${ttsEntry.fileName}`,
+        })
+      }
+
+      const audioBuffer = Buffer.from(fs.readFileSync(audioPath))
+      const baseLanguage = getBaseLanguage(normalizedLanguage)
+
+      // Look up the source text to use as a Whisper prompt for improved accuracy
+      const { config, language: sourceLanguage } = getSourceLanguage(storage, booksDir, safeLabel, configPath)
+      void config
+      let textPrompt: string | undefined
+      try {
+        const catalogEntries = getCatalogEntriesForLanguage(storage, sourceLanguage, normalizedLanguage)
+        const entry = catalogEntries.find((e) => e.id === parsed.data.textId)
+        if (entry?.text) textPrompt = entry.text
+      } catch {
+        // Non-critical — proceed without prompt
+      }
+
+      const result = await transcribeWithWhisper(
+        audioBuffer,
+        ttsEntry.fileName,
+        openaiApiKey,
+        baseLanguage,
+        textPrompt,
+      )
+
+      const timestampEntry: WordTimestampEntry = {
+        textId: parsed.data.textId,
+        language: normalizedLanguage,
+        words: result.words,
+        duration: result.duration,
+      }
+
+      // Merge into existing timestamps for this language
+      const existingRow = storage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+      const existing = existingRow
+        ? (existingRow.data as WordTimestampOutput).entries
+        : {}
+
+      const merged: Record<string, WordTimestampEntry> = {
+        ...existing,
+        [parsed.data.textId]: timestampEntry,
+      }
+
+      storage.putNodeData("tts-timestamps", normalizedLanguage, {
+        entries: merged,
+        generatedAt: new Date().toISOString(),
+      } satisfies WordTimestampOutput)
+
+      return c.json({ entry: timestampEntry })
+    } finally {
+      storage.close()
+    }
+  })
+
+  // POST /books/:label/tts/transcribe-all — Batch generate word timestamps for all entries in a language
+  app.post("/books/:label/tts/transcribe-all", async (c) => {
+    const { label } = c.req.param()
+    const safeLabel = safeParseLabel(label)
+    const dbPath = getBookDbPath(booksDir, safeLabel)
+
+    if (!fs.existsSync(dbPath)) {
+      throw new HTTPException(404, { message: `Book not found: ${safeLabel}` })
+    }
+
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      throw new HTTPException(400, { message: "Invalid JSON body" })
+    }
+
+    const parsed = z.object({ language: z.string().min(1) }).strict().safeParse(body)
+    if (!parsed.success) {
+      throw new HTTPException(400, {
+        message: `Invalid request: ${parsed.error.message}`,
+      })
+    }
+
+    const openaiApiKey = c.req.header("X-OpenAI-Key")?.trim()
+    if (!openaiApiKey) {
+      throw new HTTPException(400, {
+        message: "OpenAI API key required for Whisper transcription. Set X-OpenAI-Key header.",
+      })
+    }
+
+    const normalizedLanguage = normalizeLocale(parsed.data.language)
+
+    // Pre-check: count how many need transcribing before submitting task
+    const preStorage = createBookStorage(safeLabel, booksDir)
+    let totalToTranscribe: number
+    try {
+      const ttsEntries = getLatestTtsEntries(preStorage, normalizedLanguage)
+      if (ttsEntries.length === 0) {
+        return c.json({ taskId: null, count: 0, skipped: 0 })
+      }
+      const existingRow = preStorage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+      const existing = existingRow
+        ? (existingRow.data as WordTimestampOutput).entries
+        : {}
+      totalToTranscribe = ttsEntries.filter((e) => !existing[e.textId]).length
+      if (totalToTranscribe === 0) {
+        return c.json({ taskId: null, count: 0, skipped: ttsEntries.length })
+      }
+    } finally {
+      preStorage.close()
+    }
+
+    if (!taskService) {
+      throw new HTTPException(500, { message: "Task service not available" })
+    }
+
+    const { taskId } = taskService.submitTask(
+      safeLabel,
+      "transcribe-timestamps",
+      `Transcribing ${totalToTranscribe} entries (${normalizedLanguage})`,
+      async (emitProgress) => {
+        const storage = createBookStorage(safeLabel, booksDir)
+        try {
+          const ttsEntries = getLatestTtsEntries(storage, normalizedLanguage)
+          const existingRow = storage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+          const existing = existingRow
+            ? (existingRow.data as WordTimestampOutput).entries
+            : {}
+
+          const toTranscribe = ttsEntries.filter((e) => !existing[e.textId])
+          if (toTranscribe.length === 0) return { count: 0, skipped: ttsEntries.length }
+
+          const bookDir = path.join(path.resolve(booksDir), safeLabel)
+          const baseLanguage = getBaseLanguage(normalizedLanguage)
+
+          // Load text catalog for prompts
+          const { config, language: sourceLanguage } = getSourceLanguage(storage, booksDir, safeLabel, configPath)
+          void config
+          let textMap = new Map<string, string>()
+          try {
+            const catalogEntries = getCatalogEntriesForLanguage(storage, sourceLanguage, normalizedLanguage)
+            textMap = new Map(catalogEntries.map((e) => [e.id, e.text]))
+          } catch {
+            // Non-critical
+          }
+
+          let count = 0
+
+          for (const ttsEntry of toTranscribe) {
+            const audioPath = path.resolve(bookDir, "audio", normalizedLanguage, ttsEntry.fileName)
+            if (!fs.existsSync(audioPath)) continue
+
+            const audioBuffer = Buffer.from(fs.readFileSync(audioPath))
+            const textPrompt = textMap.get(ttsEntry.textId)
+            const result = await transcribeWithWhisper(
+              audioBuffer,
+              ttsEntry.fileName,
+              openaiApiKey,
+              baseLanguage,
+              textPrompt,
+            )
+
+            const entry: WordTimestampEntry = {
+              textId: ttsEntry.textId,
+              language: normalizedLanguage,
+              words: result.words,
+              duration: result.duration,
+            }
+
+            // Write incrementally to avoid overwriting concurrent user edits
+            const currentRow = storage.getLatestNodeData("tts-timestamps", normalizedLanguage)
+            const current = currentRow
+              ? (currentRow.data as WordTimestampOutput).entries
+              : {}
+            storage.putNodeData("tts-timestamps", normalizedLanguage, {
+              entries: { ...current, [ttsEntry.textId]: entry },
+              generatedAt: new Date().toISOString(),
+            } satisfies WordTimestampOutput)
+
+            count++
+            emitProgress(`${count}/${toTranscribe.length}`, Math.round((count / toTranscribe.length) * 100))
+          }
+
+          return { count, skipped: ttsEntries.length - toTranscribe.length }
+        } finally {
+          storage.close()
+        }
+      }
+    )
+
+    return c.json({ taskId })
   })
 
   // GET /books/:label/audio/:language/:fileName — Serve audio file

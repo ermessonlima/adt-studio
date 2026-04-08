@@ -37,6 +37,7 @@ export function useStepHeader() {
 
 interface ViewProps {
   bookLabel: string
+  stageSlug?: string
   selectedPageId?: string
   onSelectPage?: (pageId: string | null) => void
 }
@@ -54,7 +55,8 @@ const VIEW_MAP: Record<string, ViewEntry> = {
   captions: { component: CaptionsView },
   glossary: { component: GlossaryView },
   toc: { component: TocView },
-  "text-and-speech": { component: TranslationsView, fullHeight: true },
+  translate: { component: TranslationsView, fullHeight: true },
+  speech: { component: TranslationsView, fullHeight: true },
   "sign-language": { component: SignLanguageView, fullHeight: true },
   validation: { component: ValidationView, fullHeight: true },
   preview: { component: PreviewView, fullHeight: true },
@@ -113,11 +115,11 @@ export function StepViewRouter({ step, bookLabel, selectedPageId, onSelectPage }
         {/* Step content */}
         {entry.fullHeight ? (
           <div className="flex-1 min-h-0 overflow-auto">
-            <View bookLabel={bookLabel} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
+            <View bookLabel={bookLabel} stageSlug={step} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-auto p-4">
-            <View bookLabel={bookLabel} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
+            <View bookLabel={bookLabel} stageSlug={step} selectedPageId={selectedPageId} onSelectPage={onSelectPage} />
           </div>
         )}
       </div>

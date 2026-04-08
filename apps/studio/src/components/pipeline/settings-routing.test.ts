@@ -9,7 +9,8 @@ describe("settings-routing", () => {
 
   it("resolves known settings stages", () => {
     expect(resolveSettingsStageSlug("extract")).toBe("extract")
-    expect(resolveSettingsStageSlug("text-and-speech")).toBe("text-and-speech")
+    expect(resolveSettingsStageSlug("translate")).toBe("translate")
+    expect(resolveSettingsStageSlug("speech")).toBe("speech")
   })
 
   it("returns null for stages without settings views", () => {

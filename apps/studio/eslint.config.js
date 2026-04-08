@@ -80,6 +80,7 @@ export default [
             "borderDark",
             "iconColor",
             "colorClass",
+            { regex: { pattern: "Class$" } },
 
             // --- Data labels (technical CSS descriptions, pipeline labels — not user-facing prose) ---
             "label",

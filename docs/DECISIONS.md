@@ -543,7 +543,7 @@ Home page uses a 30/70 vertical split: workflow guide on the left, books list on
 
 Organize the pipeline as a two-level DAG with a single source of truth in `packages/types/src/pipeline.ts`. The two levels are:
 
-- **Stages** — High-level groupings visible in the UI (Extract, Storyboard, Quizzes, Captions, Glossary, Text & Speech, Package). Stages have inter-stage dependencies forming a DAG.
+- **Stages** — High-level groupings visible in the UI (Extract, Storyboard, Quizzes, Captions, Glossary, Translate, Speech, Package). Stages have inter-stage dependencies forming a DAG.
 - **Steps** — Atomic processing operations within a stage (e.g., `image-filtering`, `page-sectioning`, `tts`). Steps have intra-stage dependencies and can run in parallel when their dependencies are met.
 
 ### Context

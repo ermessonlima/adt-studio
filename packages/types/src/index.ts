@@ -144,6 +144,9 @@ export {
   SpeechConfig,
   SpeechFileEntry,
   TTSOutput,
+  WordTimestamp,
+  WordTimestampEntry,
+  WordTimestampOutput,
 } from "./speech.js"
 
 export {
