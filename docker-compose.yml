@@ -6,7 +6,7 @@ services:
     # ports:
     #   - "3001:3001"  # uncomment for direct API access (debugging)
     volumes:
-      - ./books:/app/books
+      - books_data:/app/books
       # Uncomment to override baked-in defaults (requires files on host):
       # - ./prompts:/app/prompts
       # - ./templates:/app/templates:ro
@@ -43,3 +43,6 @@ services:
 networks:
   internal:
     driver: bridge
+
+volumes:
+  books_data:
